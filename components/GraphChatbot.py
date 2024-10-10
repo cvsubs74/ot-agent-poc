@@ -299,7 +299,7 @@ class GraphChatbot:
     def generate_graph_generation_json(self, instruction):
         """
         Use Vertex AI to generate a valid JSON for graph creation based on the given instruction,
-        utilizing the entity types, relationship types, and allowed relationships.
+        utilizing the entity types, relationship types, and allowed relationships. Ensure the graph has at least 50 nodes.
         """
 
         # Dynamically build the entity types and relationship types from the enums
@@ -317,7 +317,7 @@ class GraphChatbot:
         prompt = f"""
         The user has provided the following instruction: "{instruction}"
 
-        Based on this instruction, generate a valid JSON for a graph creation. The format should be:
+        Based on this instruction, generate a valid JSON for a graph creation with **at least 50 nodes**. The format should be:
 
         {{
             "graph_name": "<Name of the graph>",
@@ -332,7 +332,7 @@ class GraphChatbot:
             ]
         }}
 
-        Here are the possible entity types:
+        Ensure that there are **at least 50 entities**. Here are the possible entity types:
         {', '.join(entity_types)}
 
         Here are the possible relationship types:
