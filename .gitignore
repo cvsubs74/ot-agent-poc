@@ -2,3 +2,6 @@
 .streamlit/secrets.toml
 .streamlit/gc.json
 
+# Ignore virtual environment folder
+venv/
+
