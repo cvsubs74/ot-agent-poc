@@ -273,8 +273,6 @@ class GraphChatbot:
         elif instruction:
             # Use custom instruction
             generated_json = self.generate_graph_generation_json(instruction)
-        else:
-            st.error("Please select a category or provide custom instructions.")
 
         # Step 4: Display generated JSON and allow for graph creation
         with st.form(key='json_form', clear_on_submit=True):
