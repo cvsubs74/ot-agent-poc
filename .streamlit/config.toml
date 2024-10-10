@@ -1,0 +1,8 @@
+[global]
+
+disableWidgetStateDuplicationWarning = true
+showWarningOnDirectExecution = false
+
+[server]
+# Increase maximum upload size to 500 MB
+maxUploadSize = 500

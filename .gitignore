@@ -1,0 +1,4 @@
+# Ignore secrets and sensitive files
+.streamlit/secrets.toml
+.streamlit/gc.json
+

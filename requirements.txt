@@ -1,0 +1,13 @@
+streamlit
+pandas
+cloud-sql-python-connector
+PyMySQL
+vertexai
+networkx
+pyvis
+
+
+
+
+
+

@@ -1,0 +1,381 @@
+import os
+from decimal import Decimal
+
+import streamlit as st
+import json
+from datetime import datetime
+
+import vertexai
+from vertexai.generative_models import GenerativeModel
+
+from enums.EntityType import EntityType
+from enums.RelationshipType import RelationshipType
+from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS
+
+
+# Custom JSON encoder to handle datetime objects
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()  # Handle datetime serialization
+        return super(CustomJSONEncoder, self).default(obj)
+
+
+class GraphChatbot:
+    def __init__(self, graph_repo, context_graph_generator):
+        self.graph_repo = graph_repo
+        self.context_graph_generator = context_graph_generator
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
+
+        # Initialize Vertex AI with the provided project ID
+        vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
+        self.model = GenerativeModel(os.environ["MODEL"])
+
+    def context_graph_analyzer_chatbot(self, graph_id):
+        # Fetch the graph details by ID
+        graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
+        if not graph_details:
+            st.error(f"Graph with ID {graph_id} not found.")
+            return
+
+        # Convert the graph details to JSON using custom encoder
+        graph_details_json = json.dumps(graph_details, indent=4, cls=CustomJSONEncoder)
+
+        # Define categories of questions related to the graph
+        categories = {
+            "Data Transfer": [
+                "What data is being transferred between entities?",
+                "Which assets are involved in data transfer?",
+                "How is data transfer managed between vendors and assets?",
+                "What are the security protocols for data transfer?",
+                "Are there any data transfer relationships between entities and vendors?"
+            ],
+            "Policies": [
+                "What policies govern data transfer in this graph?",
+                "How do policies impact vendor relationships?",
+                "Are there any policies related to asset management?",
+                "Which policies are connected to specific data flows?",
+                "How are compliance and risk management policies enforced in the graph?"
+            ],
+            "Assets": [
+                "What assets are part of this graph?",
+                "Which assets are critical to data transfer?",
+                "How are the assets related to the vendors in the graph?",
+                "Are there any security measures linked to specific assets?",
+                "What is the relationship between assets and policies in this graph?"
+            ],
+            "Vendors": [
+                "Which vendors are involved in data transfer?",
+                "What are the relationships between vendors and assets?",
+                "Which vendors are responsible for managing data transfer?",
+                "Are any vendors subject to specific policies?",
+                "How do vendor relationships impact the risk profile of the graph?"
+            ],
+            "Risks and Controls": [
+                "What are the identified risks in this graph?",
+                "How are risks mitigated through controls?",
+                "Which assets or entities are linked to specific risks?",
+                "What controls are in place to manage vendor-related risks?",
+                "How are risks related to data transfers being managed?",
+                "What policies are associated with risk management in this graph?",
+                "Are there any high-risk vendors or assets involved?",
+                "What is the process for monitoring and updating risk controls?",
+                "How are risk assessments conducted and reviewed in the graph?",
+                "What are the critical controls in place for data security?"
+            ]
+        }
+
+        # Initialize session state variables
+        if 'selected_category' not in st.session_state:
+            st.session_state.selected_category = None
+        if 'selected_question' not in st.session_state:
+            st.session_state.selected_question = None
+
+        # Display categories as buttons
+        category_keys = list(categories.keys())
+        for i in range(0, len(category_keys), 5):
+            cols = st.columns(5)
+            for j in range(5):
+                if i + j < len(category_keys):
+                    category = category_keys[i + j]
+                    if cols[j].button(category):
+                        st.session_state.selected_category = category
+                        st.session_state.selected_question = None
+
+        # Display questions within the selected category
+        if st.session_state.selected_category:
+            self.divider()
+            selected_category = st.session_state.selected_category
+            questions = categories[selected_category]
+            for i in range(0, len(questions), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(questions):
+                        question = questions[i + j]
+                        if cols[j].button(question):
+                            st.session_state.selected_question = question
+
+        # Retrieve previously asked questions for the graph and display them in a dropdown
+        questions = self.graph_repo.get_graph_questions(graph_id)
+        question_options = []
+        if questions:
+            question_options = ["--Select a question--"] + [q['question'] for q in questions]
+            selected_question = st.selectbox("Select a question:", options=question_options)
+
+            # Ensure that only valid selections are processed
+            if selected_question and selected_question != "--Select a question--":
+                st.session_state.selected_question = selected_question
+
+        # Define a form for asking custom questions with clear_on_submit=True
+        with st.form("question_form", clear_on_submit=True):
+            # Provide a text input for custom questions
+            user_question = st.text_input("Ask a question:", key="user_question")
+
+            # Detect when the form is submitted (e.g., pressing Enter in the text input)
+            submitted = st.form_submit_button("Submit")
+
+            if submitted and user_question:  # Check if the form is submitted and the input is not empty
+                # Check if the question already exists in the list of questions
+                if user_question not in question_options:
+                    st.session_state.selected_question = user_question
+                    self.graph_repo.add_graph_question(graph_id, user_question)
+                    st.rerun()
+
+        # Add a checkbox for showing the graph JSON
+        show_json = st.checkbox("Show JSON")
+
+        # Handle the selected question
+        if st.session_state.selected_question:
+            self.handle_question(st.session_state.selected_question, graph_details_json, show_json)
+
+    def handle_question(self, question, graph_details_json, show_json):
+        """
+        Handles the logic of answering a graph-related question by injecting the graph details into the response.
+        If 'show_json' is true, display the graph JSON to the user.
+        """
+        # Show the JSON if the checkbox is checked
+        if show_json:
+            st.json(json.loads(graph_details_json))  # Displaying JSON in a readable format
+
+        # Parse the graph details back into a Python dictionary
+        graph_data = json.loads(graph_details_json)
+
+        # Extract specific data from graph_data
+        graph_name = graph_data.get('name', 'Graph')
+        relationships = json.dumps(graph_data.get('relationships', []), indent=2, cls=CustomJSONEncoder)
+        created_at = graph_data.get('created_at', 'Unknown')
+
+        # Construct the prompt for the AI model based on the graph details and the user's question
+        prompt = f"""
+                    The user has asked the following question: "{question}"
+
+                    Here is the relevant information:
+
+                    **Entities and Relationships:**
+                    {relationships}
+
+                    Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
+
+                    - Directly answers the question without prefacing with phrases like "Based on the provided information."
+                    - Highlights important information by **bolding** them.
+                    - Uses bullet points for clarity and emphasis wherever applicable.
+                    - Focuses on actionable insights if applicable.
+                    - In the end summarize
+
+                    Please generate a helpful, concise, and clear response with the above guidelines in mind.
+                    """
+
+        try:
+            # Generate content using Google Vertex AI Generative Model
+            with st.spinner("Please wait..."):
+                response = self.model.generate_content(prompt)
+
+            # Return the response content
+            if response and hasattr(response, 'text'):
+                st.info(response.text)
+            else:
+                st.warning("Please try again later.")
+        except Exception as e:
+            # Log the exception for debugging purposes
+            st.error(f"An error occurred: {str(e)}")
+            st.warning("Please try again later.")
+
+    def context_graph_generation_chatbot(self):
+        # Pre-seeded graph categories and subcategories
+        privacy_graphs = {
+            "Data Transfers": {
+                "Cross-Border Transfers": "A graph representing international data transfers involving multiple jurisdictions, vendors, and compliance checks.",
+                "Sensitive Data Transfers": "A graph focused on the transfer of sensitive personal data between entities, including encryption, access controls, and risk assessments.",
+                "Third-Party Data Sharing": "A graph illustrating the sharing of personal data with third-party vendors, including contracts, data processing agreements, and vendor risks."
+            },
+            "Policies and Compliance": {
+                "GDPR Compliance": "A GDPR-focused compliance graph detailing data protection policies, data subject rights, and lawful processing mechanisms.",
+                "Privacy Impact Assessment": "A graph focused on the data processing activities, impact assessments, and risk mitigation measures required under privacy regulations.",
+                "Data Retention and Deletion": "A compliance graph emphasizing data retention policies, expiration schedules, and deletion processes for various asset types."
+            },
+            "Vendor and Third-Party Management": {
+                "Third-Party Risk Management": "A graph focused on assessing third-party risks, contracts, and vendor compliance with privacy regulations and security controls.",
+                "Vendor Data Processing Agreements": "A comprehensive graph covering vendor relationships, data processing agreements (DPA), and regulatory compliance.",
+                "Supply Chain Security": "A graph illustrating the flow of data through a supply chain, covering vendor management, data sharing agreements, and risk assessments."
+            },
+            "Risk Management": {
+                "Privacy Risk Assessments": "A graph covering privacy-related risks, their controls, and risk mitigation strategies for different entities and assets.",
+                "Compliance Risk Monitoring": "A graph that tracks risks related to compliance with regulatory frameworks (GDPR, CCPA), including continuous monitoring and controls.",
+                "Incident Response and Mitigation": "A graph focused on data breaches, incident responses, risk mitigation, and remediation actions taken by involved entities."
+            }
+        }
+
+        # Step 1: Allow user to select a category using buttons
+        selected_category = None
+        selected_subcategory = None
+
+        # Display category buttons (5 per row)
+        category_keys = list(privacy_graphs.keys())
+        for i in range(0, len(category_keys), 4):
+            cols = st.columns(4)
+            for j in range(4):
+                if i + j < len(category_keys):
+                    category = category_keys[i + j]
+                    if cols[j].button(category):
+                        selected_category = category
+                        st.session_state.graph_creation_selected_category = category
+
+        # Step 2: If a category is selected, show subcategory buttons
+        if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
+            selected_category = st.session_state.graph_creation_selected_category
+
+            subcategories = privacy_graphs[selected_category]
+            subcategory_keys = list(subcategories.keys())
+            for i in range(0, len(subcategory_keys), 5):
+                cols = st.columns(5)
+                for j in range(5):
+                    if i + j < len(subcategory_keys):
+                        subcategory = subcategory_keys[i + j]
+                        if cols[j].button(subcategory):
+                            st.session_state.graph_creation_selected_subcategory = subcategory
+
+        # Show description for the selected subcategory
+        if 'graph_creation_selected_subcategory' in st.session_state:
+            selected_subcategory = st.session_state.graph_creation_selected_subcategory
+            st.info(privacy_graphs[selected_category][selected_subcategory])
+
+        # Step 3: Create graph based on selection or instructions
+        instruction = st.text_area("Or enter custom instructions to generate a graph JSON:", height=150)
+
+        generated_json = None
+        if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
+            # Automatically generate instruction based on selection
+            generated_json = self.generate_graph_generation_json(
+                f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
+            )
+        elif instruction:
+            # Use custom instruction
+            generated_json = self.generate_graph_generation_json(instruction)
+        else:
+            st.error("Please select a category or provide custom instructions.")
+
+        # Step 4: Display generated JSON and allow for graph creation
+        with st.form(key='json_form', clear_on_submit=True):
+            json_input = st.text_area(
+                "Paste your JSON here",
+                height=200,
+                value=generated_json if generated_json else "",
+                help="Input JSON data to create the graph."
+            )
+            submit_button = st.form_submit_button(label='Create Graph')
+
+            if submit_button:
+                try:
+                    graph_data = json.loads(json_input)
+                    graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
+                    if success:
+                        st.success(f"Graph '{graph_name, }' created successfully!")
+                        st.rerun()  # Refresh to reflect changes
+                    else:
+                        st.error(f"Failed to create graph '{graph_name}'.")
+                except json.JSONDecodeError:
+                    st.error("Invalid JSON format. Please check your input.")
+
+    def generate_graph_generation_json(self, instruction):
+        """
+        Use Vertex AI to generate a valid JSON for graph creation based on the given instruction,
+        utilizing the entity types, relationship types, and allowed relationships.
+        """
+
+        # Dynamically build the entity types and relationship types from the enums
+        entity_types = [et.value for et in EntityType]
+        relationship_types = [rt.value for rt in RelationshipType]
+
+        # Convert allowed relationships into a string format
+        allowed_relationships_str = ""
+        for relationship_type, pairs in ALLOWED_RELATIONSHIPS.items():
+            allowed_relationships_str += f"\n- {relationship_type.value}:\n"
+            for source, target in pairs:
+                allowed_relationships_str += f"    ({source.value} -> {target.value})\n"
+
+        # Construct the prompt by injecting the entity types, relationship types, and allowed relationships
+        prompt = f"""
+        The user has provided the following instruction: "{instruction}"
+
+        Based on this instruction, generate a valid JSON for a graph creation. The format should be:
+
+        {{
+            "graph_name": "<Name of the graph>",
+            "description": "<Description of the graph>",
+            "entities": [
+                {{ "type": "EntityType", "name": "EntityName" }},
+                ...
+            ],
+            "relationships": [
+                {{ "source": "EntityName1", "target": "EntityName2", "relationship": "RelationshipType" }},
+                ...
+            ]
+        }}
+
+        Here are the possible entity types:
+        {', '.join(entity_types)}
+
+        Here are the possible relationship types:
+        {', '.join(relationship_types)}
+
+        These are the allowed relationships:
+        {allowed_relationships_str}
+
+        Ensure that the response **only** contains a valid JSON object with no other explanation, commentary, or natural language text. Return only the JSON.
+        """
+
+        try:
+            # Call the AI model to generate the JSON based on instruction
+            with st.spinner("Generating the graph JSON..."):
+                response = self.model.generate_content(prompt)
+
+            # Ensure that we strip the response and only extract the JSON part
+            if response and hasattr(response, 'text'):
+                response_text = response.text.strip()
+
+                # Find the first occurrence of '{' and the last occurrence of '}'
+                start_index = response_text.find('{')
+                end_index = response_text.rfind('}')
+
+                if start_index != -1 and end_index != -1:
+                    # Extract the valid JSON part
+                    json_content = response_text[start_index:end_index + 1]
+                    return json_content
+                else:
+                    st.error("The generated response does not contain a valid JSON object.")
+                    return None
+            else:
+                st.error("No valid response from the AI model.")
+                return None
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            return None
+
+    @staticmethod
+    def divider(height=1):
+        """Utility function to create a divider with specified height."""
+        st.markdown(f"<hr style='height:{height}px; "
+                    f"margin-top: 0;  margin-bottom: 0; border-width:0; background: lightblue;'>",
+                    unsafe_allow_html=True)
