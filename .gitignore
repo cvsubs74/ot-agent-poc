@@ -5,3 +5,16 @@
 # Ignore virtual environment folder
 venv/
 
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# IDE configurations (for IntelliJ, PyCharm, etc.)
+.idea/
+
+# Sensitive credentials
+*.json
+
+# Logs and temporary files
+*.log
+
