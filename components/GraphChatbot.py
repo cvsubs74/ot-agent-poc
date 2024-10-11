@@ -314,6 +314,7 @@ class GraphChatbot:
                         selected_category = category
                         st.session_state.graph_creation_selected_category = category
 
+        self.divider()
         # Step 2: If a category is selected, show subcategory buttons
         if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
             selected_category = st.session_state.graph_creation_selected_category
