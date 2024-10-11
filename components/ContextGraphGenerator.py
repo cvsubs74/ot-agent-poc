@@ -106,8 +106,16 @@ class ContextGraphGenerator:
                 source_name = relationship['source']
                 target_name = relationship['target']
                 relationship_type_str = relationship['relationship']
-                relationship_type = RelationshipType.from_value(relationship_type_str)
-                self.add_relationship(source_name, target_name, relationship_type)
+                try:
+                    # Try to convert the relationship type string to an enum value
+                    relationship_type = RelationshipType.from_value(relationship_type_str)
+                    # If successful, add the relationship
+                    self.add_relationship(source_name, target_name, relationship_type)
+
+                except ValueError:
+                    # If an invalid relationship type is encountered, skip this relationship
+                    print(
+                        f"Skipping invalid relationship type: {relationship_type_str} between {source_name} and {target_name}")
 
             # Step 6: Commit the graph and relationships to the database
             for rel in self.relationships:

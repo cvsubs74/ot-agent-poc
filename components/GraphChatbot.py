@@ -1,4 +1,5 @@
 import os
+import time
 from decimal import Decimal
 
 import streamlit as st
@@ -283,7 +284,6 @@ class GraphChatbot:
 
         # Step 1: Allow user to select a category using buttons
         selected_category = None
-        selected_subcategory = None
 
         # Display category buttons (5 per row)
         category_keys = list(privacy_graphs.keys())
@@ -317,7 +317,7 @@ class GraphChatbot:
             st.info(privacy_graphs[selected_category][selected_subcategory])
 
         # Step 3: Create graph based on selection or instructions
-        instruction = st.text_area("Or enter custom instructions to generate a graph JSON:", height=150)
+        instruction = st.text_area("Enter custom instructions to generate a context graph:", height=150)
 
         generated_json = None
         if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
@@ -329,27 +329,25 @@ class GraphChatbot:
             # Use custom instruction
             generated_json = self.generate_graph_generation_json(instruction)
 
-        # Step 4: Display generated JSON and allow for graph creation
-        with st.form(key='json_form', clear_on_submit=True):
-            json_input = st.text_area(
-                "Paste your JSON here",
-                height=200,
-                value=generated_json if generated_json else "",
-                help="Input JSON data to create the graph."
-            )
-            submit_button = st.form_submit_button(label='Create Graph')
+        if not generated_json:
+            return
 
-            if submit_button:
-                try:
-                    graph_data = json.loads(json_input)
-                    graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
-                    if success:
-                        st.success(f"Graph '{graph_name, }' created successfully!")
-                        st.rerun()  # Refresh to reflect changes
-                    else:
-                        st.error(f"Failed to create graph '{graph_name}'.")
-                except json.JSONDecodeError:
-                    st.error("Invalid JSON format. Please check your input.")
+        try:
+            graph_data = json.loads(generated_json)
+            graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
+            if success:
+                st.success(f"Graph '{graph_name, }' created successfully!")
+                summary = self.summarize_graph(generated_json)
+                st.info(summary)
+                # Clear session state variables related to graph creation
+                for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                time.sleep(2)
+            else:
+                st.error(f"Failed to create graph '{graph_name}'.")
+        except json.JSONDecodeError:
+            st.error("Invalid JSON format. Please check your input.")
 
     def generate_graph_generation_json(self, instruction):
         """
@@ -358,7 +356,7 @@ class GraphChatbot:
         """
 
         # Dynamically build the entity types and relationship types from the enums
-        entity_types = [et.value for et in EntityType]
+        entity_types = [et.value["label"] for et in EntityType]  # Accessing the 'label' field correctly
         relationship_types = [rt.value for rt in RelationshipType]
 
         # Convert allowed relationships into a string format
@@ -366,7 +364,7 @@ class GraphChatbot:
         for relationship_type, pairs in ALLOWED_RELATIONSHIPS.items():
             allowed_relationships_str += f"\n- {relationship_type.value}:\n"
             for source, target in pairs:
-                allowed_relationships_str += f"    ({source.value} -> {target.value})\n"
+                allowed_relationships_str += f"    ({source.value['label']} -> {target.value['label']})\n"  # Correctly accessing 'label'
 
         # Construct the prompt by injecting the entity types, relationship types, and allowed relationships
         prompt = f"""
@@ -401,7 +399,7 @@ class GraphChatbot:
 
         try:
             # Call the AI model to generate the JSON based on instruction
-            with st.spinner("Generating the graph JSON..."):
+            with st.spinner("Generating the graph.."):
                 response = self.model.generate_content(prompt)
 
             # Ensure that we strip the response and only extract the JSON part
@@ -421,6 +419,39 @@ class GraphChatbot:
                     return None
             else:
                 st.error("No valid response from the AI model.")
+                return None
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            return None
+
+    def summarize_graph(self, generated_json):
+        """
+        Generates a concise, business-oriented summary of the graph using the LLM without describing the entities.
+
+        :param generated_json: Dictionary containing the graph details (entities, relationships).
+        :return: A formatted summary of the graph generated by the LLM.
+        """
+
+        # Count the number of entities and relationships
+        graph_data = json.loads(generated_json)
+        entity_count = len(graph_data.get("entities", []))
+        relationship_count = len(graph_data.get("relationships", []))
+
+        # Prepare the concise, high-level business-oriented prompt
+        prompt = f"""
+        Provide a brief summary of the purpose and key insights of the graph. The graph contains {entity_count} entities and {relationship_count} relationships. Explain the overall purpose of the graph in business terms, without describing individual entities.
+        """
+
+        try:
+            # Call the LLM to generate the summary based on the prompt
+            with st.spinner("Generating the graph summary..."):
+                response = self.model.generate_content(prompt)
+
+            if response and hasattr(response, 'text'):
+                # Return the LLM-generated summary
+                return response.text
+            else:
+                st.warning("Failed to generate the summary. Please try again later.")
                 return None
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")

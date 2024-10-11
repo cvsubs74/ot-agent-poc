@@ -303,9 +303,9 @@ class ContextGraphRepository:
             """
             cursor.execute(add_relationship_query, (
                 graph_id,
-                source_type.value,
+                source_type.value["label"],
                 source_name,
-                target_type.value,
+                target_type.value["label"],
                 target_name,
                 relationship_type_id
             ))

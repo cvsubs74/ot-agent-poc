@@ -6,7 +6,7 @@ from repositories.ContextGraphRepository import ContextGraphRepository
 from repositories.DatabaseManager import DatabaseManager
 
 
-class GraphApp:
+class OTExplorer:
     def __init__(self):
         """Initialize the core components of the app."""
         self.database_manager = DatabaseManager()
@@ -17,7 +17,7 @@ class GraphApp:
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
-        st.set_page_config(page_title="Contextual Graph Generator and Explorer", layout="wide")
+        st.set_page_config(page_title="OT Explorer - Contextual Graph Generator and Explorer", layout="wide")
 
     def create_graph(self):
         """Handle the Create Graph functionality."""
@@ -30,12 +30,10 @@ class GraphApp:
         if not graphs:
             st.info("No graphs found. Please create a new graph in the 'Create Graph' tab.")
         else:
-            # Prepare display names with graph type if needed
             graph_options = {f"{graph['name']}": graph for graph in graphs}
             graph_names = ["--Select a graph--"] + list(graph_options.keys())  # Add default option
             selected_graph_name = st.selectbox("Select a Graph", graph_names)
 
-            # Check if a valid graph is selected
             if selected_graph_name != "--Select a graph--":
                 selected_graph = graph_options.get(selected_graph_name)
 
@@ -62,7 +60,6 @@ class GraphApp:
                     selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names)
 
                     if selected_entity_name != "--Select an entity--":
-                        # Fetch the subgraph for the selected entity
                         subgraph_data = self.context_graph_repo.get_subgraph_for_entity(
                             graph_id, selected_entity_name)
 
@@ -76,9 +73,8 @@ class GraphApp:
                         else:
                             st.warning(f"No relationships found for entity: {selected_entity_name}")
 
-                    # Display chatbot functionality below the graph with minimal spacing
-                    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>",
-                                unsafe_allow_html=True)
+                    # Display chatbot functionality below the graph
+                    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>", unsafe_allow_html=True)
                     self.graph_chatbot.context_graph_analyzer_chatbot(
                         graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
             else:
@@ -92,7 +88,33 @@ class GraphApp:
         # Step 2: Application Title
         st.markdown("<h3 style='text-align: center;'>OT Explorer</h3>", unsafe_allow_html=True)
 
-        # Step 3: Create tabs for "Create Graph" and "Explore Graph"
+        # Step 3: Introduction Section
+        st.write(f"""
+            #### **Welcome to OT Explorer**
+
+            **Unlock the Power of Context-Driven Insights and Actionable Intelligence**
+
+            OT Explorer revolutionizes how organizations explore and manage their data by offering an interactive, context-driven graph platform. Whether you're looking to understand risks, manage vendor relationships, or ensure compliance, OT Explorer brings clarity to your complex data landscape:
+
+            - **Visualize & Analyze**: Create dynamic graphs that represent the relationships between vendors, assets, policies, risks, and more, allowing you to see the full context of your data.
+            - **Interact & Act**: Explore your graph through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
+            - **Monitor & Mitigate**: OT Explorer ensures you stay ahead of risks with real-time insights and actions. Visualize how entities are connected, spot potential issues, and take proactive measures.
+
+            #### Why OT Explorer? 🌟
+
+            - **Contextual Intelligence**: OT Explorer leverages the power of context graphs, allowing you to explore the full spectrum of relationships between your organizational entities.
+            - **Actionable Insights**: Move beyond analysis. OT Explorer not only answers your questions but also provides actionable recommendations based on the data in your graph.
+            - **Real-Time Interaction**: Use the chatbot to query your data in real-time, getting answers on risks, compliance, and much more, instantly.
+            - **Dynamic Graph Generation**: Easily create and modify graphs as your business evolves, ensuring you always have an accurate, up-to-date view of your organization's data.
+            - **Entity-Centric Actions**: Take real-world actions—like initiating a compliance check, triggering an audit, or reviewing risk exposure—directly from the graph interface.
+            - **Comprehensive Visualization**: See your data and its relationships like never before, with interactive, high-level visualizations that simplify even the most complex data ecosystems.
+
+            With OT Explorer, you can track and analyze complex relationships between entities, identify risks, and act on the information—all in one seamless platform. Visualize your organizational ecosystem with entities and relationships mapped across multiple systems. 
+
+            Ready to explore and take action? **Create a graph** or **explore existing graphs** to see how OT Explorer can transform your decision-making process.
+        """, unsafe_allow_html=True)
+
+        # Step 4: Create tabs for "Create Graph" and "Explore Graph"
         tab1, tab2 = st.tabs(["Create Graph", "Explore Graph"])
 
         with tab1:
@@ -103,5 +125,5 @@ class GraphApp:
 
 
 if __name__ == "__main__":
-    app = GraphApp()
+    app = OTExplorer()
     app.run()
