@@ -178,7 +178,6 @@ class GraphChatbot:
             actions = "No specific actions are available for these entities."
 
         # Construct the prompt for the AI model based on the graph details and the user's question
-        # Construct the prompt for the AI model based on the graph details and the user's question
         prompt = f"""
             The user has asked the following question: "{question}"
 
@@ -192,10 +191,12 @@ class GraphChatbot:
 
             Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
 
-            - Directly answers the question without prefacing with phrases like "Based on the provided information."
+            - Directly answers the question using only the information present in the graph data.
+            - Avoids any assumptions or speculative statements, such as "likely," "possibly," or "could."
+            - Focuses solely on the relationships, entities, and connections as defined in the graph data, ensuring that the analysis is strictly factual and data-driven.
             - Highlights important information by **bolding** them.
             - Uses bullet points for clarity and emphasis wherever applicable.
-            - Recommends actions **only if absolutely necessary**, using hyperlinks for **Available Actions** when applicable.
+            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.
             """
 
         try:
