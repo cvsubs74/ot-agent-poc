@@ -178,24 +178,27 @@ class GraphChatbot:
             actions = "No specific actions are available for these entities."
 
         # Construct the prompt for the AI model based on the graph details and the user's question
+        # Construct the prompt for the AI model based on the graph details and the user's question
         prompt = f"""
-                    The user has asked the following question: "{question}"
+            The user has asked the following question: "{question}"
 
-                    Here is the relevant information:
+            Here is the relevant information:
 
-                    **Entities and Relationships:**
-                    {relationships}
- 
-                    **Available Actions** (if needed): 
-                    {actions}
+            **Entities and Relationships:**
+            {relationships}
 
-                    Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
+            Based on the analysis of this data, suggest the most appropriate actions, but **only recommend actions if they are absolutely necessary** to address the situation.
 
-                    - Directly answers the question without prefacing with phrases like "Based on the provided information."
-                    - Highlights important information by **bolding** them.
-                    - Uses bullet points for clarity and emphasis wherever applicable.
-                    - Recommends actions that are most appropriate based on the data, using hyperlinks for actions when necessary.
-                    """
+            **Available Actions** (if needed): 
+            {actions}
+
+            Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
+
+            - Directly answers the question without prefacing with phrases like "Based on the provided information."
+            - Highlights important information by **bolding** them.
+            - Uses bullet points for clarity and emphasis wherever applicable.
+            - Recommends actions **only if absolutely necessary**, using hyperlinks for actions when applicable.
+            """
 
         try:
             # Generate content using Google Vertex AI Generative Model
