@@ -149,7 +149,7 @@ class OTExplorer:
         self.configure_page()
 
         # Step 2: Application Title
-        st.markdown("<h3 style='text-align: center;'>OT Explorer</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>OT Explorer - A New Paradigm in Contextual Intelligence</h3>", unsafe_allow_html=True)
 
         # Step 3: Introduction Section
         st.write(f"""
