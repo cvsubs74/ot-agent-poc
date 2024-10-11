@@ -33,9 +33,14 @@ class GraphChatbot:
         vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
         self.model = GenerativeModel(os.environ["MODEL"])
 
-    def context_graph_analyzer_chatbot(self, graph_id, entity_name):
+    def context_graph_analyzer_chatbot(self, graph_id, entity):
         # Fetch the graph details by ID
-        graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
+        if entity:
+            graph_details = self.graph_repo.get_subgraph_for_entity(
+                graph_id, entity)
+        else:
+            graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
+
         if not graph_details:
             st.error(f"Graph with ID {graph_id} not found.")
             return
@@ -201,78 +206,6 @@ class GraphChatbot:
             # Log the exception for debugging purposes
             st.error(f"An error occurred: {str(e)}")
             st.warning("Please try again later.")
-
-    def get_subgraph_for_entity(self, graph_id, selected_entity_name):
-        """
-        Use Vertex AI to retrieve the subgraph for a given entity including all direct and indirect relationships.
-
-        :param graph_id: The ID of the graph being explored.
-        :param selected_entity_name: The name of the entity to explore.
-        :return: A dictionary with subgraph data containing entities and relationships.
-        """
-        try:
-            # Fetch the graph details for the given graph_id
-            graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
-            if not graph_details:
-                st.error(f"Graph with ID {graph_id} not found.")
-                return None
-
-            # Convert the graph details to JSON using the custom encoder
-            graph_details_json = json.dumps(graph_details, cls=CustomJSONEncoder)
-
-            # Construct the prompt to instruct Vertex AI to find the subgraph related to the selected entity
-            prompt = f"""
-            The user has selected the entity "{selected_entity_name}" in the following graph:
-
-            {graph_details_json}
-
-            Please analyze the graph and return the **complete subgraph** for the selected entity. This means:
-            - Return the selected entity and all entities directly connected to it.
-            - Then, for each connected entity, retrieve any other entities they are connected to, and continue this process recursively
-              until all related entities are included in the subgraph.
-
-            The output should be in valid JSON format, structured as follows:
-
-            {{
-                "entities": [
-                    {{ "type": "EntityType", "name": "EntityName" }},
-                    ...
-                ],
-                "relationships": [
-                    {{ "source_entity_name": "EntityName1", "target_entity_name": "EntityName2", "relationship_type": "RelationshipType" }},
-                    ...
-                ]
-            }}
-
-            Ensure that the response **only** contains a valid JSON object with no other explanation or text. Return only the JSON.
-            """
-
-            # Call Vertex AI model to generate the subgraph based on the entity name
-            with st.spinner(f"Generating the complete subgraph for entity '{selected_entity_name}'..."):
-                response = self.model.generate_content(prompt)
-
-            # Ensure that we strip the response and only extract the JSON part
-            if response and hasattr(response, 'text'):
-                response_text = response.text.strip()
-
-                # Find the first occurrence of '{' and the last occurrence of '}'
-                start_index = response_text.find('{')
-                end_index = response_text.rfind('}')
-
-                if start_index != -1 and end_index != -1:
-                    # Extract the valid JSON part
-                    json_content = response_text[start_index:end_index + 1]
-                    return json.loads(json_content)
-                else:
-                    st.error("The generated response does not contain a valid JSON object.")
-                    return None
-            else:
-                st.error("No valid response from the AI model.")
-                return None
-
-        except Exception as e:
-            st.error(f"An error occurred while generating the subgraph: {str(e)}")
-            return None
 
     def context_graph_generation_chatbot(self):
         # Pre-seeded graph categories and subcategories

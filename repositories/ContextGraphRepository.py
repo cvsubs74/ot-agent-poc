@@ -631,3 +631,71 @@ class ContextGraphRepository:
         finally:
             cursor.close()
 
+    def get_subgraph_for_entity(self, graph_id, entity):
+        """
+        Retrieves the subgraph of all entities linked directly or indirectly to the given entity.
+    
+        :param graph_id: The ID of the graph being explored.
+        :param entity: The name of the entity to explore.
+        :return: A dictionary with subgraph data containing entities and relationships.
+        """
+        try:
+            # Fetch the graph details for the given graph_id
+            relationships = self.get_relationships_for_graph(graph_id)
+            if not relationships:
+                print(f"No relationships found for graph with ID {graph_id}.")
+                return None
+
+            # Initialize sets for visited entities and relationships
+            visited_entities = set()
+            subgraph_entities = set()
+            subgraph_relationships = []
+
+            # BFS or DFS stack/queue starting from the selected entity
+            to_visit = [entity]
+            visited_entities.add(entity)
+
+            while to_visit:
+                current_entity = to_visit.pop(0)  # For BFS, use pop(0). For DFS, use pop()
+
+                for rel in relationships:
+                    # Check if the current entity is involved in any relationship
+                    if rel['source_entity_name'] == current_entity or rel['target_entity_name'] == current_entity:
+                        # Add both entities of the relationship to the subgraph
+                        subgraph_entities.add((rel['source_entity_type'], rel['source_entity_name']))
+                        subgraph_entities.add((rel['target_entity_type'], rel['target_entity_name']))
+
+                        # Add the relationship to the subgraph
+                        subgraph_relationships.append(rel)
+
+                        # Queue up the other entity if it hasn't been visited yet
+                        if rel['source_entity_name'] not in visited_entities:
+                            to_visit.append(rel['source_entity_name'])
+                            visited_entities.add(rel['source_entity_name'])
+                        if rel['target_entity_name'] not in visited_entities:
+                            to_visit.append(rel['target_entity_name'])
+                            visited_entities.add(rel['target_entity_name'])
+
+            # Convert the subgraph entities and relationships into the required JSON format
+            entities_json = [{"type": etype, "name": ename} for etype, ename in subgraph_entities]
+            relationships_json = [
+                {
+                    "source_entity_name": rel["source_entity_name"],
+                    "target_entity_name": rel["target_entity_name"],
+                    "relationship_type": rel["relationship_type"]
+                }
+                for rel in subgraph_relationships
+            ]
+
+            # Return the subgraph as a dictionary
+            subgraph = {
+                "entities": entities_json,
+                "relationships": relationships_json
+            }
+
+            return subgraph
+
+        except Exception as e:
+            print(f"An error occurred while retrieving the subgraph: {str(e)}")
+            return None
+

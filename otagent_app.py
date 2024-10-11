@@ -63,7 +63,8 @@ class GraphApp:
 
                     if selected_entity_name != "--Select an entity--":
                         # Fetch the subgraph for the selected entity
-                        subgraph_data = self.graph_chatbot.get_subgraph_for_entity(graph_id, selected_entity_name)
+                        subgraph_data = self.context_graph_repo.get_subgraph_for_entity(
+                            graph_id, selected_entity_name)
 
                         if subgraph_data:
                             sub_entities = subgraph_data['entities']
