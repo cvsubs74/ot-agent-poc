@@ -187,8 +187,6 @@ class GraphChatbot:
             **Entities and Relationships:**
             {relationships}
 
-            Based on the analysis of this data, suggest the most appropriate actions, but **only recommend actions if they are absolutely necessary** to address the situation.
-
             **Available Actions** (if needed): 
             {actions}
 
@@ -197,7 +195,7 @@ class GraphChatbot:
             - Directly answers the question without prefacing with phrases like "Based on the provided information."
             - Highlights important information by **bolding** them.
             - Uses bullet points for clarity and emphasis wherever applicable.
-            - Recommends actions **only if absolutely necessary**, using hyperlinks for actions when applicable.
+            - Recommends actions **only if absolutely necessary**, using hyperlinks for **Available Actions** when applicable.
             """
 
         try:
