@@ -634,39 +634,45 @@ class ContextGraphRepository:
     def get_subgraph_for_entity(self, graph_id, entity):
         """
         Retrieves the subgraph of all entities linked directly or indirectly to the given entity.
-    
+
         :param graph_id: The ID of the graph being explored.
         :param entity: The name of the entity to explore.
         :return: A dictionary with subgraph data containing entities and relationships.
         """
         try:
-            # Fetch the graph details for the given graph_id
+            # Fetch all relationships for the given graph
             relationships = self.get_relationships_for_graph(graph_id)
             if not relationships:
                 print(f"No relationships found for graph with ID {graph_id}.")
                 return None
 
-            # Initialize sets for visited entities and relationships
+            # Initialize sets for visited entities and relationships in the subgraph
             visited_entities = set()
             subgraph_entities = set()
             subgraph_relationships = []
 
-            # BFS or DFS stack/queue starting from the selected entity
-            to_visit = [entity]
+            # Start BFS or DFS traversal from the given entity
+            to_visit = [entity.strip()]  # Strip any leading/trailing spaces
             visited_entities.add(entity)
 
             while to_visit:
-                current_entity = to_visit.pop(0)  # For BFS, use pop(0). For DFS, use pop()
+                current_entity = to_visit.pop(0)  # BFS: pop(0) or DFS: pop()
 
                 for rel in relationships:
-                    # Check if the current entity is involved in any relationship
+                    # Check if the current entity is involved in the relationship
                     if rel['source_entity_name'] == current_entity or rel['target_entity_name'] == current_entity:
                         # Add both entities of the relationship to the subgraph
                         subgraph_entities.add((rel['source_entity_type'], rel['source_entity_name']))
                         subgraph_entities.add((rel['target_entity_type'], rel['target_entity_name']))
 
                         # Add the relationship to the subgraph
-                        subgraph_relationships.append(rel)
+                        subgraph_relationships.append({
+                            "source_entity_type": rel["source_entity_type"],
+                            "source_entity_name": rel["source_entity_name"],
+                            "target_entity_type": rel["target_entity_type"],
+                            "target_entity_name": rel["target_entity_name"],
+                            "relationship_type": rel["relationship_type"]
+                        })
 
                         # Queue up the other entity if it hasn't been visited yet
                         if rel['source_entity_name'] not in visited_entities:
@@ -676,11 +682,18 @@ class ContextGraphRepository:
                             to_visit.append(rel['target_entity_name'])
                             visited_entities.add(rel['target_entity_name'])
 
+                # Prevent infinite loops in circular graphs
+                if len(to_visit) > 10000:
+                    print("Possible circular reference detected, stopping traversal.")
+                    break
+
             # Convert the subgraph entities and relationships into the required JSON format
             entities_json = [{"type": etype, "name": ename} for etype, ename in subgraph_entities]
             relationships_json = [
                 {
+                    "source_entity_type": rel["source_entity_type"],
                     "source_entity_name": rel["source_entity_name"],
+                    "target_entity_type": rel["target_entity_type"],
                     "target_entity_name": rel["target_entity_name"],
                     "relationship_type": rel["relationship_type"]
                 }
@@ -698,4 +711,5 @@ class ContextGraphRepository:
         except Exception as e:
             print(f"An error occurred while retrieving the subgraph: {str(e)}")
             return None
+
 

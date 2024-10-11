@@ -82,7 +82,13 @@ class GraphVisualizer:
 
         # Add nodes with color coding based on EntityType
         for entity in entities:
-            color = self.type_color_map.get(EntityType(entity['type']), '#000000')  # Default to black if type not found
+            try:
+                # Map the entity['type'] string to the correct EntityType enum
+                entity_type = EntityType.from_value(entity['type'])
+                color = self.type_color_map.get(entity_type, '#000000')  # Default to black if type not found
+            except ValueError:
+                color = '#000000'  # Default to black if the entity type is invalid
+
             net.add_node(
                 entity['name'],
                 label=entity['name'],

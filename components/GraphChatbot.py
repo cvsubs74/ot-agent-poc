@@ -33,7 +33,7 @@ class GraphChatbot:
         vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
         self.model = GenerativeModel(os.environ["MODEL"])
 
-    def context_graph_analyzer_chatbot(self, graph_id, entity):
+    def context_graph_analyzer_chatbot(self, graph_id, entity=None):
         # Fetch the graph details by ID
         if entity:
             graph_details = self.graph_repo.get_subgraph_for_entity(
@@ -168,9 +168,14 @@ class GraphChatbot:
         graph_data = json.loads(graph_details_json)
 
         # Extract specific data from graph_data
-        graph_name = graph_data.get('name', 'Graph')
         relationships = json.dumps(graph_data.get('relationships', []), indent=2, cls=CustomJSONEncoder)
-        created_at = graph_data.get('created_at', 'Unknown')
+
+        # Prepare hyperlinked actions based on entities in the graph
+        actions = self.get_actions_from_graph(graph_data)
+
+        # If no actions are available, adjust the prompt accordingly
+        if not actions.strip():
+            actions = "No specific actions are available for these entities."
 
         # Construct the prompt for the AI model based on the graph details and the user's question
         prompt = f"""
@@ -181,15 +186,17 @@ class GraphChatbot:
                     **Entities and Relationships:**
                     {relationships}
 
+                    Based on the analysis of this data, suggest the most relevant actions that can be taken, if applicable. 
+
+                    **Available Actions** (if needed): 
+                    {actions}
+
                     Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
 
                     - Directly answers the question without prefacing with phrases like "Based on the provided information."
                     - Highlights important information by **bolding** them.
                     - Uses bullet points for clarity and emphasis wherever applicable.
-                    - Focuses on actionable insights if applicable.
-                    - In the end summarize
-
-                    Please generate a helpful, concise, and clear response with the above guidelines in mind.
+                    - Recommends actions that are most appropriate based on the data, using hyperlinks for actions when necessary.
                     """
 
         try:
@@ -199,13 +206,55 @@ class GraphChatbot:
 
             # Return the response content
             if response and hasattr(response, 'text'):
-                st.info(response.text)
+                # Show the response from the model as Markdown
+                st.markdown(response.text, unsafe_allow_html=True)
             else:
                 st.warning("Please try again later.")
         except Exception as e:
             # Log the exception for debugging purposes
             st.error(f"An error occurred: {str(e)}")
             st.warning("Please try again later.")
+
+    @staticmethod
+    def get_actions_from_graph(graph_data):
+        """
+        Get the actions for all entities present in the graph based on their type and generate clickable hyperlinks.
+        """
+        entities = graph_data.get('relationships', [])
+        actions_html = []
+
+        for entity in entities:
+            # Get the entity types
+            try:
+                source_type = EntityType.from_value(entity['source_entity_type'])
+                target_type = EntityType.from_value(entity['target_entity_type'])
+            except ValueError:
+                continue  # Skip if the entity type is not recognized
+
+            # Extract actions for the source and target entity types
+            source_actions = source_type.value.get('actions', [])
+            target_actions = target_type.value.get('actions', [])
+
+            # Generate clickable links for actions for the source entity
+            for action in source_actions:
+                action_name = action['action_name']
+                action_url = action['api_endpoint']
+                # Creating proper clickable link using triggerAction
+                actions_html.append(
+                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {action['description']}"
+                )
+
+            # Generate clickable links for actions for the target entity
+            for action in target_actions:
+                action_name = action['action_name']
+                action_url = action['api_endpoint']
+                # Creating proper clickable link using triggerAction
+                actions_html.append(
+                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {action['description']}"
+                )
+
+        # Convert actions list to a string for the prompt
+        return "<br>".join(actions_html)
 
     def context_graph_generation_chatbot(self):
         # Pre-seeded graph categories and subcategories

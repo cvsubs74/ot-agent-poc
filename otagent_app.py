@@ -79,7 +79,8 @@ class GraphApp:
                     # Display chatbot functionality below the graph with minimal spacing
                     st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>",
                                 unsafe_allow_html=True)
-                    self.graph_chatbot.context_graph_analyzer_chatbot(graph_id, selected_entity_name)
+                    self.graph_chatbot.context_graph_analyzer_chatbot(
+                        graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
             else:
                 st.info("Please select a valid graph to visualize.")
 
