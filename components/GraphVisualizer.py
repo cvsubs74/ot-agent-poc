@@ -1,11 +1,12 @@
 from pyvis.network import Network
 import json
-
+import streamlit as st
 from enums.EntityType import EntityType
 
 
 class GraphVisualizer:
-    def __init__(self):
+    def __init__(self, context_graph_generator):
+        self.context_graph_generator = context_graph_generator
         # Define color mapping for visualization
         self.type_color_map = {
             EntityType.VENDOR: 'red',
@@ -20,6 +21,19 @@ class GraphVisualizer:
             EntityType.EVIDENCE_TASK: 'grey',
             EntityType.RISK: 'brown',
         }
+
+    def visualize_graph(self, graph_id):
+        # Visualize the full graph
+        relationships = self.context_graph_generator.context_graph_repo.get_relationships_for_graph(
+            graph_id)
+        if relationships:
+            entity_set = set()
+            for rel in relationships:
+                entity_set.add((rel['source_entity_type'], rel['source_entity_name']))
+                entity_set.add((rel['target_entity_type'], rel['target_entity_name']))
+            entities = [{'name': name, 'type': etype} for etype, name in entity_set]
+            graph_html = self.visualize(entities, relationships)
+            st.components.v1.html(graph_html, height=500, width=1000, scrolling=True)
 
     def visualize(self, entities, relationships):
         """

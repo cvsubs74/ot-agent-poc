@@ -12,19 +12,70 @@ class OTExplorer:
         self.database_manager = DatabaseManager()
         self.context_graph_repo = ContextGraphRepository(self.database_manager.connection)
         self.context_graph_generator = ContextGraphGenerator(self.context_graph_repo)
-        self.graph_chatbot = GraphChatbot(self.context_graph_repo, self.context_graph_generator)
-        self.graph_visualizer = GraphVisualizer()
+        self.graph_visualizer = GraphVisualizer(self.context_graph_generator)
+        self.graph_chatbot = GraphChatbot(
+            self.context_graph_repo, self.context_graph_generator, self.graph_visualizer)
+
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
         st.set_page_config(page_title="OT Explorer - Contextual Graph Generator and Explorer", layout="wide")
 
+        # Inject custom CSS for styling tabs
+        st.markdown("""
+        <style>
+        .stTabs [role="tablist"] {
+            background-color: #f4f4f4; /* Tab background color */
+            padding: 5px;
+            border-radius: 10px;
+        }
+        .stTabs [role="tab"] {
+            background-color: #0e76a8; /* Individual tab background color */
+            color: white;
+            font-size: 18px;
+            margin-right: 0px;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .stTabs [role="tab"]:hover {
+            background-color: #005682; /* Hover color for tabs */
+            color: #f4f4f4;
+        }
+        .stTabs [role="tab"]:active {
+            background-color: #003f5c; /* Active tab background color */
+        }
+        .intro-text {
+            font-size: 18px; 
+            color: #318283; 
+            margin-bottom: 15px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
     def create_graph(self):
         """Handle the Create Graph functionality."""
-        self.graph_chatbot.context_graph_generation_chatbot()
+        # Add small font introduction for the "Create Graph" tab
+        graph_id = self.graph_chatbot.context_graph_generation_chatbot()
+        return graph_id
 
-    def explore_graph(self):
+    def explore_graph(self, graph_id=None):
         """Handle the Explore Graph functionality."""
+        # Add small font introduction for the "Explore Graph" tab
+        st.markdown(
+            """
+            <div style='font-size: 1em; margin-bottom: 15px;'>
+                Dive deep into existing graphs, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
+                <br><br>
+                Each graph is a visual representation of how entities are interconnected, and it allows you to:
+                <ul>
+                    <li>Visualize and explore the entire network of entities and relationships in a clear, interactive graph.</li>
+                    <li>Select specific entities to drill down into their subgraph, revealing all their direct and indirect connections.</li>
+                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take actions like initiating audits or risk assessments.</li>
+                </ul>
+                Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
+            </div>
+            """, unsafe_allow_html=True)
+
         graphs = self.context_graph_generator.list_graphs()
 
         if not graphs:
@@ -32,7 +83,18 @@ class OTExplorer:
         else:
             graph_options = {f"{graph['name']}": graph for graph in graphs}
             graph_names = ["--Select a graph--"] + list(graph_options.keys())  # Add default option
-            selected_graph_name = st.selectbox("Select a Graph", graph_names)
+
+            # Preselect the graph if a valid graph_id is passed
+            if graph_id:
+                selected_graph_name = next((name for name, graph in graph_options.items() if graph['id'] == graph_id),
+                                           None)
+                if selected_graph_name:
+                    selected_graph_name = st.selectbox("Select a Graph", graph_names,
+                                                       index=graph_names.index(selected_graph_name))
+                else:
+                    selected_graph_name = st.selectbox("Select a Graph", graph_names)
+            else:
+                selected_graph_name = st.selectbox("Select a Graph", graph_names)
 
             if selected_graph_name != "--Select a graph--":
                 selected_graph = graph_options.get(selected_graph_name)
@@ -74,7 +136,8 @@ class OTExplorer:
                             st.warning(f"No relationships found for entity: {selected_entity_name}")
 
                     # Display chatbot functionality below the graph
-                    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>", unsafe_allow_html=True)
+                    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>",
+                                unsafe_allow_html=True)
                     self.graph_chatbot.context_graph_analyzer_chatbot(
                         graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
             else:
@@ -118,10 +181,10 @@ class OTExplorer:
         tab1, tab2 = st.tabs(["Create Graph", "Explore Graph"])
 
         with tab1:
-            self.create_graph()
+            graph_id = self.create_graph()
 
         with tab2:
-            self.explore_graph()
+            self.explore_graph(graph_id)
 
 
 if __name__ == "__main__":

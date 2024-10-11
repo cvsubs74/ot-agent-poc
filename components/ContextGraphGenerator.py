@@ -137,11 +137,11 @@ class ContextGraphGenerator:
             self.relationships.clear()
 
             logger.info(f"Graph '{graph_name}' created successfully with ID {graph_id}.")
-            return graph_name, True
+            return graph_id, graph_name, True
 
         except Exception as e:
             logger.error(f"Error during graph creation from JSON: {e}")
-            return None, False
+            return None, None, False
 
     def reset(self):
         """

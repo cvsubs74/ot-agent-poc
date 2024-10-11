@@ -1,5 +1,4 @@
 import os
-import time
 from decimal import Decimal
 
 import streamlit as st
@@ -25,9 +24,10 @@ class CustomJSONEncoder(json.JSONEncoder):
 
 
 class GraphChatbot:
-    def __init__(self, graph_repo, context_graph_generator):
+    def __init__(self, graph_repo, context_graph_generator, graph_visualizer):
         self.graph_repo = graph_repo
         self.context_graph_generator = context_graph_generator
+        self.graph_visualizer = graph_visualizer
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
 
         # Initialize Vertex AI with the provided project ID
@@ -155,6 +155,7 @@ class GraphChatbot:
         # Handle the selected question
         if st.session_state.selected_question:
             self.handle_question(st.session_state.selected_question, graph_details_json, show_json)
+            st.session_state.selected_question = None
 
     def handle_question(self, question, graph_details_json, show_json):
         """
@@ -258,7 +259,27 @@ class GraphChatbot:
         return "<br>".join(actions_html)
 
     def context_graph_generation_chatbot(self):
-        # Pre-seeded graph categories and subcategories
+        # Pre-seeded graph categories and subcategories with 10 different categories
+        st.markdown(
+            """
+            <div style='font-size: 1em; margin-bottom: 15px;'>
+                Build custom context graphs that represent relationships between various entities 
+                such as vendors, assets, policies, risks, and more. You can start by selecting one of the pre-defined categories or subcategories, or provide 
+                detailed custom instructions to generate your own graph tailored to your specific business needs. Each graph can help you visualize data flow, 
+                assess risk exposure, and ensure compliance with regulations. 
+                <br><br>
+                Use this feature to:
+                <ul>
+                    <li>Create context graphs for data transfers, risk assessments, and vendor management.</li>
+                    <li>Explore complex relationships between policies, assets, vendors, and controls.</li>
+                    <li>Identify compliance gaps and take corrective actions based on visualized data.</li>
+                    <li>Generate customized graphs by providing specific instructions related to your data ecosystem.</li>
+                </ul>
+                Once the graph is generated, you can visualize it and interact with it through our chatbot interface to further explore the insights.
+            </div>
+            """, unsafe_allow_html=True)
+        self.divider()
+
         privacy_graphs = {
             "Data Transfers": {
                 "Cross-Border Transfers": "A graph representing international data transfers involving multiple jurisdictions, vendors, and compliance checks.",
@@ -279,17 +300,47 @@ class GraphChatbot:
                 "Privacy Risk Assessments": "A graph covering privacy-related risks, their controls, and risk mitigation strategies for different entities and assets.",
                 "Compliance Risk Monitoring": "A graph that tracks risks related to compliance with regulatory frameworks (GDPR, CCPA), including continuous monitoring and controls.",
                 "Incident Response and Mitigation": "A graph focused on data breaches, incident responses, risk mitigation, and remediation actions taken by involved entities."
+            },
+            "Security Management": {
+                "Asset Security": "A graph outlining security measures for assets, including encryption, access control, and monitoring.",
+                "Threat Detection": "A graph focused on real-time threat detection measures and the relationships between assets, vulnerabilities, and mitigations.",
+                "Breach Response": "A graph detailing procedures and relationships for responding to security breaches, covering assets, risks, and policies."
+            },
+            "Compliance Audits": {
+                "Internal Audits": "A graph representing internal compliance audits across various departments and assets.",
+                "Third-Party Audits": "A graph showing external audits involving third-party vendors, contracts, and compliance measures.",
+                "GDPR Audits": "A compliance audit graph focusing on GDPR requirements and processes for data protection and privacy."
+            },
+            "Data Management": {
+                "Data Classification": "A graph showing data classification categories, including sensitive data, personal data, and internal data.",
+                "Data Lifecycle": "A graph focused on the lifecycle of data from collection to deletion, including retention schedules and policies.",
+                "Data Minimization": "A graph representing data minimization practices in compliance with privacy policies and regulations."
+            },
+            "Incident Management": {
+                "Incident Tracking": "A graph focused on tracking security incidents, data breaches, and risk assessments linked to assets and vendors.",
+                "Incident Mitigation": "A graph showing relationships between incidents and the actions taken to mitigate the impact.",
+                "Incident Reporting": "A graph detailing how incidents are reported across various departments and linked to response protocols."
+            },
+            "Access Management": {
+                "Role-Based Access": "A graph illustrating role-based access controls across systems, vendors, and assets.",
+                "Access Control Policies": "A graph focusing on access control policies and their relationships with assets, vendors, and users.",
+                "Third-Party Access": "A graph representing third-party access to sensitive assets and the controls in place."
+            },
+            "Data Governance": {
+                "Data Stewardship": "A graph representing the governance structures for managing data across departments, including data stewards and policies.",
+                "Data Lineage": "A graph showing data flow from creation to consumption across multiple systems, vendors, and processes.",
+                "Governance Compliance": "A graph tracking the compliance of governance policies with privacy regulations and internal policies."
             }
         }
 
         # Step 1: Allow user to select a category using buttons
         selected_category = None
-
+        graph_id = None
         # Display category buttons (5 per row)
         category_keys = list(privacy_graphs.keys())
-        for i in range(0, len(category_keys), 4):
-            cols = st.columns(4)
-            for j in range(4):
+        for i in range(0, len(category_keys), 5):
+            cols = st.columns(5)
+            for j in range(5):
                 if i + j < len(category_keys):
                     category = category_keys[i + j]
                     if cols[j].button(category):
@@ -297,6 +348,7 @@ class GraphChatbot:
                         st.session_state.graph_creation_selected_category = category
 
         self.divider()
+
         # Step 2: If a category is selected, show subcategory buttons
         if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
             selected_category = st.session_state.graph_creation_selected_category
@@ -314,10 +366,12 @@ class GraphChatbot:
         # Show description for the selected subcategory
         if 'graph_creation_selected_subcategory' in st.session_state:
             selected_subcategory = st.session_state.graph_creation_selected_subcategory
-            st.info(privacy_graphs[selected_category][selected_subcategory])
+            title = privacy_graphs[selected_category][selected_subcategory]
+        else:
+            title = "Custom Graph"
 
         # Step 3: Create graph based on selection or instructions
-        instruction = st.text_area("Enter custom instructions to generate a context graph:", height=150)
+        instruction = st.text_input("Enter custom instructions to generate a context graph:")
 
         generated_json = None
         if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
@@ -334,20 +388,31 @@ class GraphChatbot:
 
         try:
             graph_data = json.loads(generated_json)
-            graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
+            graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
             if success:
-                st.success(f"Graph '{graph_name, }' created successfully!")
                 summary = self.summarize_graph(generated_json)
-                st.info(summary)
+                st.success(f"Graph '{graph_name}' created successfully!")
+
+                # Displaying the title and summary with a line space using markdown
+                st.markdown(f"""
+                    <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
+                        <strong>{title}</strong>
+                        <br><br>
+                        {summary}
+                    </div>
+                """, unsafe_allow_html=True)
+
                 # Clear session state variables related to graph creation
                 for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
                     if key in st.session_state:
                         del st.session_state[key]
-                time.sleep(2)
+                self.graph_visualizer.visualize_graph(graph_id)
             else:
                 st.error(f"Failed to create graph '{graph_name}'.")
         except json.JSONDecodeError:
             st.error("Invalid JSON format. Please check your input.")
+
+        return graph_id
 
     def generate_graph_generation_json(self, instruction):
         """
