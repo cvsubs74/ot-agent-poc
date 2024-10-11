@@ -185,9 +185,7 @@ class GraphChatbot:
 
                     **Entities and Relationships:**
                     {relationships}
-
-                    Based on the analysis of this data, suggest the most relevant actions that can be taken, if applicable. 
-
+ 
                     **Available Actions** (if needed): 
                     {actions}
 
