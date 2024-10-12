@@ -272,8 +272,58 @@ class GraphChatbot:
             """, unsafe_allow_html=True)
         self.divider()
 
+        # Pre-seeded graph categories and subcategories
         privacy_graphs = {
-            # Your privacy_graphs categories
+            "Data Transfers": {
+                "Cross-Border Transfers": "A graph representing international data transfers involving multiple jurisdictions, vendors, and compliance checks.",
+                "Sensitive Data Transfers": "A graph focused on the transfer of sensitive personal data between entities, including encryption, access controls, and risk assessments.",
+                "Third-Party Data Sharing": "A graph illustrating the sharing of personal data with third-party vendors, including contracts, data processing agreements, and vendor risks."
+            },
+            "Policies and Compliance": {
+                "GDPR Compliance": "A GDPR-focused compliance graph detailing data protection policies, data subject rights, and lawful processing mechanisms.",
+                "Privacy Impact Assessment": "A graph focused on the data processing activities, impact assessments, and risk mitigation measures required under privacy regulations.",
+                "Data Retention and Deletion": "A compliance graph emphasizing data retention policies, expiration schedules, and deletion processes for various asset types."
+            },
+            "Vendor and Third-Party Management": {
+                "Third-Party Risk Management": "A graph focused on assessing third-party risks, contracts, and vendor compliance with privacy regulations and security controls.",
+                "Vendor Data Processing Agreements": "A comprehensive graph covering vendor relationships, data processing agreements (DPA), and regulatory compliance.",
+                "Supply Chain Security": "A graph illustrating the flow of data through a supply chain, covering vendor management, data sharing agreements, and risk assessments."
+            },
+            "Risk Management": {
+                "Privacy Risk Assessments": "A graph covering privacy-related risks, their controls, and risk mitigation strategies for different entities and assets.",
+                "Compliance Risk Monitoring": "A graph that tracks risks related to compliance with regulatory frameworks (GDPR, CCPA), including continuous monitoring and controls.",
+                "Incident Response and Mitigation": "A graph focused on data breaches, incident responses, risk mitigation, and remediation actions taken by involved entities."
+            },
+            "Security Management": {
+                "Asset Security": "A graph outlining security measures for assets, including encryption, access control, and monitoring.",
+                "Threat Detection": "A graph focused on real-time threat detection measures and the relationships between assets, vulnerabilities, and mitigations.",
+                "Breach Response": "A graph detailing procedures and relationships for responding to security breaches, covering assets, risks, and policies."
+            },
+            "Compliance Audits": {
+                "Internal Audits": "A graph representing internal compliance audits across various departments and assets.",
+                "Third-Party Audits": "A graph showing external audits involving third-party vendors, contracts, and compliance measures.",
+                "GDPR Audits": "A compliance audit graph focusing on GDPR requirements and processes for data protection and privacy."
+            },
+            "Data Management": {
+                "Data Classification": "A graph showing data classification categories, including sensitive data, personal data, and internal data.",
+                "Data Lifecycle": "A graph focused on the lifecycle of data from collection to deletion, including retention schedules and policies.",
+                "Data Minimization": "A graph representing data minimization practices in compliance with privacy policies and regulations."
+            },
+            "Incident Management": {
+                "Incident Tracking": "A graph focused on tracking security incidents, data breaches, and risk assessments linked to assets and vendors.",
+                "Incident Mitigation": "A graph showing relationships between incidents and the actions taken to mitigate the impact.",
+                "Incident Reporting": "A graph detailing how incidents are reported across various departments and linked to response protocols."
+            },
+            "Access Management": {
+                "Role-Based Access": "A graph illustrating role-based access controls across systems, vendors, and assets.",
+                "Access Control Policies": "A graph focusing on access control policies and their relationships with assets, vendors, and users.",
+                "Third-Party Access": "A graph representing third-party access to sensitive assets and the controls in place."
+            },
+            "Data Governance": {
+                "Data Stewardship": "A graph representing the governance structures for managing data across departments, including data stewards and policies.",
+                "Data Lineage": "A graph showing data flow from creation to consumption across multiple systems, vendors, and processes.",
+                "Governance Compliance": "A graph tracking the compliance of governance policies with privacy regulations and internal policies."
+            }
         }
 
         # Step 1: Allow user to select a category using buttons
