@@ -60,6 +60,7 @@ class OTExplorer:
 
     def explore_graph(self, graph_id=None):
         """Handle the Explore Graph functionality."""
+
         # Add small font introduction for the "Explore Graph" tab
         st.markdown(
             """
@@ -76,6 +77,7 @@ class OTExplorer:
             </div>
             """, unsafe_allow_html=True)
 
+        # Get graph list
         graphs = self.context_graph_generator.list_graphs()
 
         if not graphs:
@@ -84,7 +86,13 @@ class OTExplorer:
             graph_options = {f"{graph['name']}": graph for graph in graphs}
             graph_names = ["--Select a graph--"] + list(graph_options.keys())  # Add default option
 
-            # Preselect the graph if a valid graph_id is passed
+            # Store the graph_id in session state if provided or retrieved from session state
+            if graph_id:
+                st.session_state['graph_id'] = graph_id
+            elif 'graph_id' in st.session_state:
+                graph_id = st.session_state['graph_id']
+
+            # Preselect the graph if a valid graph_id is present in session state
             if graph_id:
                 selected_graph_name = next((name for name, graph in graph_options.items() if graph['id'] == graph_id),
                                            None)
@@ -101,6 +109,7 @@ class OTExplorer:
 
                 if selected_graph:
                     graph_id = selected_graph['id']
+                    st.session_state['graph_id'] = graph_id  # Update session state with selected graph_id
 
                     # Visualize the full graph
                     entities = []
@@ -122,8 +131,7 @@ class OTExplorer:
                     selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names)
 
                     if selected_entity_name != "--Select an entity--":
-                        subgraph_data = self.context_graph_repo.get_subgraph_for_entity(
-                            graph_id, selected_entity_name)
+                        subgraph_data = self.context_graph_repo.get_subgraph_for_entity(graph_id, selected_entity_name)
 
                         if subgraph_data:
                             sub_entities = subgraph_data['entities']

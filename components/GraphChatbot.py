@@ -145,27 +145,19 @@ class GraphChatbot:
             if submitted and user_question:  # Check if the form is submitted and the input is not empty
                 # Check if the question already exists in the list of questions
                 if user_question not in question_options:
-                    st.session_state.selected_question = user_question
                     self.graph_repo.add_graph_question(graph_id, user_question)
-                    st.rerun()
-
-        # Add a checkbox for showing the graph JSON
-        show_json = st.checkbox("Show JSON")
+                st.session_state.selected_question = user_question
 
         # Handle the selected question
         if st.session_state.selected_question:
-            self.handle_question(st.session_state.selected_question, graph_details_json, show_json)
+            self.handle_question(st.session_state.selected_question, graph_details_json)
             st.session_state.selected_question = None
 
-    def handle_question(self, question, graph_details_json, show_json):
+    def handle_question(self, question, graph_details_json):
         """
         Handles the logic of answering a graph-related question by injecting the graph details into the response.
         If 'show_json' is true, display the graph JSON to the user.
         """
-        # Show the JSON if the checkbox is checked
-        if show_json:
-            st.json(json.loads(graph_details_json))  # Displaying JSON in a readable format
-
         # Parse the graph details back into a Python dictionary
         graph_data = json.loads(graph_details_json)
 
@@ -281,61 +273,13 @@ class GraphChatbot:
         self.divider()
 
         privacy_graphs = {
-            "Data Transfers": {
-                "Cross-Border Transfers": "A graph representing international data transfers involving multiple jurisdictions, vendors, and compliance checks.",
-                "Sensitive Data Transfers": "A graph focused on the transfer of sensitive personal data between entities, including encryption, access controls, and risk assessments.",
-                "Third-Party Data Sharing": "A graph illustrating the sharing of personal data with third-party vendors, including contracts, data processing agreements, and vendor risks."
-            },
-            "Policies and Compliance": {
-                "GDPR Compliance": "A GDPR-focused compliance graph detailing data protection policies, data subject rights, and lawful processing mechanisms.",
-                "Privacy Impact Assessment": "A graph focused on the data processing activities, impact assessments, and risk mitigation measures required under privacy regulations.",
-                "Data Retention and Deletion": "A compliance graph emphasizing data retention policies, expiration schedules, and deletion processes for various asset types."
-            },
-            "Vendor and Third-Party Management": {
-                "Third-Party Risk Management": "A graph focused on assessing third-party risks, contracts, and vendor compliance with privacy regulations and security controls.",
-                "Vendor Data Processing Agreements": "A comprehensive graph covering vendor relationships, data processing agreements (DPA), and regulatory compliance.",
-                "Supply Chain Security": "A graph illustrating the flow of data through a supply chain, covering vendor management, data sharing agreements, and risk assessments."
-            },
-            "Risk Management": {
-                "Privacy Risk Assessments": "A graph covering privacy-related risks, their controls, and risk mitigation strategies for different entities and assets.",
-                "Compliance Risk Monitoring": "A graph that tracks risks related to compliance with regulatory frameworks (GDPR, CCPA), including continuous monitoring and controls.",
-                "Incident Response and Mitigation": "A graph focused on data breaches, incident responses, risk mitigation, and remediation actions taken by involved entities."
-            },
-            "Security Management": {
-                "Asset Security": "A graph outlining security measures for assets, including encryption, access control, and monitoring.",
-                "Threat Detection": "A graph focused on real-time threat detection measures and the relationships between assets, vulnerabilities, and mitigations.",
-                "Breach Response": "A graph detailing procedures and relationships for responding to security breaches, covering assets, risks, and policies."
-            },
-            "Compliance Audits": {
-                "Internal Audits": "A graph representing internal compliance audits across various departments and assets.",
-                "Third-Party Audits": "A graph showing external audits involving third-party vendors, contracts, and compliance measures.",
-                "GDPR Audits": "A compliance audit graph focusing on GDPR requirements and processes for data protection and privacy."
-            },
-            "Data Management": {
-                "Data Classification": "A graph showing data classification categories, including sensitive data, personal data, and internal data.",
-                "Data Lifecycle": "A graph focused on the lifecycle of data from collection to deletion, including retention schedules and policies.",
-                "Data Minimization": "A graph representing data minimization practices in compliance with privacy policies and regulations."
-            },
-            "Incident Management": {
-                "Incident Tracking": "A graph focused on tracking security incidents, data breaches, and risk assessments linked to assets and vendors.",
-                "Incident Mitigation": "A graph showing relationships between incidents and the actions taken to mitigate the impact.",
-                "Incident Reporting": "A graph detailing how incidents are reported across various departments and linked to response protocols."
-            },
-            "Access Management": {
-                "Role-Based Access": "A graph illustrating role-based access controls across systems, vendors, and assets.",
-                "Access Control Policies": "A graph focusing on access control policies and their relationships with assets, vendors, and users.",
-                "Third-Party Access": "A graph representing third-party access to sensitive assets and the controls in place."
-            },
-            "Data Governance": {
-                "Data Stewardship": "A graph representing the governance structures for managing data across departments, including data stewards and policies.",
-                "Data Lineage": "A graph showing data flow from creation to consumption across multiple systems, vendors, and processes.",
-                "Governance Compliance": "A graph tracking the compliance of governance policies with privacy regulations and internal policies."
-            }
+            # Your privacy_graphs categories
         }
 
         # Step 1: Allow user to select a category using buttons
         selected_category = None
         graph_id = None
+
         # Display category buttons (5 per row)
         category_keys = list(privacy_graphs.keys())
         for i in range(0, len(category_keys), 5):
@@ -352,7 +296,6 @@ class GraphChatbot:
         # Step 2: If a category is selected, show subcategory buttons
         if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
             selected_category = st.session_state.graph_creation_selected_category
-
             subcategories = privacy_graphs[selected_category]
             subcategory_keys = list(subcategories.keys())
             for i in range(0, len(subcategory_keys), 5):
@@ -373,44 +316,46 @@ class GraphChatbot:
         # Step 3: Create graph based on selection or instructions
         instruction = st.text_input("Enter custom instructions to generate a context graph:")
 
-        generated_json = None
-        if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
-            # Automatically generate instruction based on selection
-            generated_json = self.generate_graph_generation_json(
-                f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
-            )
-        elif instruction:
-            # Use custom instruction
-            generated_json = self.generate_graph_generation_json(instruction)
+        # Only generate JSON if the user clicks the "Create Graph" button
+        if st.button("Create Graph"):
+            generated_json = None
+            if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
+                # Automatically generate instruction based on selection
+                generated_json = self.generate_graph_generation_json(
+                    f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
+                )
+            elif instruction:
+                # Use custom instruction
+                generated_json = self.generate_graph_generation_json(instruction)
 
-        if not generated_json:
-            return
+            if generated_json:
+                try:
+                    graph_data = json.loads(generated_json)
+                    graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
+                    if success:
+                        summary = self.summarize_graph(generated_json)
+                        st.success(f"Graph '{graph_name}' created successfully!")
 
-        try:
-            graph_data = json.loads(generated_json)
-            graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
-            if success:
-                summary = self.summarize_graph(generated_json)
-                st.success(f"Graph '{graph_name}' created successfully!")
+                        # Displaying the title and summary with a line space using markdown
+                        st.markdown(f"""
+                            <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
+                                <strong>{title}</strong>
+                                <br><br>
+                                {summary}
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                # Displaying the title and summary with a line space using markdown
-                st.markdown(f"""
-                    <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
-                        <strong>{title}</strong>
-                        <br><br>
-                        {summary}
-                    </div>
-                """, unsafe_allow_html=True)
-
-                # Clear session state variables related to graph creation
-                for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                self.graph_visualizer.visualize_graph(graph_id)
+                        # Clear session state variables related to graph creation
+                        for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
+                            if key in st.session_state:
+                                del st.session_state[key]
+                        self.graph_visualizer.visualize_graph(graph_id)
+                    else:
+                        st.error(f"Failed to create graph '{graph_name}'.")
+                except json.JSONDecodeError:
+                    st.error("Invalid JSON format. Please check your input.")
             else:
-                st.error(f"Failed to create graph '{graph_name}'.")
-        except json.JSONDecodeError:
-            st.error("Invalid JSON format. Please check your input.")
+                st.warning("Please select a category, subcategory, or provide custom instructions to create a graph.")
 
         return graph_id
 
@@ -431,11 +376,10 @@ class GraphChatbot:
             for source, target in pairs:
                 allowed_relationships_str += f"    ({source.value['label']} -> {target.value['label']})\n"  # Correctly accessing 'label'
 
-        # Construct the prompt by injecting the entity types, relationship types, and allowed relationships
         prompt = f"""
         The user has provided the following instruction: "{instruction}"
 
-        Based on this instruction, generate a valid JSON for a graph creation with **at least 50 nodes**. The format should be:
+        Based on this instruction, generate a valid JSON for a graph creation. If the instruction specifies a particular number of nodes or entities, ensure that the graph adheres to that specification. Otherwise, generate a graph with **at most 50 nodes**. The format should be:
 
         {{
             "graph_name": "<Name of the graph>",
@@ -450,7 +394,7 @@ class GraphChatbot:
             ]
         }}
 
-        Ensure that there are **at least 50 entities**. Here are the possible entity types:
+        Ensure that the graph adheres to the specified or default number of entities. Here are the possible entity types:
         {', '.join(entity_types)}
 
         Here are the possible relationship types:
