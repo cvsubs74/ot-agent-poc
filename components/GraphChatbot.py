@@ -267,7 +267,6 @@ class GraphChatbot:
                     <li>Identify compliance gaps and take corrective actions based on visualized data.</li>
                     <li>Generate customized graphs by providing specific instructions related to your data ecosystem.</li>
                 </ul>
-                Once the graph is generated, you can visualize it and interact with it through our chatbot interface to further explore the insights.
                 Choose a category and subcategory below to construct your graph.
             </div>
             """, unsafe_allow_html=True)
@@ -357,27 +356,16 @@ class GraphChatbot:
                         if cols[j].button(subcategory):
                             st.session_state.graph_creation_selected_subcategory = subcategory
 
-        # Show description for the selected subcategory
-        if 'graph_creation_selected_subcategory' in st.session_state:
+        # Step 3: Automatically generate the graph if both category and subcategory are selected
+        if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
+            selected_category = st.session_state.graph_creation_selected_category
             selected_subcategory = st.session_state.graph_creation_selected_subcategory
             title = privacy_graphs[selected_category][selected_subcategory]
-        else:
-            title = "Custom Graph"
 
-        # Step 3: Create graph based on selection or instructions
-        instruction = st.text_input("Enter custom instructions to generate a context graph:")
-
-        # Only generate JSON if the user clicks the "Create Graph" button
-        if st.button("Create Graph"):
-            generated_json = None
-            if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
-                # Automatically generate instruction based on selection
-                generated_json = self.generate_graph_generation_json(
-                    f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
-                )
-            elif instruction:
-                # Use custom instruction
-                generated_json = self.generate_graph_generation_json(instruction)
+            # Automatically generate the graph based on category and subcategory
+            generated_json = self.generate_graph_generation_json(
+                f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
+            )
 
             if generated_json:
                 try:
@@ -387,7 +375,7 @@ class GraphChatbot:
                         summary = self.summarize_graph(generated_json)
                         st.success(f"Graph '{graph_name}' created successfully!")
 
-                        # Displaying the title and summary with a line space using markdown
+                        # Display the title and summary with a line space using markdown
                         st.markdown(f"""
                             <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
                                 <strong>{title}</strong>
@@ -405,8 +393,39 @@ class GraphChatbot:
                         st.error(f"Failed to create graph '{graph_name}'.")
                 except json.JSONDecodeError:
                     st.error("Invalid JSON format. Please check your input.")
+            return graph_id
+
+        # Step 4: Generate graph if custom instructions are provided and "Create Graph" button is clicked
+        instruction = st.text_input("Enter custom instructions to generate a context graph:")
+        if instruction and st.button("Create Graph"):
+            generated_json = self.generate_graph_generation_json(instruction)
+
+            if generated_json:
+                try:
+                    graph_data = json.loads(generated_json)
+                    with st.spinner("Creating graph.."):
+                        graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
+                    if success:
+                        summary = self.summarize_graph(generated_json)
+                        st.success(f"Graph '{graph_name}' created successfully!")
+
+                        # Display the title and summary with a line space using markdown
+                        st.markdown(f"""
+                            <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
+                                <strong>Custom Graph</strong>
+                                <br><br>
+                                {summary}
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                        with st.spinner("Generating visuals.."):
+                            self.graph_visualizer.visualize_graph(graph_id)
+                    else:
+                        st.error(f"Failed to create graph '{graph_name}'.")
+                except json.JSONDecodeError:
+                    st.error("Invalid JSON format. Please check your input.")
             else:
-                st.warning("Please select a category, subcategory, or provide custom instructions to create a graph.")
+                st.warning("Please provide custom instructions to create a graph.")
 
         return graph_id
 
