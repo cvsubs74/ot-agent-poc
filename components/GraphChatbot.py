@@ -268,6 +268,7 @@ class GraphChatbot:
                     <li>Generate customized graphs by providing specific instructions related to your data ecosystem.</li>
                 </ul>
                 Once the graph is generated, you can visualize it and interact with it through our chatbot interface to further explore the insights.
+                Choose a category and subcategory below to construct your graph.
             </div>
             """, unsafe_allow_html=True)
         self.divider()
