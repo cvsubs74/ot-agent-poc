@@ -181,6 +181,7 @@ class OTExplorer:
             if submit and new_rule_name and new_rule_description:
                 self.context_graph_repo.add_context_grammar_rule(new_rule_name, new_rule_description)
                 st.success(f"Rule '{new_rule_name}' added successfully!")
+                st.rerun()
 
     def run(self):
         """Main function to run the Streamlit app."""
