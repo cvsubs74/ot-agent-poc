@@ -67,11 +67,11 @@ class OTExplorer:
             <div style='font-size: 1em; margin-bottom: 15px;'>
                 Dive deep into existing graphs, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
                 <br><br>
-                Each graph is a visual representation of how entities are interconnected, and it allows you to:
+                Each scenario is a visual representation of how entities are interconnected, and it allows you to:
                 <ul>
                     <li>Visualize and explore the entire network of entities and relationships in a clear, interactive graph.</li>
-                    <li>Select specific entities to drill down into their subgraph, revealing all their direct and indirect connections.</li>
-                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take actions like initiating audits or risk assessments.</li>
+                    <li>Select specific entities to drill down into their relationships, revealing all their direct and indirect connections.</li>
+                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take context sensitive actions.</li>
                 </ul>
                 Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
             </div>
@@ -84,7 +84,7 @@ class OTExplorer:
             st.info("No graphs found. Please create a new graph in the 'Create Graph' tab.")
         else:
             graph_options = {f"{graph['name']}": graph for graph in graphs}
-            graph_names = ["--Select a graph--"] + list(graph_options.keys())  # Add default option
+            graph_names = ["--Select a scenario--"] + list(graph_options.keys())  # Add default option
 
             # Store the graph_id in session state if provided or retrieved from session state
             if graph_id:
