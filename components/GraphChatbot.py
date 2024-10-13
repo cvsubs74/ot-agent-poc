@@ -255,14 +255,14 @@ class GraphChatbot:
         st.markdown(
             """
             <div style='font-size: 1em; margin-bottom: 15px;'>
-                Build custom context graphs that represent relationships between various entities 
+                Build scenarios that represent relationships between various entities 
                 such as vendors, assets, policies, risks, and more. You can start by selecting one of the pre-defined categories or subcategories, or provide 
-                detailed custom instructions to generate your own graph tailored to your specific business needs. Each graph can help you visualize data flow, 
+                detailed custom instructions to generate your own scenario tailored to your specific business needs. Each scenario can help you visualize data flow, 
                 assess risk exposure, and ensure compliance with regulations. 
                 <br><br>
                 Use this feature to:
                 <ul>
-                    <li>Create context graphs for data transfers, risk assessments, and vendor management.</li>
+                    <li>Create scenarios for data transfers, risk assessments, and vendor management.</li>
                     <li>Explore complex relationships between policies, assets, vendors, and controls.</li>
                     <li>Identify compliance gaps and take corrective actions based on visualized data.</li>
                     <li>Generate customized graphs by providing specific instructions related to your data ecosystem.</li>
@@ -273,56 +273,56 @@ class GraphChatbot:
         self.divider()
 
         # Pre-seeded graph categories and subcategories
-        privacy_graphs = {
+        privacy_scenarios = {
             "Data Transfers": {
-                "Cross-Border Transfers": "A graph representing international data transfers involving multiple jurisdictions, vendors, and compliance checks.",
-                "Sensitive Data Transfers": "A graph focused on the transfer of sensitive personal data between entities, including encryption, access controls, and risk assessments.",
-                "Third-Party Data Sharing": "A graph illustrating the sharing of personal data with third-party vendors, including contracts, data processing agreements, and vendor risks."
+                "Cross-Border Transfers": "International data transfers involving multiple jurisdictions, vendors, and compliance checks.",
+                "Sensitive Data Transfers": "Transfers of sensitive personal data with encryption, access controls, and risk assessments.",
+                "Third-Party Data Sharing": "Sharing personal data with third-party vendors, covering contracts and data processing agreements."
             },
             "Policies and Compliance": {
-                "GDPR Compliance": "A GDPR-focused compliance graph detailing data protection policies, data subject rights, and lawful processing mechanisms.",
-                "Privacy Impact Assessment": "A graph focused on the data processing activities, impact assessments, and risk mitigation measures required under privacy regulations.",
-                "Data Retention and Deletion": "A compliance graph emphasizing data retention policies, expiration schedules, and deletion processes for various asset types."
+                "GDPR Compliance": "Ensuring GDPR compliance, covering data protection policies and lawful processing.",
+                "Privacy Impact Assessment": "Evaluating data processing activities and mitigating privacy risks under regulations.",
+                "Data Retention and Deletion": "Managing data retention policies and deletion processes for compliance."
             },
             "Vendor and Third-Party Management": {
-                "Third-Party Risk Management": "A graph focused on assessing third-party risks, contracts, and vendor compliance with privacy regulations and security controls.",
-                "Vendor Data Processing Agreements": "A comprehensive graph covering vendor relationships, data processing agreements (DPA), and regulatory compliance.",
-                "Supply Chain Security": "A graph illustrating the flow of data through a supply chain, covering vendor management, data sharing agreements, and risk assessments."
+                "Third-Party Risk Management": "Assessing third-party risks and ensuring vendor compliance with regulations.",
+                "Vendor Data Processing Agreements": "Managing vendor relationships and ensuring data processing agreements are in place.",
+                "Supply Chain Security": "Securing data flows in the supply chain and managing vendor agreements."
             },
             "Risk Management": {
-                "Privacy Risk Assessments": "A graph covering privacy-related risks, their controls, and risk mitigation strategies for different entities and assets.",
-                "Compliance Risk Monitoring": "A graph that tracks risks related to compliance with regulatory frameworks (GDPR, CCPA), including continuous monitoring and controls.",
-                "Incident Response and Mitigation": "A graph focused on data breaches, incident responses, risk mitigation, and remediation actions taken by involved entities."
+                "Privacy Risk Assessments": "Evaluating privacy-related risks and mitigation strategies.",
+                "Compliance Risk Monitoring": "Monitoring compliance risks with frameworks like GDPR and CCPA.",
+                "Incident Response and Mitigation": "Responding to data breaches and mitigating associated risks."
             },
             "Security Management": {
-                "Asset Security": "A graph outlining security measures for assets, including encryption, access control, and monitoring.",
-                "Threat Detection": "A graph focused on real-time threat detection measures and the relationships between assets, vulnerabilities, and mitigations.",
-                "Breach Response": "A graph detailing procedures and relationships for responding to security breaches, covering assets, risks, and policies."
+                "Asset Security": "Implementing security measures like encryption and access control for assets.",
+                "Threat Detection": "Real-time detection of security threats involving assets and vulnerabilities.",
+                "Breach Response": "Responding to security breaches and addressing asset-related risks."
             },
             "Compliance Audits": {
-                "Internal Audits": "A graph representing internal compliance audits across various departments and assets.",
-                "Third-Party Audits": "A graph showing external audits involving third-party vendors, contracts, and compliance measures.",
-                "GDPR Audits": "A compliance audit graph focusing on GDPR requirements and processes for data protection and privacy."
+                "Internal Audits": "Conducting internal compliance audits across departments and assets.",
+                "Third-Party Audits": "Auditing third-party vendors for compliance with contracts and regulations.",
+                "GDPR Audits": "Ensuring compliance with GDPR through regular audits."
             },
             "Data Management": {
-                "Data Classification": "A graph showing data classification categories, including sensitive data, personal data, and internal data.",
-                "Data Lifecycle": "A graph focused on the lifecycle of data from collection to deletion, including retention schedules and policies.",
-                "Data Minimization": "A graph representing data minimization practices in compliance with privacy policies and regulations."
+                "Data Classification": "Categorizing sensitive, personal, and internal data for proper management.",
+                "Data Lifecycle": "Managing data from collection to deletion, including retention policies.",
+                "Data Minimization": "Ensuring only necessary data is collected and stored."
             },
             "Incident Management": {
-                "Incident Tracking": "A graph focused on tracking security incidents, data breaches, and risk assessments linked to assets and vendors.",
-                "Incident Mitigation": "A graph showing relationships between incidents and the actions taken to mitigate the impact.",
-                "Incident Reporting": "A graph detailing how incidents are reported across various departments and linked to response protocols."
+                "Incident Tracking": "Tracking security incidents and linking them to assets and vendors.",
+                "Incident Mitigation": "Mitigating the impact of incidents through effective response measures.",
+                "Incident Reporting": "Reporting incidents across departments with clear communication."
             },
             "Access Management": {
-                "Role-Based Access": "A graph illustrating role-based access controls across systems, vendors, and assets.",
-                "Access Control Policies": "A graph focusing on access control policies and their relationships with assets, vendors, and users.",
-                "Third-Party Access": "A graph representing third-party access to sensitive assets and the controls in place."
+                "Role-Based Access": "Managing role-based access controls for systems, vendors, and assets.",
+                "Access Control Policies": "Implementing access control policies for managing data and assets.",
+                "Third-Party Access": "Controlling third-party access to sensitive data and assets."
             },
             "Data Governance": {
-                "Data Stewardship": "A graph representing the governance structures for managing data across departments, including data stewards and policies.",
-                "Data Lineage": "A graph showing data flow from creation to consumption across multiple systems, vendors, and processes.",
-                "Governance Compliance": "A graph tracking the compliance of governance policies with privacy regulations and internal policies."
+                "Data Stewardship": "Managing governance structures and data policies across departments.",
+                "Data Lineage": "Tracking data flow across systems and vendors.",
+                "Governance Compliance": "Ensuring governance policies comply with regulations and standards."
             }
         }
 
@@ -331,7 +331,7 @@ class GraphChatbot:
         graph_id = None
 
         # Display category buttons (5 per row)
-        category_keys = list(privacy_graphs.keys())
+        category_keys = list(privacy_scenarios.keys())
         for i in range(0, len(category_keys), 5):
             cols = st.columns(5)
             for j in range(5):
@@ -346,7 +346,7 @@ class GraphChatbot:
         # Step 2: If a category is selected, show subcategory buttons
         if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
             selected_category = st.session_state.graph_creation_selected_category
-            subcategories = privacy_graphs[selected_category]
+            subcategories = privacy_scenarios[selected_category]
             subcategory_keys = list(subcategories.keys())
             for i in range(0, len(subcategory_keys), 5):
                 cols = st.columns(5)
@@ -360,7 +360,7 @@ class GraphChatbot:
         if 'graph_creation_selected_category' in st.session_state and 'graph_creation_selected_subcategory' in st.session_state:
             selected_category = st.session_state.graph_creation_selected_category
             selected_subcategory = st.session_state.graph_creation_selected_subcategory
-            title = privacy_graphs[selected_category][selected_subcategory]
+            title = privacy_scenarios[selected_category][selected_subcategory]
 
             # Automatically generate the graph based on category and subcategory
             generated_json = self.generate_graph_generation_json(
