@@ -16,7 +16,6 @@ class OTExplorer:
         self.graph_chatbot = GraphChatbot(
             self.context_graph_repo, self.context_graph_generator, self.graph_visualizer)
 
-
     def configure_page(self):
         """Configure the Streamlit page settings."""
         st.set_page_config(page_title="OT Explorer - Contextual Graph Generator and Explorer", layout="wide")
@@ -54,8 +53,9 @@ class OTExplorer:
 
     def create_graph(self):
         """Handle the Create Graph functionality."""
-        # Add small font introduction for the "Create Graph" tab
         graph_id = self.graph_chatbot.context_graph_generation_chatbot()
+        if graph_id:
+            st.session_state['graph_id'] = graph_id  # Store in session state for access across tabs
         return graph_id
 
     def explore_graph(self, graph_id=None):
@@ -71,7 +71,7 @@ class OTExplorer:
                 <ul>
                     <li>Visualize and explore the entire network of entities and relationships in a clear, interactive graph.</li>
                     <li>Select specific entities to drill down into their relationships, revealing all their direct and indirect connections.</li>
-                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take context sensitive actions.</li>
+                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take context-sensitive actions.</li>
                 </ul>
                 Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
             </div>
@@ -87,8 +87,8 @@ class OTExplorer:
             graph_names = ["--Select a Scenario--"] + list(graph_options.keys())  # Add default option
 
             # Retrieve the graph_id from session state or passed value
-            if 'graph_id' not in st.session_state and graph_id:
-                st.session_state['graph_id'] = graph_id
+            if graph_id is None:
+                graph_id = st.session_state.get('graph_id')  # Get from session state if not passed
 
             # Callback to update session state when graph selection changes
             def update_selected_graph():
@@ -99,7 +99,7 @@ class OTExplorer:
 
             # Set default selected graph
             selected_graph_name = next(
-                (name for name, graph in graph_options.items() if graph['id'] == st.session_state.get('graph_id')),
+                (name for name, graph in graph_options.items() if graph['id'] == graph_id),
                 "--Select a Scenario--"
             )
 
@@ -184,7 +184,7 @@ class OTExplorer:
             Ready to explore and take action? **Create a scenario** or **explore existing scenarios** to see how OT Explorer can transform your decision-making process.
         """, unsafe_allow_html=True)
 
-        # Step 4: Create tabs for "Create Graph" and "Explore Graph"
+        # Step 4: Create tabs for "Create Scenarios" and "Explore Scenarios"
         tab1, tab2 = st.tabs(["Create Scenarios", "Explore Scenarios"])
 
         with tab1:

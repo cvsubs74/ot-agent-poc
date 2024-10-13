@@ -373,7 +373,7 @@ class GraphChatbot:
                     graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
                     if success:
                         summary = self.summarize_graph(generated_json)
-                        st.success(f"Graph '{graph_name}' created successfully!")
+                        st.success(f"Scenario '{graph_name}' created successfully!")
 
                         # Display the title and summary with a line space using markdown
                         st.markdown(f"""
@@ -390,24 +390,28 @@ class GraphChatbot:
                                 del st.session_state[key]
                         self.graph_visualizer.visualize_graph(graph_id)
                     else:
-                        st.error(f"Failed to create graph '{graph_name}'.")
+                        st.error(f"Failed to create scenario '{graph_name}'.")
                 except json.JSONDecodeError:
                     st.error("Invalid JSON format. Please check your input.")
             return graph_id
 
-        # Step 4: Generate graph if custom instructions are provided and "Create Graph" button is clicked
-        instruction = st.text_input("Enter custom instructions to generate a context graph:")
-        if instruction and st.button("Create Graph"):
+        # Step 4: If you prefer to generate a custom scenario, enter your instructions and click "Create"
+        instruction = st.text_input("Want to build a custom scenario? Enter your instructions below:")
+        if st.button("Create"):
+            if not instruction:
+                st.warning("Please enter custom instructions to proceed.")
+                return
+
             generated_json = self.generate_graph_generation_json(instruction)
 
             if generated_json:
                 try:
                     graph_data = json.loads(generated_json)
-                    with st.spinner("Creating graph.."):
+                    with st.spinner("Creating scenario.."):
                         graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
                     if success:
                         summary = self.summarize_graph(generated_json)
-                        st.success(f"Graph '{graph_name}' created successfully!")
+                        st.success(f"Scenario '{graph_name}' created successfully!")
 
                         # Display the title and summary with a line space using markdown
                         st.markdown(f"""
@@ -421,11 +425,9 @@ class GraphChatbot:
                         with st.spinner("Generating visuals.."):
                             self.graph_visualizer.visualize_graph(graph_id)
                     else:
-                        st.error(f"Failed to create graph '{graph_name}'.")
+                        st.error(f"Failed to create scenario '{graph_name}'.")
                 except json.JSONDecodeError:
                     st.error("Invalid JSON format. Please check your input.")
-            else:
-                st.warning("Please provide custom instructions to create a graph.")
 
         return graph_id
 

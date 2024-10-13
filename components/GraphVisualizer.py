@@ -32,30 +32,7 @@ class GraphVisualizer:
                 entity_set.add((rel['source_entity_type'], rel['source_entity_name']))
                 entity_set.add((rel['target_entity_type'], rel['target_entity_name']))
             entities = [{'name': name, 'type': etype} for etype, name in entity_set]
-            graph_html = self.visualize(entities, relationships)
-
-            # Display the graph in one column and the legend in another
-            col1, col2 = st.columns([4, 1])  # Adjust column widths as needed
-
-            # Display the graph
-            with col1:
-                st.components.v1.html(graph_html, height=500, scrolling=True)
-
-            # Display the color legend
-            with col2:
-                st.markdown("<h4 style='text-align: left;'>Legend</h4>", unsafe_allow_html=True)
-
-                for entity_type, color in self.type_color_map.items():
-                    # Use a horizontal layout with color box and label
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                            <div style="width: 20px; height: 20px; background-color: {color}; margin-right: 10px; border: 1px solid black;"></div>
-                            <span>{entity_type.value['label']}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+            self.visualize(entities, relationships)
 
     def visualize(self, entities, relationships):
         """
@@ -110,6 +87,12 @@ class GraphVisualizer:
             },
             "layout": {
                 "randomSeed": 2
+            },
+            "interaction": {
+                "navigationButtons": True,  # Add zoom controls
+                "keyboard": True,  # Allow keyboard controls
+                "multiselect": False,  # Disable multiselect
+                "zoomView": True,  # Prevent zooming in too much
             }
         }
 
