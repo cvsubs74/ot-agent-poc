@@ -4,6 +4,7 @@ from components.ContextGraphGenerator import ContextGraphGenerator
 from components.GraphChatbot import GraphChatbot
 from repositories.ContextGraphRepository import ContextGraphRepository
 from repositories.DatabaseManager import DatabaseManager
+import pymysql
 
 
 class OTExplorer:
@@ -60,22 +61,19 @@ class OTExplorer:
 
     def explore_graph(self, graph_id=None):
         """Handle the Explore Graph functionality."""
-
-        # Add small font introduction for the "Explore Graph" tab
-        st.markdown(
-            """
-            <div style='font-size: 1em; margin-bottom: 15px;'>
-                Dive deep into existing scenarios, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
-                <br><br>
-                Each scenario is a visual representation of how entities are interconnected, and it allows you to:
-                <ul>
-                    <li>Visualize and explore the entire network of entities and relationships in a clear, interactive graph.</li>
-                    <li>Select specific entities to drill down into their relationships, revealing all their direct and indirect connections.</li>
-                    <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take context-sensitive actions.</li>
-                </ul>
-                Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("""
+        <div style='font-size: 1em; margin-bottom: 15px;'>
+            Dive deep into existing scenarios, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
+            <br><br>
+            Each scenario is a visual representation of how entities are interconnected, and it allows you to:
+            <ul>
+                <li>Visualize and explore the entire network of entities and relationships in a clear, interactive graph.</li>
+                <li>Select specific entities to drill down into their relationships, revealing all their direct and indirect connections.</li>
+                <li>Leverage the built-in chatbot to query the graph and receive context-driven answers, helping you analyze relationships and take context-sensitive actions.</li>
+            </ul>
+            Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
+        </div>
+        """, unsafe_allow_html=True)
 
         # Get graph list
         graphs = self.context_graph_generator.list_graphs()
@@ -148,6 +146,42 @@ class OTExplorer:
                 self.graph_chatbot.context_graph_analyzer_chatbot(
                     graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
 
+    def display_business_rules(self):
+        """Handles the logic for listing, enabling/disabling, and adding business rules."""
+        # Fetch and display existing rules with enable/disable toggles
+        rules = self.context_graph_repo.list_context_grammar_rules()
+        if rules:
+            # Create a form to batch update rule status
+            with st.form("update_rules_form"):
+                for rule in rules:
+                    # Display each rule with a toggle to enable/disable
+                    rule_enabled = st.toggle(
+                        f"**{rule['rule_name']}**: {rule['description']}", value=rule['active'], key=rule['id']
+                    )
+                    # Store the enabled/disabled state for the rule
+                    rule['active'] = rule_enabled
+
+                # Add a submit button for saving changes to the rules
+                update_submit = st.form_submit_button("Update Rules")
+
+                if update_submit:
+                    # Save the updated enabled/disabled states to the database
+                    for rule in rules:
+                        self.context_graph_repo.update_context_grammar_rule(rule['id'], rule['active'])
+                    st.success("Rules updated successfully!")
+        else:
+            st.info("No business rules found.")
+
+        # Form to add a new rule
+        with st.form("add_rule_form", clear_on_submit=True):
+            new_rule_name = st.text_input("Rule Name")
+            new_rule_description = st.text_area("Rule Description")
+            submit = st.form_submit_button("Add Rule")
+
+            if submit and new_rule_name and new_rule_description:
+                self.context_graph_repo.add_context_grammar_rule(new_rule_name, new_rule_description)
+                st.success(f"Rule '{new_rule_name}' added successfully!")
+
     def run(self):
         """Main function to run the Streamlit app."""
         # Step 1: Configure the page
@@ -168,28 +202,20 @@ class OTExplorer:
             - **Interact & Act**: Explore your scenario through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
             - **Monitor & Mitigate**: OT Explorer ensures you stay ahead of risks with real-time insights and actions. Visualize how entities are connected, spot potential issues, and take proactive measures.
 
-            #### Why OT Explorer? 🌟
+            Ready to explore and take action? **Create a scenario**, **explore existing scenarios**, or manage **business rules** to see how OT Explorer can transform your decision-making process.
+        """)
 
-            - **Contextual Intelligence**: OT Explorer leverages the power of context graphs, allowing you to explore the full spectrum of relationships between your organizational entities.
-            - **Actionable Insights**: Move beyond analysis. OT Explorer not only answers your questions but also provides actionable recommendations based on the data in your graph.
-            - **Real-Time Interaction**: Use the chatbot to query your data in real-time, getting answers on risks, compliance, and much more, instantly.
-            - **Dynamic Graph Generation**: Easily create and modify graphs as your business evolves, ensuring you always have an accurate, up-to-date view of your organization's data.
-            - **Entity-Centric Actions**: Take real-world actions—like initiating a compliance check, triggering an audit, or reviewing risk exposure—directly from the graph interface.
-            - **Comprehensive Visualization**: See your data and its relationships like never before, with interactive, high-level visualizations that simplify even the most complex data ecosystems.
-
-            With OT Explorer, you can track and analyze complex relationships between entities, identify risks, and act on the information—all in one seamless platform. Visualize your organizational ecosystem with entities and relationships mapped across multiple systems. 
-
-            Ready to explore and take action? **Create a scenario** or **explore existing scenarios** to see how OT Explorer can transform your decision-making process.
-        """, unsafe_allow_html=True)
-
-        # Step 4: Create tabs for "Create Scenarios" and "Explore Scenarios"
-        tab1, tab2 = st.tabs(["Create Scenarios", "Explore Scenarios"])
+        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", and "Business Rules"
+        tab1, tab2, tab3 = st.tabs(["Create Scenarios", "Explore Scenarios", "Business Rules"])
 
         with tab1:
             graph_id = self.create_graph()
 
         with tab2:
             self.explore_graph(graph_id)
+
+        with tab3:
+            self.display_business_rules()
 
 
 if __name__ == "__main__":

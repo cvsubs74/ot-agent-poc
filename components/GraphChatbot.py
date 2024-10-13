@@ -171,36 +171,37 @@ class GraphChatbot:
         if not actions.strip():
             actions = "No specific actions are available for these entities."
 
+        # Fetch the context grammar rules from the database
+        context_grammar_rules = self.graph_repo.list_context_grammar_rules()
+
+        # Format the context grammar rules into a string for the prompt
+        context_grammar = "\n".join(
+            [f"- **{rule['rule_name']}**: {rule['description']}" for rule in context_grammar_rules])
+
         # Construct the prompt for the AI model based on the graph details and the user's question
         prompt = f"""
-        The user has asked the following question: "{question}"
+            The user has asked the following question: "{question}"
 
-        Here is the relevant information:
+            Here is the relevant information:
 
-        **Entities and Relationships:**
-        {relationships}
+            **Entities and Relationships:**
+            {relationships}
 
-        **Available Actions** (if needed): 
-        {actions}
+            **Available Actions** (if needed): 
+            {actions}
 
-        **Context Grammar:**
-        - **Graph Traversal**: Ensure that the question requiring traversal between entities can be completed before making inferences. Verify that connections between entities exist and are valid according to the relationship types before inferring anything.
-        - **Inference Validation**: Make inferences solely based on graph connectivity and relationships. **Do not** make inferences based on entity names or attributes unless explicitly defined by the graph structure. The analysis must be grounded in actual relationships rather than assumptions about entity names or labels.
-        - **Actionability**: Recommend actions only if the graph directly supports those actions. If the relationships do not lead to clear actions, avoid suggesting them.
-        - **Risk Assessment**: If the question involves risk-related entities, ensure the risk is quantified or associated with controls before making conclusions about its significance.
-        - **Policy-Based Analysis**: If the question involves policies, ensure all relationships between entities governed by a policy are clear before drawing conclusions. Ensure compliance links are based on policy-defined relationships.
-        - **Data Sensitivity**: If sensitive data is involved, ensure that traversals involving assets or vendors are supported by clear data protection or privacy-related relationships.
-        - **Entity-Specific Insights**: Tailor your response by focusing on the attributes of the entities involved, ensuring insights are relevant to the type of entity (e.g., assets, vendors, or risks).
+            **Context Grammar:**
+            {context_grammar}
 
-        Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
+            Provide a direct, detailed, and insightful response to the user's question. Ensure the response:
 
-        - Directly answers the question using only the information present in the graph data.
-        - Avoids any assumptions or speculative statements, such as "likely," "possibly," or "could."
-        - Focuses solely on the relationships, entities, and connections as defined in the graph data, ensuring that the analysis is strictly factual and data-driven.
-        - Highlights important information by **bolding** them.
-        - Uses bullet points for clarity and emphasis wherever applicable.
-        - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.
-        """
+            - Directly answers the question using only the information present in the graph data.
+            - Avoids any assumptions or speculative statements, such as "likely," "possibly," or "could."
+            - Focuses solely on the relationships, entities, and connections as defined in the graph data, ensuring that the analysis is strictly factual and data-driven.
+            - Highlights important information by **bolding** them.
+            - Uses bullet points for clarity and emphasis wherever applicable.
+            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.
+            """
 
         try:
             # Generate content using Google Vertex AI Generative Model

@@ -167,6 +167,71 @@ class ContextGraphRepository:
         self.connection.commit()
         cursor.close()
 
+    def create_context_grammar_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `context_grammar` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            rule_name VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
+    def add_context_grammar_rule(self, rule_name, description):
+        cursor = self.connection.cursor()
+        try:
+            add_rule_query = """
+            INSERT INTO context_grammar (rule_name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(add_rule_query, (rule_name, description))
+            self.connection.commit()
+            print(f"Context grammar rule '{rule_name}' added successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding context grammar rule: {e}")
+        finally:
+            cursor.close()
+
+    def list_context_grammar_rules(self):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("""
+                SELECT id, rule_name, description, active, created_at 
+                FROM context_grammar
+                ORDER BY created_at DESC;
+            """)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving context grammar rules: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def update_context_grammar_rule(self, rule_id, active):
+        cursor = self.connection.cursor()
+        try:
+            update_rule_query = """
+            UPDATE context_grammar
+            SET active = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_rule_query, (active, rule_id))
+            self.connection.commit()
+            print(f"Context grammar rule with ID {rule_id} updated successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating context grammar rule: {e}")
+        finally:
+            cursor.close()
+
+
+
     def populate_relationship_types(self):
         cursor = self.connection.cursor()
         try:
