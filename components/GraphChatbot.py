@@ -172,7 +172,7 @@ class GraphChatbot:
             actions = "No specific actions are available for these entities."
 
         # Fetch the context grammar rules from the database
-        context_grammar_rules = self.graph_repo.list_context_grammar_rules()
+        context_grammar_rules = self.graph_repo.get_enabled_rules()
 
         # Format the context grammar rules into a string for the prompt
         context_grammar = "\n".join(

@@ -175,6 +175,7 @@ class ContextGraphRepository:
             rule_name VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
             active BOOLEAN DEFAULT TRUE,
+            is_default BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -202,13 +203,29 @@ class ContextGraphRepository:
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
             cursor.execute("""
-                SELECT id, rule_name, description, active, created_at 
+                SELECT id, rule_name, description, active
                 FROM context_grammar
-                ORDER BY created_at DESC;
+                WHERE is_default = 0;  
             """)
             return cursor.fetchall()
         except Exception as e:
-            print(f"Error retrieving context grammar rules: {e}")
+            print(f"Error fetching context grammar rules: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_enabled_rules(self):
+        """Fetch all rules that are enabled (active) and not marked as default."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("""
+                SELECT id, rule_name, description
+                FROM context_grammar
+                WHERE active = 1;
+            """)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching enabled context grammar rules: {e}")
             return []
         finally:
             cursor.close()
