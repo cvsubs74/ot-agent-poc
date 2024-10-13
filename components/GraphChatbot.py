@@ -265,9 +265,9 @@ class GraphChatbot:
                     <li>Create scenarios for data transfers, risk assessments, and vendor management.</li>
                     <li>Explore complex relationships between policies, assets, vendors, and controls.</li>
                     <li>Identify compliance gaps and take corrective actions based on visualized data.</li>
-                    <li>Generate customized graphs by providing specific instructions related to your data ecosystem.</li>
+                    <li>Generate customized scenarios by providing specific instructions related to your data ecosystem.</li>
                 </ul>
-                Choose a category and subcategory below to construct your graph.
+                Choose a category and subcategory below to construct your scenario.
             </div>
             """, unsafe_allow_html=True)
         self.divider()
