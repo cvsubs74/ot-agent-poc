@@ -186,7 +186,7 @@ class OTExplorer:
         """, unsafe_allow_html=True)
 
         # Step 4: Create tabs for "Create Graph" and "Explore Graph"
-        tab1, tab2 = st.tabs(["Create Scenario", "Explore Scenario"])
+        tab1, tab2 = st.tabs(["Create Scenarios", "Explore Scenarios"])
 
         with tab1:
             graph_id = self.create_graph()
