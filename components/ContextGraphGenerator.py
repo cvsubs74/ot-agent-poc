@@ -3,8 +3,6 @@ import uuid
 
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
-from repositories.ContextGraphRepository import ContextGraphRepository
-from repositories.DatabaseManager import DatabaseManager
 from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS
 
 logger = logging.getLogger(__name__)

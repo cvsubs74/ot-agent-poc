@@ -86,70 +86,69 @@ class OTExplorer:
             graph_options = {f"{graph['name']}": graph for graph in graphs}
             graph_names = ["--Select a Scenario--"] + list(graph_options.keys())  # Add default option
 
-            # Store the graph_id in session state if provided or retrieved from session state
-            if graph_id:
+            # Retrieve the graph_id from session state or passed value
+            if 'graph_id' not in st.session_state and graph_id:
                 st.session_state['graph_id'] = graph_id
-            elif 'graph_id' in st.session_state:
-                graph_id = st.session_state['graph_id']
 
-            # Preselect the graph if a valid graph_id is present in session state
-            if graph_id:
-                selected_graph_name = next((name for name, graph in graph_options.items() if graph['id'] == graph_id),
-                                           None)
-                if selected_graph_name:
-                    selected_graph_name = st.selectbox("Select a Scenario", graph_names,
-                                                       index=graph_names.index(selected_graph_name))
-                else:
-                    selected_graph_name = st.selectbox("Select a Scenario", graph_names)
-            else:
-                selected_graph_name = st.selectbox("Select a Scenario", graph_names)
-
-            if selected_graph_name != "--Select a Scenario--":
+            # Callback to update session state when graph selection changes
+            def update_selected_graph():
+                selected_graph_name = st.session_state['selected_graph_name']
                 selected_graph = graph_options.get(selected_graph_name)
-
                 if selected_graph:
-                    graph_id = selected_graph['id']
-                    st.session_state['graph_id'] = graph_id  # Update session state with selected graph_id
+                    st.session_state['graph_id'] = selected_graph['id']
 
-                    # Visualize the full graph
-                    entities = []
-                    relationships = self.context_graph_generator.context_graph_repo.get_relationships_for_graph(
-                        graph_id)
-                    if relationships:
-                        entity_set = set()
-                        for rel in relationships:
-                            entity_set.add((rel['source_entity_type'], rel['source_entity_name']))
-                            entity_set.add((rel['target_entity_type'], rel['target_entity_name']))
-                        entities = [{'name': name, 'type': etype} for etype, name in entity_set]
-                        graph_html = self.graph_visualizer.visualize(entities, relationships)
-                        st.components.v1.html(graph_html, height=500, width=1000, scrolling=True)
+            # Set default selected graph
+            selected_graph_name = next(
+                (name for name, graph in graph_options.items() if graph['id'] == st.session_state.get('graph_id')),
+                "--Select a Scenario--"
+            )
+
+            # Dropdown to select a graph, with an on_change callback
+            st.selectbox("Select a Scenario", graph_names, index=graph_names.index(selected_graph_name),
+                         key="selected_graph_name", on_change=update_selected_graph)
+
+            # Continue only if a valid graph is selected
+            if selected_graph_name != "--Select a Scenario--":
+                selected_graph = graph_options[selected_graph_name]
+                graph_id = selected_graph['id']
+                st.session_state['graph_id'] = graph_id  # Update session state with selected graph_id
+
+                # Visualize the full graph
+                entities = []
+                relationships = self.context_graph_generator.context_graph_repo.get_relationships_for_graph(graph_id)
+                if relationships:
+                    entity_set = set()
+                    for rel in relationships:
+                        entity_set.add((rel['source_entity_type'], rel['source_entity_name']))
+                        entity_set.add((rel['target_entity_type'], rel['target_entity_name']))
+                    entities = [{'name': name, 'type': etype} for etype, name in entity_set]
+                    graph_html = self.graph_visualizer.visualize(entities, relationships)
+                    st.components.v1.html(graph_html, height=10, width=1000, scrolling=True)
+                else:
+                    st.warning("No relationships found in this graph.")
+
+                # Display dropdown for entity selection below the graph
+                entity_names = ["--Select an entity--"] + [entity['name'] for entity in entities]
+                selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names)
+
+                if selected_entity_name != "--Select an entity--":
+                    subgraph_data = self.context_graph_repo.get_subgraph_for_entity(graph_id, selected_entity_name)
+
+                    if subgraph_data:
+                        sub_entities = subgraph_data['entities']
+                        sub_relationships = subgraph_data['relationships']
+
+                        # Visualize the subgraph
+                        subgraph_html = self.graph_visualizer.visualize(sub_entities, sub_relationships)
+                        st.components.v1.html(subgraph_html, height=10, width=1000, scrolling=True)
                     else:
-                        st.warning("No relationships found in this graph.")
+                        st.warning(f"No relationships found for entity: {selected_entity_name}")
 
-                    # Display dropdown for entity selection below the graph
-                    entity_names = ["--Select an entity--"] + [entity['name'] for entity in entities]
-                    selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names)
-
-                    if selected_entity_name != "--Select an entity--":
-                        subgraph_data = self.context_graph_repo.get_subgraph_for_entity(graph_id, selected_entity_name)
-
-                        if subgraph_data:
-                            sub_entities = subgraph_data['entities']
-                            sub_relationships = subgraph_data['relationships']
-
-                            # Visualize the subgraph
-                            subgraph_html = self.graph_visualizer.visualize(sub_entities, sub_relationships)
-                            st.components.v1.html(subgraph_html, height=500, width=1000, scrolling=True)
-                        else:
-                            st.warning(f"No relationships found for entity: {selected_entity_name}")
-
-                    # Display chatbot functionality below the graph
-                    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>",
-                                unsafe_allow_html=True)
-                    self.graph_chatbot.context_graph_analyzer_chatbot(
-                        graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
-            else:
-                st.info("Please select a valid graph to visualize.")
+                # Display chatbot functionality below the graph
+                st.markdown("<h3 style='text-align: center; font-size: 24px;'>Query Explorer</h3>",
+                            unsafe_allow_html=True)
+                self.graph_chatbot.context_graph_analyzer_chatbot(
+                    graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
 
     def run(self):
         """Main function to run the Streamlit app."""

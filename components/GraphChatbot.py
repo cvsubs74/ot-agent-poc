@@ -319,10 +319,10 @@ class GraphChatbot:
                 "Access Control Policies": "Implementing access control policies for managing data and assets.",
                 "Third-Party Access": "Controlling third-party access to sensitive data and assets."
             },
-            "Data Governance": {
-                "Data Stewardship": "Managing governance structures and data policies across departments.",
-                "Data Lineage": "Tracking data flow across systems and vendors.",
-                "Governance Compliance": "Ensuring governance policies comply with regulations and standards."
+            "AI Governance": {
+                "Model Accountability": "Ensuring that AI models adhere to ethical standards and accountability frameworks.",
+                "Model Transparency": "Tracking the transparency of AI models, including data sources and decision-making processes.",
+                "Governance Compliance": "Ensuring AI governance policies comply with regulations, ethical standards, and industry best practices."
             }
         }
 
@@ -478,7 +478,7 @@ class GraphChatbot:
 
         try:
             # Call the AI model to generate the JSON based on instruction
-            with st.spinner("Generating the graph.."):
+            with st.spinner("Generating the scenario.."):
                 response = self.model.generate_content(prompt)
 
             # Ensure that we strip the response and only extract the JSON part
@@ -523,7 +523,7 @@ class GraphChatbot:
 
         try:
             # Call the LLM to generate the summary based on the prompt
-            with st.spinner("Generating the graph summary..."):
+            with st.spinner("Generating the scenario summary..."):
                 response = self.model.generate_content(prompt)
 
             if response and hasattr(response, 'text'):

@@ -192,6 +192,46 @@ class EntityType(Enum):
             }
         ]
     }
+    MODEL = {
+        "label": 'AI Model',
+        "actions": [
+            {
+                "action_name": "Do Bias Scan",
+                "api_endpoint": "/model/do_bias_scan",
+                "description": "Initiate a bias scan on the AI model to assess fairness and ethical considerations."
+            },
+            {
+                "action_name": "Review Model Risk",
+                "api_endpoint": "/model/review_risk",
+                "description": "Evaluate the model's privacy risk and compliance with regulations."
+            },
+            {
+                "action_name": "Assess Model Impact",
+                "api_endpoint": "/model/assess_impact",
+                "description": "Assess the overall impact of the model in the context of risk and privacy."
+            }
+        ]
+    }
+    DATASET = {
+        "label": 'Dataset',
+        "actions": [
+            {
+                "action_name": "Review Dataset Privacy Risk",
+                "api_endpoint": "/dataset/review_privacy_risk",
+                "description": "Evaluate the dataset for privacy risks, including personal data exposure and sensitive information handling."
+            },
+            {
+                "action_name": "Ensure Data Integrity",
+                "api_endpoint": "/dataset/ensure_integrity",
+                "description": "Check the dataset for integrity issues such as missing, corrupt, or inaccurate data."
+            },
+            {
+                "action_name": "Review Dataset Compliance",
+                "api_endpoint": "/dataset/review_compliance",
+                "description": "Assess whether the dataset complies with relevant data privacy regulations such as GDPR or CCPA."
+            }
+        ]
+    }
 
     @classmethod
     def from_value(cls, value):
