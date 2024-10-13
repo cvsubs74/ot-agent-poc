@@ -122,8 +122,7 @@ class OTExplorer:
                         entity_set.add((rel['source_entity_type'], rel['source_entity_name']))
                         entity_set.add((rel['target_entity_type'], rel['target_entity_name']))
                     entities = [{'name': name, 'type': etype} for etype, name in entity_set]
-                    graph_html = self.graph_visualizer.visualize(entities, relationships)
-                    st.components.v1.html(graph_html, height=10, width=1000, scrolling=True)
+                    self.graph_visualizer.visualize(entities, relationships)
                 else:
                     st.warning("No relationships found in this graph.")
 
@@ -139,8 +138,7 @@ class OTExplorer:
                         sub_relationships = subgraph_data['relationships']
 
                         # Visualize the subgraph
-                        subgraph_html = self.graph_visualizer.visualize(sub_entities, sub_relationships)
-                        st.components.v1.html(subgraph_html, height=10, width=1000, scrolling=True)
+                        self.graph_visualizer.visualize(sub_entities, sub_relationships)
                     else:
                         st.warning(f"No relationships found for entity: {selected_entity_name}")
 
