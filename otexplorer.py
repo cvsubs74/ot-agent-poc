@@ -65,7 +65,7 @@ class OTExplorer:
         st.markdown(
             """
             <div style='font-size: 1em; margin-bottom: 15px;'>
-                Dive deep into existing graphs, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
+                Dive deep into existing scenarios, which represent the complex relationships between various entities such as vendors, assets, policies, risks, and more. 
                 <br><br>
                 Each scenario is a visual representation of how entities are interconnected, and it allows you to:
                 <ul>
@@ -81,10 +81,10 @@ class OTExplorer:
         graphs = self.context_graph_generator.list_graphs()
 
         if not graphs:
-            st.info("No graphs found. Please create a new graph in the 'Create Graph' tab.")
+            st.info("No scenarios found. Please create a new scenario in the 'Create Scenario' tab.")
         else:
             graph_options = {f"{graph['name']}": graph for graph in graphs}
-            graph_names = ["--Select a scenario--"] + list(graph_options.keys())  # Add default option
+            graph_names = ["--Select a Scenario--"] + list(graph_options.keys())  # Add default option
 
             # Store the graph_id in session state if provided or retrieved from session state
             if graph_id:
@@ -97,14 +97,14 @@ class OTExplorer:
                 selected_graph_name = next((name for name, graph in graph_options.items() if graph['id'] == graph_id),
                                            None)
                 if selected_graph_name:
-                    selected_graph_name = st.selectbox("Select a Graph", graph_names,
+                    selected_graph_name = st.selectbox("Select a Scenario", graph_names,
                                                        index=graph_names.index(selected_graph_name))
                 else:
-                    selected_graph_name = st.selectbox("Select a Graph", graph_names)
+                    selected_graph_name = st.selectbox("Select a Scenario", graph_names)
             else:
-                selected_graph_name = st.selectbox("Select a Graph", graph_names)
+                selected_graph_name = st.selectbox("Select a Scenario", graph_names)
 
-            if selected_graph_name != "--Select a graph--":
+            if selected_graph_name != "--Select a Scenario--":
                 selected_graph = graph_options.get(selected_graph_name)
 
                 if selected_graph:
@@ -167,8 +167,8 @@ class OTExplorer:
 
             OT Explorer revolutionizes how organizations explore and manage their data by offering an interactive, context-driven graph platform. Whether you're looking to understand risks, manage vendor relationships, or ensure compliance, OT Explorer brings clarity to your complex data landscape:
 
-            - **Visualize & Analyze**: Create dynamic graphs that represent the relationships between vendors, assets, policies, risks, and more, allowing you to see the full context of your data.
-            - **Interact & Act**: Explore your graph through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
+            - **Visualize & Analyze**: Create dynamic scenarios that represent the relationships between vendors, assets, policies, risks, and more, allowing you to see the full context of your data.
+            - **Interact & Act**: Explore your scenario through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
             - **Monitor & Mitigate**: OT Explorer ensures you stay ahead of risks with real-time insights and actions. Visualize how entities are connected, spot potential issues, and take proactive measures.
 
             #### Why OT Explorer? 🌟
@@ -182,11 +182,11 @@ class OTExplorer:
 
             With OT Explorer, you can track and analyze complex relationships between entities, identify risks, and act on the information—all in one seamless platform. Visualize your organizational ecosystem with entities and relationships mapped across multiple systems. 
 
-            Ready to explore and take action? **Create a graph** or **explore existing graphs** to see how OT Explorer can transform your decision-making process.
+            Ready to explore and take action? **Create a scenario** or **explore existing scenarios** to see how OT Explorer can transform your decision-making process.
         """, unsafe_allow_html=True)
 
         # Step 4: Create tabs for "Create Graph" and "Explore Graph"
-        tab1, tab2 = st.tabs(["Create Graph", "Explore Graph"])
+        tab1, tab2 = st.tabs(["Create Scenario", "Explore Scenario"])
 
         with tab1:
             graph_id = self.create_graph()
