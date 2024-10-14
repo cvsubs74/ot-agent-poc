@@ -200,7 +200,7 @@ class GraphChatbot:
             - Focuses solely on the relationships, entities, and connections as defined in the graph data, ensuring that the analysis is strictly factual and data-driven.
             - Highlights important information by **bolding** them.
             - Uses bullet points for clarity and emphasis wherever applicable.
-            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.
+            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.            
             """
 
         try:
@@ -475,7 +475,7 @@ class GraphChatbot:
             ]
         }}
 
-        Ensure that the graph adheres to the specified or default number of entities. Here are the possible entity types:
+        Here are the possible entity types:
         {', '.join(entity_types)}
 
         Here are the possible relationship types:

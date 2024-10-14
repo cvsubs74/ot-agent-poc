@@ -207,7 +207,7 @@ class OTExplorer:
         """)
 
         # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", and "Business Rules"
-        tab1, tab2, tab3 = st.tabs(["Create Scenarios", "Explore Scenarios", "Business Rules"])
+        tab1, tab2, tab3 = st.tabs(["Create Scenarios", "Explore Scenarios", "Rules"])
 
         with tab1:
             graph_id = self.create_graph()
