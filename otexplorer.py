@@ -155,6 +155,16 @@ class OTExplorer:
 
     def display_business_rules(self):
         """Handles the logic for listing, enabling/disabling, and adding business rules."""
+        st.markdown("""
+                <div style='font-size: 1em; margin-bottom: 15px;'>
+                    Customize OT Explorer's recommendation engine by:
+                    <ul>
+                        <li>Defining your own context rules to tailor recommendations to your business needs.</li>
+                        <li>Enabling or disabling rules to refine the system's insights based on your unique requirements.</li>
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+
         # Fetch and display existing rules with enable/disable toggles
         rules = self.context_graph_repo.list_context_grammar_rules()
         if rules:
@@ -192,6 +202,18 @@ class OTExplorer:
 
     def entity_actions(self):
         """Handles the logic for listing, enabling/disabling, and adding entity actions."""
+        st.markdown("""
+            <div style='font-size: 1em; margin-bottom: 15px;'>
+                Manage and tailor actions specific to each entity type to enhance OT Explorer's recommendation engine. This section allows you to:
+                <ul>
+                    <li>Define custom actions for various entity types to align with your business processes.</li>
+                    <li>Enable or disable existing actions to control their availability and relevance.</li>
+                    <li>Add new actions to expand the platform's capabilities and address evolving business needs.</li>
+                </ul>
+                Utilize these tools to refine recommendations and automate actions that drive your business forward.
+            </div>
+            """, unsafe_allow_html=True)
+
         # Step 1: Select Entity Type
         entity_types = self.context_graph_repo.list_entity_types()
         if not entity_types:
@@ -274,9 +296,10 @@ class OTExplorer:
 
             OT Explorer revolutionizes how organizations explore and manage their data by offering an interactive, context-driven graph platform. Whether you're looking to understand risks, manage vendor relationships, or ensure compliance, OT Explorer brings clarity to your complex data landscape:
 
-            - **Visualize & Analyze**: Create dynamic scenarios that represent the relationships between vendors, assets, policies, risks, and more, allowing you to see the full context of your data.
-            - **Interact & Act**: Explore your scenario through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
-            - **Monitor & Mitigate**: OT Explorer ensures you stay ahead of risks with real-time insights and actions. Visualize how entities are connected, spot potential issues, and take proactive measures.
+            - 🗺️ **Visualize & Analyze**: Create dynamic scenarios that represent the relationships between vendors, assets, policies, risks, and more, allowing you to see the full context of your data.
+            - 💬 **Interact & Act**: Explore your scenario through a chatbot interface that allows you to ask complex business questions and receive detailed, contextually relevant answers. Take action directly within the interface by triggering risk assessments, audits, and more.
+            - 📊 **Monitor & Mitigate**: OT Explorer ensures you stay ahead of risks with real-time insights and actions. Visualize how entities are connected, spot potential issues, and take proactive measures.
+            - ⚙️ **Customize & Enhance**: Define your own context rules and actions to tailor the platform to your organization's unique needs. Watch as the recommendation engine dynamically adapts to your custom rules, providing personalized insights and actionable suggestions.
 
             Ready to explore and take action? **Create a scenario**, **explore existing scenarios**, or manage **business rules** to see how OT Explorer can transform your decision-making process.
         """)
