@@ -9,17 +9,20 @@ class GraphVisualizer:
         self.context_graph_generator = context_graph_generator
         # Define color mapping for visualization
         self.type_color_map = {
-            EntityType.VENDOR: 'red',
-            EntityType.ASSET: 'blue',
-            EntityType.ENTITY: 'green',
-            EntityType.PROCESSING_ACTIVITY: 'orange',
-            EntityType.CONTRACT: 'purple',
-            EntityType.ENGAGEMENT: 'cyan',
-            EntityType.POLICY: 'magenta',
-            EntityType.EXCEPTION: 'yellow',
-            EntityType.CONTROL: 'pink',
-            EntityType.EVIDENCE_TASK: 'grey',
-            EntityType.RISK: 'brown',
+            EntityType.VENDOR: '#FF5733',  # Red
+            EntityType.ASSET: '#3498DB',  # Blue
+            EntityType.ENTITY: '#2ECC71',  # Green
+            EntityType.PROCESSING_ACTIVITY: '#E67E22',  # Orange
+            EntityType.CONTRACT: '#9B59B6',  # Purple
+            EntityType.ENGAGEMENT: '#1ABC9C',  # Cyan
+            EntityType.POLICY: '#FF00FF',  # Magenta
+            EntityType.EXCEPTION: '#FFFF00',  # Yellow
+            EntityType.CONTROL: '#FFC0CB',  # Pink
+            EntityType.EVIDENCE_TASK: '#808080',  # Grey
+            EntityType.RISK: '#A52A2A',  # Brown
+            EntityType.PROJECT: '#FFA500',  # Orange
+            EntityType.MODEL: '#8E44AD',  # Dark Purple
+            EntityType.DATASET: '#16A085',  # Teal
         }
 
     def visualize_graph(self, graph_id):
@@ -138,8 +141,7 @@ class GraphVisualizer:
 
         # Display the color legend
         with col2:
-            st.markdown("<h4 style='text-align: left;'>Legend</h4>", unsafe_allow_html=True)
-
+            st.write("")
             for entity_type, color in self.type_color_map.items():
                 # Use a horizontal layout with color box and label
                 st.markdown(

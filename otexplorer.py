@@ -130,6 +130,7 @@ class OTExplorer:
                     st.warning("No relationships found in this graph.")
 
                 # Display dropdown for entity selection below the graph
+                st.write("")
                 entity_names = ["--Select an entity--"] + [entity['name'] for entity in entities]
                 selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names,
                                                     key="selected_entity_name")
