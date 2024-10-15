@@ -146,7 +146,7 @@ class GraphVisualizer:
                     f"""
                     <div style="display: flex; align-items: center; margin-bottom: 8px;">
                         <div style="width: 20px; height: 20px; background-color: {color}; margin-right: 10px; border: 1px solid black;"></div>
-                        <span>{entity_type.value['label']}</span>
+                        <span>{entity_type.value}</span>
                     </div>
                     """,
                     unsafe_allow_html=True

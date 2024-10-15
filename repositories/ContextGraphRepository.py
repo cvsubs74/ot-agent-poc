@@ -183,6 +183,36 @@ class ContextGraphRepository:
         self.connection.commit()
         cursor.close()
 
+    def create_entity_types_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `entity_types` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `label` VARCHAR(100) UNIQUE NOT NULL
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
+    def create_actions_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `actions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `entity_type_id` INT NOT NULL,
+            `action_name` VARCHAR(100) NOT NULL,
+            `api_endpoint` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `active` BOOLEAN DEFAULT TRUE,
+            UNIQUE (`entity_type_id`, `action_name`),
+            FOREIGN KEY (`entity_type_id`) REFERENCES `entity_types`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
     def add_context_grammar_rule(self, rule_name, description):
         cursor = self.connection.cursor()
         try:
@@ -793,5 +823,212 @@ class ContextGraphRepository:
         except Exception as e:
             print(f"An error occurred while retrieving the subgraph: {str(e)}")
             return None
+
+    def add_entity_type(self, label):
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO entity_types (label)
+            VALUES (%s)
+            ON DUPLICATE KEY UPDATE label = label;
+            """
+            cursor.execute(insert_query, (label,))
+            self.connection.commit()
+            print(f"Entity type '{label}' added successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding entity type '{label}': {e}")
+        finally:
+            cursor.close()
+
+    def list_entity_types(self):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT `id`, `label` FROM `entity_types`;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error listing entity types: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_entity_type_id(self, label):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT `id` FROM `entity_types` WHERE `label` = %s;", (label,))
+            result = cursor.fetchone()
+            if result:
+                return result['id']
+            else:
+                print(f"Entity type '{label}' not found.")
+                return None
+        except Exception as e:
+            print(f"Error retrieving entity type ID for '{label}': {e}")
+            return None
+        finally:
+            cursor.close()
+
+    def add_entity_action(self, entity_type_label, action_name, api_endpoint, description, active=True):
+        """
+        Add a new entity action to the database.
+
+        :param entity_type_label: Label of the entity type (e.g., 'Vendor', 'Asset').
+        :param action_name: Name of the action.
+        :param api_endpoint: API endpoint associated with the action.
+        :param description: Description of the action.
+        :param active: Boolean indicating if the action is active.
+        """
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+                INSERT INTO actions (entity_type_id, action_name, api_endpoint, description, active)
+                VALUES (
+                    (SELECT id FROM entity_types WHERE label = %s),
+                    %s,
+                    %s,
+                    %s,
+                    %s
+                )
+                ON DUPLICATE KEY UPDATE 
+                    api_endpoint = VALUES(api_endpoint),
+                    description = VALUES(description),
+                    active = VALUES(active);
+            """
+            cursor.execute(insert_query, (entity_type_label, action_name, api_endpoint, description, active))
+            self.connection.commit()
+            print(f"Entity action '{action_name}' added/updated successfully for entity type '{entity_type_label}'.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding/updating entity action '{action_name}' for entity type '{entity_type_label}': {e}")
+        finally:
+            cursor.close()
+
+    def list_entity_actions_by_entity_type(self, entity_type_label):
+        """
+        Retrieve all entity actions for a specific entity type.
+
+        :param entity_type_label: Label of the entity type (e.g., 'Vendor', 'Asset').
+        :return: List of actions associated with the entity type.
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("""
+                SELECT a.id, a.action_name, a.api_endpoint, a.description, a.active
+                FROM actions a
+                JOIN entity_types et ON a.entity_type_id = et.id
+                WHERE et.label = %s
+                ORDER BY a.action_name;
+            """, (entity_type_label,))
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching actions for entity type '{entity_type_label}': {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def update_entity_action_status(self, action_id, active):
+        """
+        Update the active status of an entity action.
+
+        :param action_id: ID of the action to update.
+        :param active: Boolean indicating the new status.
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                UPDATE actions
+                SET active = %s
+                WHERE id = %s;
+            """, (active, action_id))
+            self.connection.commit()
+            print(f"Entity action ID '{action_id}' updated to {'active' if active else 'inactive'}.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating entity action ID '{action_id}': {e}")
+        finally:
+            cursor.close()
+
+    def update_action(self, entity_type_label, action_name, api_endpoint=None, description=None):
+        entity_type_id = self.get_entity_type_id(entity_type_label)
+        if not entity_type_id:
+            print(f"Cannot update action. Entity type '{entity_type_label}' does not exist.")
+            return
+
+        cursor = self.connection.cursor()
+        try:
+            if api_endpoint and description:
+                update_query = """
+                UPDATE `actions`
+                SET `api_endpoint` = %s, `description` = %s
+                WHERE `entity_type_id` = %s AND `action_name` = %s;
+                """
+                cursor.execute(update_query, (api_endpoint, description, entity_type_id, action_name))
+            elif api_endpoint:
+                update_query = """
+                UPDATE `actions`
+                SET `api_endpoint` = %s
+                WHERE `entity_type_id` = %s AND `action_name` = %s;
+                """
+                cursor.execute(update_query, (api_endpoint, entity_type_id, action_name))
+            elif description:
+                update_query = """
+                UPDATE `actions`
+                SET `description` = %s
+                WHERE `entity_type_id` = %s AND `action_name` = %s;
+                """
+                cursor.execute(update_query, (description, entity_type_id, action_name))
+            else:
+                print("No fields to update.")
+                return
+
+            if cursor.rowcount == 0:
+                print(f"No action named '{action_name}' found for entity type '{entity_type_label}'.")
+            else:
+                self.connection.commit()
+                print(f"Action '{action_name}' updated successfully for entity type '{entity_type_label}'.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating action '{action_name}' for entity type '{entity_type_label}': {e}")
+        finally:
+            cursor.close()
+
+    def delete_action(self, entity_type_label, action_name):
+        entity_type_id = self.get_entity_type_id(entity_type_label)
+        if not entity_type_id:
+            print(f"Cannot delete action. Entity type '{entity_type_label}' does not exist.")
+            return
+
+        cursor = self.connection.cursor()
+        try:
+            delete_query = """
+            DELETE FROM `actions`
+            WHERE `entity_type_id` = %s AND `action_name` = %s;
+            """
+            cursor.execute(delete_query, (entity_type_id, action_name))
+            self.connection.commit()
+            if cursor.rowcount == 0:
+                print(f"No action named '{action_name}' found for entity type '{entity_type_label}'.")
+            else:
+                print(f"Action '{action_name}' deleted successfully from entity type '{entity_type_label}'.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error deleting action '{action_name}' from entity type '{entity_type_label}': {e}")
+        finally:
+            cursor.close()
+
+    def get_all_actions(self):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("""
+                SELECT et.label AS entity_type, a.action_name, a.api_endpoint, a.description
+                FROM actions a
+                JOIN entity_types et ON a.entity_type_id = et.id;
+            """)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving all actions: {e}")
+            return []
+        finally:
+            cursor.close()
 
 

@@ -88,18 +88,23 @@ class OTExplorer:
             if graph_id is None:
                 graph_id = st.session_state.get('graph_id')  # Get from session state if not passed
 
+            # Set default selected graph name from session if available
+            if graph_id:
+                selected_graph_name = next(
+                    (name for name, graph in graph_options.items() if graph['id'] == graph_id),
+                    "--Select a Scenario--"
+                )
+            else:
+                selected_graph_name = "--Select a Scenario--"  # Default to no selection if graph_id is not in session state
+
             # Callback to update session state when graph selection changes
             def update_selected_graph():
                 selected_graph_name = st.session_state['selected_graph_name']
                 selected_graph = graph_options.get(selected_graph_name)
                 if selected_graph:
                     st.session_state['graph_id'] = selected_graph['id']
-
-            # Set default selected graph
-            selected_graph_name = next(
-                (name for name, graph in graph_options.items() if graph['id'] == graph_id),
-                "--Select a Scenario--"
-            )
+                    st.session_state[
+                        'selected_entity_name'] = "--Select an entity--"  # Reset entity selection when graph changes
 
             # Dropdown to select a graph, with an on_change callback
             st.selectbox("Select a Scenario", graph_names, index=graph_names.index(selected_graph_name),
@@ -126,7 +131,8 @@ class OTExplorer:
 
                 # Display dropdown for entity selection below the graph
                 entity_names = ["--Select an entity--"] + [entity['name'] for entity in entities]
-                selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names)
+                selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names,
+                                                    key="selected_entity_name")
 
                 if selected_entity_name != "--Select an entity--":
                     subgraph_data = self.context_graph_repo.get_subgraph_for_entity(graph_id, selected_entity_name)
@@ -183,6 +189,74 @@ class OTExplorer:
                 st.success(f"Rule '{new_rule_name}' added successfully!")
                 st.rerun()
 
+    def entity_actions(self):
+        """Handles the logic for listing, enabling/disabling, and adding entity actions."""
+        # Step 1: Select Entity Type
+        entity_types = self.context_graph_repo.list_entity_types()
+        if not entity_types:
+            st.info("No entity types found. Please add entity types before managing actions.")
+            return
+
+        entity_type_labels = [et['label'] for et in entity_types]
+        selected_entity_type = st.selectbox("Select Entity Type", entity_type_labels, key="selected_entity_type")
+
+        # Fetch actions for the selected entity type
+        actions = self.context_graph_repo.list_entity_actions_by_entity_type(selected_entity_type)
+
+        if actions:
+            # Create a form to batch update action statuses
+            with st.form("update_entity_actions_form"):
+                for action in actions:
+                    # Display each action with a toggle to enable/disable
+                    action_enabled = st.toggle(
+                        f"**{action['action_name']}**: {action['description']}",
+                        value=action.get('active', True),  # Default to True if 'active' not present
+                        key=f"action_toggle_{action['id']}"
+                    )
+                    # Update the action's active status in the actions list
+                    action['active'] = action_enabled
+
+                # Submit button to update action statuses
+                update_submit = st.form_submit_button("Update Actions")
+
+                if update_submit:
+                    # Save the updated enabled/disabled states to the database
+                    for action in actions:
+                        self.context_graph_repo.update_entity_action_status(action['id'], action['active'])
+                    st.success("Entity actions updated successfully!")
+                    st.rerun()  # Refresh the page to reflect changes
+
+        else:
+            st.info(f"No actions found for entity type '{selected_entity_type}'.")
+
+        # Step 3: Add a New Action for the Selected Entity Type
+        with st.form("add_entity_action_form", clear_on_submit=True):
+            new_action_name = st.text_input("Action Name")
+            new_api_endpoint = st.text_input("API Endpoint")
+            new_description = st.text_area("Action Description")
+            new_action_active = st.checkbox("Active", value=True)
+            submit = st.form_submit_button("Add Entity Action")
+
+            if submit:
+                # Input Validation
+                if not new_action_name:
+                    st.error("Please provide an Action Name.")
+                elif not new_api_endpoint:
+                    st.error("Please provide an API Endpoint.")
+                elif not new_description:
+                    st.error("Please provide an Action Description.")
+                else:
+                    # Add the new action using the repository method
+                    self.context_graph_repo.add_entity_action(
+                        entity_type_label=selected_entity_type,
+                        action_name=new_action_name,
+                        api_endpoint=new_api_endpoint,
+                        description=new_description,
+                        active=new_action_active
+                    )
+                    st.success(f"Entity action '{new_action_name}' added successfully!")
+                    st.rerun()
+
     def run(self):
         """Main function to run the Streamlit app."""
         # Step 1: Configure the page
@@ -207,7 +281,7 @@ class OTExplorer:
         """)
 
         # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", and "Business Rules"
-        tab1, tab2, tab3 = st.tabs(["Create Scenarios", "Explore Scenarios", "Rules"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Create Scenarios", "Explore Scenarios", "Rules", "Actions"])
 
         with tab1:
             graph_id = self.create_graph()
@@ -217,6 +291,9 @@ class OTExplorer:
 
         with tab3:
             self.display_business_rules()
+
+        with tab4:
+            self.entity_actions()
 
 
 if __name__ == "__main__":

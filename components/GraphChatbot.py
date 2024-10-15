@@ -219,10 +219,16 @@ class GraphChatbot:
             st.error(f"An error occurred: {str(e)}")
             st.warning("Please try again later.")
 
-    @staticmethod
-    def get_actions_from_graph(graph_data):
+    def get_actions_from_graph(self, graph_data):
         """
         Get the actions for all entities present in the graph based on their type and generate clickable hyperlinks.
+
+        Parameters:
+        - repository (ContextGraphRepository): The repository instance to interact with the database.
+        - graph_data (dict): The graph data containing relationships between entities.
+
+        Returns:
+        - str: A string containing HTML-formatted clickable action links separated by line breaks.
         """
         entities = graph_data.get('relationships', [])
         actions_html = []
@@ -235,29 +241,31 @@ class GraphChatbot:
             except ValueError:
                 continue  # Skip if the entity type is not recognized
 
-            # Extract actions for the source and target entity types
-            source_actions = source_type.value.get('actions', [])
-            target_actions = target_type.value.get('actions', [])
+            # Fetch actions from the repository for both source and target entity types
+            source_actions = self.graph_repo.list_entity_actions_by_entity_type(source_type.value)
+            target_actions = self.graph_repo.list_entity_actions_by_entity_type(target_type.value)
 
-            # Generate clickable links for actions for the source entity
+            # Generate clickable links for actions associated with the source entity
             for action in source_actions:
                 action_name = action['action_name']
                 action_url = action['api_endpoint']
-                # Creating proper clickable link using triggerAction
+                description = action['description']
+                # Creating clickable link using triggerAction JavaScript function
                 actions_html.append(
-                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {action['description']}"
+                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {description}"
                 )
 
-            # Generate clickable links for actions for the target entity
+            # Generate clickable links for actions associated with the target entity
             for action in target_actions:
                 action_name = action['action_name']
                 action_url = action['api_endpoint']
-                # Creating proper clickable link using triggerAction
+                description = action['description']
+                # Creating clickable link using triggerAction JavaScript function
                 actions_html.append(
-                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {action['description']}"
+                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {description}"
                 )
 
-        # Convert actions list to a string for the prompt
+        # Convert the list of action links into a single HTML string separated by line breaks
         return "<br>".join(actions_html)
 
     def context_graph_generation_chatbot(self):
