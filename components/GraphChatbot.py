@@ -345,7 +345,6 @@ class GraphChatbot:
         }
 
         # Step 1: Allow user to select a category using buttons
-        selected_category = None
         graph_id = None
 
         # Display category buttons (5 per row)
@@ -356,7 +355,6 @@ class GraphChatbot:
                 if i + j < len(category_keys):
                     category = category_keys[i + j]
                     if cols[j].button(category):
-                        selected_category = category
                         st.session_state.graph_creation_selected_category = category
 
         self.divider()
@@ -406,7 +404,8 @@ class GraphChatbot:
                         for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
                             if key in st.session_state:
                                 del st.session_state[key]
-                        self.graph_visualizer.visualize_graph(graph_id)
+                        with st.spinner("Generating visuals.."):
+                            self.graph_visualizer.visualize_graph(graph_id)
                     else:
                         st.error(f"Failed to create scenario '{graph_name}'.")
                 except json.JSONDecodeError:
@@ -455,7 +454,7 @@ class GraphChatbot:
         """
 
         # Dynamically build the entity types and relationship types from the enums
-        entity_types = [et.value["label"] for et in EntityType]  # Accessing the 'label' field correctly
+        entity_types = [et.value for et in EntityType]
         relationship_types = [rt.value for rt in RelationshipType]
 
         # Convert allowed relationships into a string format
@@ -463,7 +462,7 @@ class GraphChatbot:
         for relationship_type, pairs in ALLOWED_RELATIONSHIPS.items():
             allowed_relationships_str += f"\n- {relationship_type.value}:\n"
             for source, target in pairs:
-                allowed_relationships_str += f"    ({source.value['label']} -> {target.value['label']})\n"  # Correctly accessing 'label'
+                allowed_relationships_str += f"    ({source.value} -> {target.value})\n"
 
         prompt = f"""
         The user has provided the following instruction: "{instruction}"

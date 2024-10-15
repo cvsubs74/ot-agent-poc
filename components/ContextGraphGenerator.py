@@ -1,6 +1,5 @@
 import logging
 import uuid
-
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
 from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS
