@@ -17,6 +17,13 @@ class OTExplorer:
         self.graph_chatbot = GraphChatbot(
             self.context_graph_repo, self.context_graph_generator, self.graph_visualizer)
 
+    @staticmethod
+    def divider(height=1):
+        """Utility function to create a divider with specified height."""
+        st.markdown(f"<hr style='height:{height}px; "
+                    f"margin-top: 0;  margin-bottom: 0; border-width:0; background: lightblue;'>",
+                    unsafe_allow_html=True)
+
     def configure_page(self):
         """Configure the Streamlit page settings."""
         st.set_page_config(page_title="OT Explorer - Contextual Graph Generator and Explorer", layout="wide")
@@ -74,6 +81,7 @@ class OTExplorer:
             Use this powerful tool to gain insights, identify potential risks, and monitor compliance across your organizational data in real time.
         </div>
         """, unsafe_allow_html=True)
+        self.divider()
 
         # Get graph list
         graphs = self.context_graph_generator.list_graphs()
@@ -164,6 +172,7 @@ class OTExplorer:
                     </ul>
                 </div>
             """, unsafe_allow_html=True)
+        self.divider()
 
         # Fetch and display existing rules with enable/disable toggles
         rules = self.context_graph_repo.list_context_grammar_rules()
@@ -213,6 +222,7 @@ class OTExplorer:
                 Utilize these tools to refine recommendations and automate actions that drive your business forward.
             </div>
             """, unsafe_allow_html=True)
+        self.divider()
 
         # Step 1: Select Entity Type
         entity_types = self.context_graph_repo.list_entity_types()
@@ -318,7 +328,6 @@ class OTExplorer:
 
         with tab4:
             self.entity_actions()
-
 
 if __name__ == "__main__":
     app = OTExplorer()
