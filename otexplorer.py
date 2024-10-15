@@ -170,6 +170,7 @@ class OTExplorer:
                         <li>Defining your own context rules to tailor recommendations to your business needs.</li>
                         <li>Enabling or disabling rules to refine the system's insights based on your unique requirements.</li>
                     </ul>
+                    Utilize these tools to refine the analysis and recommendations from OT Explorer.
                 </div>
             """, unsafe_allow_html=True)
         self.divider()
@@ -219,7 +220,7 @@ class OTExplorer:
                     <li>Enable or disable existing actions to control their availability and relevance.</li>
                     <li>Add new actions to expand the platform's capabilities and address evolving business needs.</li>
                 </ul>
-                Utilize these tools to refine recommendations and automate actions that drive your business forward.
+                Utilize these tools to refine action recommendations from OT Explorer.
             </div>
             """, unsafe_allow_html=True)
         self.divider()
