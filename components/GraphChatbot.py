@@ -45,15 +45,6 @@ class GraphChatbot:
             st.error(f"Graph with ID {graph_id} not found.")
             return
 
-        # Convert relationships from the graph details to JSON
-        relationships_json = json.dumps(graph_details.get('relationships', []), indent=4, cls=CustomJSONEncoder)
-
-        # Extract entities and their attributes from the graph details
-        entities = graph_details.get('entities', [])
-        entities_with_attributes = "\n".join(
-            [f"- **{entity['name']}** ({entity['type']}): {json.dumps(entity['attributes'], indent=2)}" for entity in
-             entities])
-
         # Define categories of questions related to the graph
         categories = {
             "Data Transfer": [
@@ -155,10 +146,10 @@ class GraphChatbot:
 
         # Handle the selected question
         if st.session_state.selected_question:
-            self.handle_question(st.session_state.selected_question, relationships_json, entities_with_attributes)
+            self.handle_question(st.session_state.selected_question, graph_details)
             st.session_state.selected_question = None
 
-    def handle_question(self, question, relationships_json, entities_with_attributes):
+    def handle_question(self, question, graph_details):
         """
         Handles the logic of answering a graph-related question by injecting the graph details into the response.
         If 'show_json' is true, display the graph JSON to the user.
@@ -169,6 +160,18 @@ class GraphChatbot:
         # Format the context grammar rules into a string for the prompt
         context_grammar = "\n".join(
             [f"- **{rule['rule_name']}**: {rule['description']}" for rule in context_grammar_rules])
+
+        # Convert relationships from the graph details to JSON
+        relationships_json = json.dumps(graph_details.get('relationships', []), indent=4, cls=CustomJSONEncoder)
+
+        # Extract entities and their attributes from the graph details
+        entities = graph_details.get('entities', [])
+        entities_with_attributes = "\n".join(
+            [f"- **{entity['name']}** ({entity['type']}): {json.dumps(entity['attributes'], indent=2)}" for entity in
+             entities])
+
+        # Prepare hyperlinked actions based on entities in the graph
+        actions = self.get_actions_from_graph(graph_details)
 
         # Construct the prompt for the AI model based on the graph details and the user's question
         prompt = f"""
@@ -181,6 +184,9 @@ class GraphChatbot:
 
             **Relationships:**
             {relationships_json}
+            
+            **Available Actions** (if needed): 
+            {actions}
 
             **Context Grammar:**
             {context_grammar}
@@ -216,39 +222,31 @@ class GraphChatbot:
         Get the actions for all entities present in the graph based on their type and generate clickable hyperlinks.
 
         Parameters:
-        - repository (ContextGraphRepository): The repository instance to interact with the database.
-        - graph_data (dict): The graph data containing relationships between entities.
+        - graph_data (dict): The graph data containing entities and their attributes.
 
         Returns:
         - str: A string containing HTML-formatted clickable action links separated by line breaks.
         """
-        entities = graph_data.get('relationships', [])
+        entities = graph_data.get('entities', [])  # Get entities from the graph data
         actions_html = []
 
         for entity in entities:
-            # Get the entity types
+            # Get the entity type
+            entity_type_str = entity.get('type')
+            if not entity_type_str:
+                continue  # Skip if entity type is missing
+
             try:
-                source_type = EntityType.from_value(entity['source_entity_type'])
-                target_type = EntityType.from_value(entity['target_entity_type'])
+                # Convert the entity type string to its enum value
+                entity_type = EntityType.from_value(entity_type_str)
             except ValueError:
                 continue  # Skip if the entity type is not recognized
 
-            # Fetch actions from the repository for both source and target entity types
-            source_actions = self.graph_repo.list_entity_actions_by_entity_type(source_type.value)
-            target_actions = self.graph_repo.list_entity_actions_by_entity_type(target_type.value)
+            # Fetch actions from the repository for the entity type
+            actions = self.graph_repo.list_entity_actions_by_entity_type(entity_type.value)
 
-            # Generate clickable links for actions associated with the source entity
-            for action in source_actions:
-                action_name = action['action_name']
-                action_url = action['api_endpoint']
-                description = action['description']
-                # Creating clickable link using triggerAction JavaScript function
-                actions_html.append(
-                    f"<a href='#' onclick='triggerAction(\"{action_url}\")'>{action_name}</a>: {description}"
-                )
-
-            # Generate clickable links for actions associated with the target entity
-            for action in target_actions:
+            # Generate clickable links for actions associated with the entity
+            for action in actions:
                 action_name = action['action_name']
                 action_url = action['api_endpoint']
                 description = action['description']
