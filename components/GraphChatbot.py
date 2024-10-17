@@ -374,7 +374,6 @@ class GraphChatbot:
             generated_json = self.generate_graph_generation_json(
                 f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
             )
-            st.write(generated_json)
 
             if generated_json:
                 try:
