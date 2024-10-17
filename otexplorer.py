@@ -4,7 +4,7 @@ from components.ContextGrammar import ContextGrammar
 from components.EntityActions import EntityActions
 from components.GraphExplorer import GraphExplorer
 from components.GraphVisualizer import GraphVisualizer
-from components.ContextGraphGenerator import ContextGraphGenerator
+from components.GraphGenerator import ContextGraphGenerator
 from components.GraphChatbot import GraphChatbot
 from repositories.ContextGraphRepository import ContextGraphRepository
 from repositories.DatabaseManager import DatabaseManager
@@ -79,6 +79,10 @@ class OTExplorer:
     def entity_actions(self):
         EntityActions(self.context_graph_repo).actions()
 
+    def chatbot(self):
+        self.graph_chatbot.context_graph_analyzer_chatbot(
+            None, None)
+
     def run(self):
         """Main function to run the Streamlit app."""
         # Step 1: Configure the page
@@ -104,8 +108,9 @@ class OTExplorer:
             Ready to explore and take action? **Create a scenario**, **explore existing scenarios**, or manage **business rules** to see how OT Explorer can transform your decision-making process.
         """)
 
-        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", and "Business Rules"
-        tab1, tab2, tab3, tab4 = st.tabs(["Create Scenarios", "Explore Scenarios", "Rules", "Actions"])
+        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", "Rules", "Actions", and "AI Insights"
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(
+            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights"])
 
         with tab1:
             graph_id = self.create_graph()
@@ -118,6 +123,9 @@ class OTExplorer:
 
         with tab4:
             self.entity_actions()
+
+        with tab5:
+            self.chatbot()
 
 
 if __name__ == "__main__":

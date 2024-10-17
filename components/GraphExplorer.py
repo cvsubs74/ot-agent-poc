@@ -1,6 +1,6 @@
 import streamlit as st
 
-from components.ContextGraphGenerator import ContextGraphGenerator
+from components.GraphGenerator import ContextGraphGenerator
 from components.GraphChatbot import GraphChatbot
 from components.GraphVisualizer import GraphVisualizer
 from repositories.ContextGraphRepository import ContextGraphRepository
@@ -75,7 +75,7 @@ class GraphExplorer:
 
                 # Visualize the full graph
                 entities = []
-                relationships = self.context_graph_generator.context_graph_repo.get_relationships_for_graph(graph_id)
+                relationships = self.context_graph_repo.get_relationships_for_graph(graph_id)
                 if relationships:
                     entity_set = set()
                     for rel in relationships:

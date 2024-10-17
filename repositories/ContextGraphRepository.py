@@ -879,6 +879,43 @@ class ContextGraphRepository:
         finally:
             cursor.close()
 
+    def get_all_graph_details(self):
+        """
+        Fetch all relationships and related entities with their attributes, disregarding graph boundaries.
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            # Fetch all relationships across all graphs
+            cursor.execute("""
+                SELECT rt.name AS relationship_type, 
+                       r.source_entity_type, r.source_entity_name, 
+                       r.target_entity_type, r.target_entity_name
+                FROM relationships r
+                JOIN relationship_types rt ON r.relationship_type_id = rt.id;
+            """)
+            relationships = cursor.fetchall()
+
+            # Fetch all entities and their attributes across all graphs
+            cursor.execute("""
+                SELECT e.name, e.type, e.attributes 
+                FROM entities e;
+            """)
+            entities = cursor.fetchall()
+
+            # Create a dictionary that combines all entities and relationships as if they belong to the same graph
+            graph_details = {
+                'relationships': relationships,
+                'entities': entities
+            }
+
+            return graph_details
+
+        except Exception as e:
+            print(f"Error retrieving all graph details: {e}")
+            return None
+        finally:
+            cursor.close()
+
     def get_subgraph_for_entity(self, graph_id, entity):
         """
         Retrieves the subgraph of all entities linked directly or indirectly to the given entity,

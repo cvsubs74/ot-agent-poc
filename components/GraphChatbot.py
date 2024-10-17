@@ -37,7 +37,9 @@ class GraphChatbot:
 
     def context_graph_analyzer_chatbot(self, graph_id, entity=None):
         # Fetch the graph details by ID, including entities with their attributes
-        if entity:
+        if not graph_id:
+            graph_details = self.graph_repo.get_all_graph_details()
+        elif entity:
             graph_details = self.graph_repo.get_subgraph_for_entity(graph_id, entity)
         else:
             graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
@@ -376,6 +378,7 @@ class GraphChatbot:
 
             if generated_json:
                 try:
+                    st.write(generated_json)
                     graph_data = json.loads(generated_json)
                     graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
                     if success:
@@ -462,7 +465,9 @@ class GraphChatbot:
         prompt = f"""
         The user has provided the following instruction: "{instruction}"
 
-        Based on this instruction, generate a valid JSON for a graph creation. If the instruction specifies a particular number of nodes or entities, ensure that the graph adheres to that specification. Otherwise, generate a graph with **at most 50 nodes**. The format should be:
+        Based on this instruction, generate a valid JSON for a graph creation. 
+        If the instruction specifies a **particular number of nodes or entities**, ensure that the graph **adheres** to that **specification**. 
+        Otherwise, generate a graph with **at most 50 nodes**. The format should be:
 
         {{
             "graph_name": "<Name of the graph>",
