@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from enums.EntityType import EntityType
@@ -89,13 +90,25 @@ class ContextGraphGenerator:
                 logger.error(f"Failed to create graph '{graph_name}'.")
                 return graph_name, False
 
-            # Step 4: Add entities from the JSON
+            # Step 4: Add entities from the JSON (with attributes)
             entities = graph_data.get('entities', [])
             for entity in entities:
                 entity_name = entity['name']
                 entity_type_str = entity['type']
+                entity_attributes = entity.get('attributes', {})  # Capture the attributes from JSON
+
+                # Convert the entity type string to the corresponding enum
                 entity_type = EntityType.from_value(entity_type_str)
+
+                # Ensure entity attributes are properly converted to JSON before storing
+                entity_attributes_json = json.dumps(entity_attributes)
+
+                # Persist entity with attributes to the database, now with graph_id
                 self.add_entity(entity_type, entity_name)
+                entity_name_prefixed = f"G{graph_id}_{entity_name}"
+                self.context_graph_repo.add_entity(entity_name_prefixed, entity_type_str, entity_attributes_json, graph_id)
+                logger.info(
+                    f"Entity '{entity_name}' of type '{entity_type_str}' added with attributes {entity_attributes}.")
 
             # Step 5: Add relationships from the JSON
             relationships = graph_data.get('relationships', [])
@@ -108,13 +121,15 @@ class ContextGraphGenerator:
                     relationship_type = RelationshipType.from_value(relationship_type_str)
                     # If successful, add the relationship
                     self.add_relationship(source_name, target_name, relationship_type)
+                    logger.info(
+                        f"Relationship '{relationship_type_str}' added between '{source_name}' and '{target_name}'.")
 
                 except ValueError:
                     # If an invalid relationship type is encountered, skip this relationship
-                    print(
+                    logger.error(
                         f"Skipping invalid relationship type: {relationship_type_str} between {source_name} and {target_name}")
 
-            # Step 6: Commit the graph and relationships to the database
+            # Step 6: Commit the relationships to the database
             for rel in self.relationships:
                 source_name_prefixed = f"G{graph_id}_{rel['source_name']}"
                 target_name_prefixed = f"G{graph_id}_{rel['target_name']}"

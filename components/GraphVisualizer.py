@@ -52,7 +52,7 @@ class GraphVisualizer:
         options = {
             "edges": {
                 "font": {
-                    "size": 12,  # Font size for edge labels
+                    "size": 12,
                     "align": "middle"
                 },
                 "arrows": {
@@ -67,35 +67,35 @@ class GraphVisualizer:
             },
             "nodes": {
                 "font": {
-                    "size": 12,  # Font size for node labels
+                    "size": 12,
                     "color": "#000000"
                 },
                 "shape": "dot",
-                "size": 16,  # Node size
+                "size": 16,
                 "scaling": {
-                    "min": 20,  # Minimum node size
-                    "max": 40  # Maximum node size
+                    "min": 20,
+                    "max": 40
                 }
             },
             "physics": {
                 "enabled": True,
                 "barnesHut": {
-                    "gravitationalConstant": -8000,  # Increase attraction
-                    "centralGravity": 0.8,  # Reduce node spacing
-                    "springLength": 130,  # Space nodes further apart
-                    "springConstant": 0.05,
-                    "damping": 0.09
+                    "gravitationalConstant": -3000,  # Reduced from -8000
+                    "centralGravity": 0.4,  # Reduced from 0.8
+                    "springLength": 100,  # Reduced from 130
+                    "springConstant": 0.04,  # Slightly reduced
+                    "damping": 0.07  # Slightly reduced
                 },
-                "minVelocity": 0.75
+                "minVelocity": 0.5  # Reduced from 0.75
             },
             "layout": {
                 "randomSeed": 2
             },
             "interaction": {
-                "navigationButtons": True,  # Add zoom controls
-                "keyboard": True,  # Allow keyboard controls
-                "multiselect": False,  # Disable multiselect
-                "zoomView": True,  # Prevent zooming in too much
+                "navigationButtons": True,
+                "keyboard": True,
+                "multiselect": False,
+                "zoomView": True,
             }
         }
 

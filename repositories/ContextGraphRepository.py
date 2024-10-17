@@ -2,6 +2,80 @@ import pymysql.cursors
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
 
+# Predefined attributes for each entity type
+ENTITY_TYPE_ATTRIBUTES = {
+    'Vendor': {
+        'vendor_type': 'VARCHAR(50)',
+        'country': 'VARCHAR(100)',
+        'status': 'VARCHAR(50)'
+    },
+    'Asset': {
+        'asset_type': 'VARCHAR(50)',
+        'location': 'VARCHAR(255)',
+        'criticality': 'ENUM("low", "medium", "high")'
+    },
+    'Entity': {
+        'entity_type': 'VARCHAR(50)',
+        'date_created': 'DATE',
+        'status': 'VARCHAR(50)'
+    },
+    'Processing Activity': {
+        'process_owner': 'VARCHAR(100)',
+        'activity_type': 'VARCHAR(50)',
+        'purpose': 'VARCHAR(255)'
+    },
+    'Contract': {
+        'start_date': 'DATE',
+        'end_date': 'DATE',
+        'status': 'VARCHAR(50)'
+    },
+    'Engagement': {
+        'engagement_type': 'VARCHAR(50)',
+        'start_date': 'DATE',
+        'end_date': 'DATE'
+    },
+    'Policy': {
+        'policy_type': 'VARCHAR(50)',
+        'effective_date': 'DATE',
+        'expiration_date': 'DATE'
+    },
+    'Exception': {
+        'exception_type': 'VARCHAR(50)',
+        'created_date': 'DATE',
+        'status': 'VARCHAR(50)'
+    },
+    'Control': {
+        'control_type': 'VARCHAR(50)',
+        'status': 'VARCHAR(50)',
+        'implementation_date': 'DATE'
+    },
+    'Evidence Task': {
+        'assigned_to': 'VARCHAR(100)',
+        'due_date': 'DATE',
+        'status': 'VARCHAR(50)'
+    },
+    'Risk': {
+        'risk_type': 'VARCHAR(50)',
+        'severity': 'ENUM("low", "medium", "high")',
+        'mitigation_plan': 'VARCHAR(255)'
+    },
+    'Project': {
+        'project_manager': 'VARCHAR(100)',
+        'start_date': 'DATE',
+        'end_date': 'DATE'
+    },
+    'AI Model': {
+        'model_version': 'VARCHAR(50)',
+        'training_data': 'VARCHAR(255)',
+        'accuracy': 'DECIMAL(5,2)'
+    },
+    'Dataset': {
+        'source_system': 'VARCHAR(255)',
+        'row_count': 'INT',
+        'last_updated': 'DATE'
+    }
+}
+
 ALLOWED_RELATIONSHIPS = {
     RelationshipType.DATA_TRANSFER: [
         (EntityType.VENDOR, EntityType.ASSET),
@@ -213,6 +287,60 @@ class ContextGraphRepository:
         self.connection.commit()
         cursor.close()
 
+    def create_entities_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `entities` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `type` VARCHAR(100) NOT NULL,  # Added type column
+            `attributes` JSON NOT NULL,
+            `graph_id` INT,
+            FOREIGN KEY (graph_id) REFERENCES graphs(id) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
+    def add_entity(self, name, entity_type, attributes, graph_id):
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO entities (name, type, attributes, graph_id)
+            VALUES (%s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (name, entity_type, attributes, graph_id))
+            self.connection.commit()
+            print(f"Entity '{name}' of type '{entity_type}' added successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding entity '{name}' of type '{entity_type}': {e}")
+        finally:
+            cursor.close()
+
+    def list_entities(self):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT `id`, `name`, `attributes` FROM `entities`;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error listing entities: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_entity_by_name(self, name):
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT `id`, `name`, `attributes` FROM `entities` WHERE `name` = %s;", (name,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving entity by name '{name}': {e}")
+            return None
+        finally:
+            cursor.close()
+
     def add_context_grammar_rule(self, rule_name, description):
         cursor = self.connection.cursor()
         try:
@@ -276,8 +404,6 @@ class ContextGraphRepository:
             print(f"Error updating context grammar rule: {e}")
         finally:
             cursor.close()
-
-
 
     def populate_relationship_types(self):
         cursor = self.connection.cursor()
@@ -706,7 +832,7 @@ class ContextGraphRepository:
 
     def get_graph_details_by_id(self, graph_id):
         """
-        Fetch all details of a graph by its ID, including relationships and related entities.
+        Fetch all details of a graph by its ID, including relationships and related entities with their attributes.
         """
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
@@ -732,8 +858,18 @@ class ContextGraphRepository:
                 WHERE r.graph_id = %s;
             """, (graph_id,))
             relationships = cursor.fetchall()
-
             graph_details['relationships'] = relationships
+
+            # Fetch entities and their attributes related to the graph
+            cursor.execute("""
+                SELECT e.name, e.type, e.attributes 
+                FROM entities e
+                WHERE e.graph_id = %s;
+            """, (graph_id,))
+            entities = cursor.fetchall()
+
+            # Add entities with their attributes to the graph details
+            graph_details['entities'] = entities
 
             return graph_details
 
@@ -745,7 +881,8 @@ class ContextGraphRepository:
 
     def get_subgraph_for_entity(self, graph_id, entity):
         """
-        Retrieves the subgraph of all entities linked directly or indirectly to the given entity.
+        Retrieves the subgraph of all entities linked directly or indirectly to the given entity,
+        including their attributes.
 
         :param graph_id: The ID of the graph being explored.
         :param entity: The name of the entity to explore.
@@ -799,8 +936,18 @@ class ContextGraphRepository:
                     print("Possible circular reference detected, stopping traversal.")
                     break
 
-            # Convert the subgraph entities and relationships into the required JSON format
-            entities_json = [{"type": etype, "name": ename} for etype, ename in subgraph_entities]
+            # Fetch attributes for each entity in the subgraph
+            entities_list = []
+            for etype, ename in subgraph_entities:
+                entity_data = self.get_entity_attributes(ename, graph_id)
+                if entity_data:
+                    entities_list.append({
+                        "name": ename,
+                        "type": etype,
+                        "attributes": entity_data['attributes']  # Ensure attributes are captured as JSON
+                    })
+
+            # Convert relationships into the required JSON format
             relationships_json = [
                 {
                     "source_entity_type": rel["source_entity_type"],
@@ -812,9 +959,9 @@ class ContextGraphRepository:
                 for rel in subgraph_relationships
             ]
 
-            # Return the subgraph as a dictionary
+            # Return the subgraph as a dictionary, containing entities and relationships
             subgraph = {
-                "entities": entities_json,
+                "entities": entities_list,  # All entities with name, type, and attributes
                 "relationships": relationships_json
             }
 
@@ -823,6 +970,35 @@ class ContextGraphRepository:
         except Exception as e:
             print(f"An error occurred while retrieving the subgraph: {str(e)}")
             return None
+
+    def get_entity_attributes(self, entity_name, graph_id):
+        """
+        Fetches the attributes of a specific entity from the entities table.
+
+        :param entity_name: The name of the entity.
+        :param graph_id: The ID of the graph to which the entity belongs.
+        :return: A dictionary with the entity's name and attributes, or None if not found.
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            query = """
+            SELECT name, attributes 
+            FROM entities 
+            WHERE name = %s AND graph_id = %s;
+            """
+            cursor.execute(query, (entity_name, graph_id))
+            result = cursor.fetchone()
+
+            if result:
+                return result
+            else:
+                print(f"No attributes found for entity '{entity_name}' in graph ID {graph_id}.")
+                return None
+        except Exception as e:
+            print(f"Error fetching attributes for entity '{entity_name}': {e}")
+            return None
+        finally:
+            cursor.close()
 
     def add_entity_type(self, label):
         cursor = self.connection.cursor()
@@ -844,6 +1020,7 @@ class ContextGraphRepository:
     def list_entity_types(self):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
+            # Fetch id, label from the entity_types table
             cursor.execute("SELECT `id`, `label` FROM `entity_types`;")
             return cursor.fetchall()
         except Exception as e:
@@ -1030,5 +1207,3 @@ class ContextGraphRepository:
             return []
         finally:
             cursor.close()
-
-

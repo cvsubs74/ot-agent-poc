@@ -161,7 +161,7 @@ class OTExplorer:
                 self.graph_chatbot.context_graph_analyzer_chatbot(
                     graph_id, None if selected_entity_name == "--Select an entity--" else selected_entity_name)
 
-    def display_business_rules(self):
+    def rules(self):
         """Handles the logic for listing, enabling/disabling, and adding business rules."""
         st.markdown("""
                 <div style='font-size: 1em; margin-bottom: 15px;'>
@@ -325,7 +325,7 @@ class OTExplorer:
             self.explore_graph(graph_id)
 
         with tab3:
-            self.display_business_rules()
+            self.rules()
 
         with tab4:
             self.entity_actions()

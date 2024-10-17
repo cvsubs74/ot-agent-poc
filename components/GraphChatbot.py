@@ -10,7 +10,7 @@ from vertexai.generative_models import GenerativeModel
 
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
-from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS
+from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS, ENTITY_TYPE_ATTRIBUTES
 
 
 # Custom JSON encoder to handle datetime objects
@@ -35,10 +35,9 @@ class GraphChatbot:
         self.model = GenerativeModel(os.environ["MODEL"])
 
     def context_graph_analyzer_chatbot(self, graph_id, entity=None):
-        # Fetch the graph details by ID
+        # Fetch the graph details by ID, including entities with their attributes
         if entity:
-            graph_details = self.graph_repo.get_subgraph_for_entity(
-                graph_id, entity)
+            graph_details = self.graph_repo.get_subgraph_for_entity(graph_id, entity)
         else:
             graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
 
@@ -46,8 +45,14 @@ class GraphChatbot:
             st.error(f"Graph with ID {graph_id} not found.")
             return
 
-        # Convert the graph details to JSON using custom encoder
-        graph_details_json = json.dumps(graph_details, indent=4, cls=CustomJSONEncoder)
+        # Convert relationships from the graph details to JSON
+        relationships_json = json.dumps(graph_details.get('relationships', []), indent=4, cls=CustomJSONEncoder)
+
+        # Extract entities and their attributes from the graph details
+        entities = graph_details.get('entities', [])
+        entities_with_attributes = "\n".join(
+            [f"- **{entity['name']}** ({entity['type']}): {json.dumps(entity['attributes'], indent=2)}" for entity in
+             entities])
 
         # Define categories of questions related to the graph
         categories = {
@@ -150,27 +155,14 @@ class GraphChatbot:
 
         # Handle the selected question
         if st.session_state.selected_question:
-            self.handle_question(st.session_state.selected_question, graph_details_json)
+            self.handle_question(st.session_state.selected_question, relationships_json, entities_with_attributes)
             st.session_state.selected_question = None
 
-    def handle_question(self, question, graph_details_json):
+    def handle_question(self, question, relationships_json, entities_with_attributes):
         """
         Handles the logic of answering a graph-related question by injecting the graph details into the response.
         If 'show_json' is true, display the graph JSON to the user.
         """
-        # Parse the graph details back into a Python dictionary
-        graph_data = json.loads(graph_details_json)
-
-        # Extract specific data from graph_data
-        relationships = json.dumps(graph_data.get('relationships', []), indent=2, cls=CustomJSONEncoder)
-
-        # Prepare hyperlinked actions based on entities in the graph
-        actions = self.get_actions_from_graph(graph_data)
-
-        # If no actions are available, adjust the prompt accordingly
-        if not actions.strip():
-            actions = "No specific actions are available for these entities."
-
         # Fetch the context grammar rules from the database
         context_grammar_rules = self.graph_repo.get_enabled_rules()
 
@@ -184,11 +176,11 @@ class GraphChatbot:
 
             Here is the relevant information:
 
-            **Entities and Relationships:**
-            {relationships}
+            **Entities and their Attributes:**
+            {entities_with_attributes}
 
-            **Available Actions** (if needed): 
-            {actions}
+            **Relationships:**
+            {relationships_json}
 
             **Context Grammar:**
             {context_grammar}
@@ -200,7 +192,7 @@ class GraphChatbot:
             - Focuses solely on the relationships, entities, and connections as defined in the graph data, ensuring that the analysis is strictly factual and data-driven.
             - Highlights important information by **bolding** them.
             - Uses bullet points for clarity and emphasis wherever applicable.
-            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.            
+            - Recommends actions **only if absolutely necessary**, and only if they are directly supported by the graph data, using hyperlinks for **Available Actions** when applicable.
             """
 
         try:
@@ -382,6 +374,7 @@ class GraphChatbot:
             generated_json = self.generate_graph_generation_json(
                 f"{st.session_state.graph_creation_selected_category}: {st.session_state.graph_creation_selected_subcategory}"
             )
+            st.write(generated_json)
 
             if generated_json:
                 try:
@@ -450,9 +443,10 @@ class GraphChatbot:
     def generate_graph_generation_json(self, instruction):
         """
         Use Vertex AI to generate a valid JSON for graph creation based on the given instruction,
-        utilizing the entity types, relationship types, and allowed relationships. Ensure the graph has at least 50 nodes.
+        utilizing the entity types, relationship types, and allowed relationships. Ensure the graph has at most 50 nodes.
+        The generated JSON should include entities with realistic attribute values based on the predefined attributes.
+        The relationships should correctly reference the 'name' attributes of the entities.
         """
-
         # Dynamically build the entity types and relationship types from the enums
         entity_types = [et.value for et in EntityType]
         relationship_types = [rt.value for rt in RelationshipType]
@@ -464,6 +458,9 @@ class GraphChatbot:
             for source, target in pairs:
                 allowed_relationships_str += f"    ({source.value} -> {target.value})\n"
 
+        # Predefined attributes for each entity type as provided earlier
+        predefined_attributes_str = json.dumps(ENTITY_TYPE_ATTRIBUTES, indent=4)
+
         prompt = f"""
         The user has provided the following instruction: "{instruction}"
 
@@ -473,11 +470,23 @@ class GraphChatbot:
             "graph_name": "<Name of the graph>",
             "description": "<Description of the graph>",
             "entities": [
-                {{ "type": "EntityType", "name": "EntityName" }},
+                {{ 
+                    "type": "EntityType", 
+                    "name": "EntityName", 
+                    "attributes": {{
+                        "attribute_name1": "realistic_value1",
+                        "attribute_name2": "realistic_value2",
+                        ...
+                    }} 
+                }},
                 ...
             ],
             "relationships": [
-                {{ "source": "EntityName1", "target": "EntityName2", "relationship": "RelationshipType" }},
+                {{ 
+                    "source": "EntityName1",  // Must match the value in the name attribute of an entity in the 'entities' list
+                    "target": "EntityName2",  // Must match the value in the name attribute of another entity in the 'entities' list
+                    "relationship": "RelationshipType" 
+                }},
                 ...
             ]
         }}
@@ -491,12 +500,29 @@ class GraphChatbot:
         These are the allowed relationships:
         {allowed_relationships_str}
 
-        Ensure that the response **only** contains a valid JSON object with no other explanation, commentary, or natural language text. Return only the JSON.
+        Ensure that each entity includes realistic attribute values according to its type. Here are the predefined attributes for each entity type:
+
+        {predefined_attributes_str}
+
+        For example, for a 'Vendor' entity:
+        - 'name' should be a realistic company name (e.g., 'Acme Corp').
+        - 'country' should be a valid country (e.g., 'USA', 'Germany', 'India').
+        - 'status' should reflect a realistic status like 'Active' or 'Inactive'.
+
+        When defining relationships, ensure that the 'source' and 'target' fields match the 'name' attribute of the entities in the 'entities' list. For example, if you have an entity named 'Acme Corp' and another entity named 'ServerXYZ', a valid relationship could look like:
+
+        {{
+            "source": "Acme Corp",
+            "target": "ServerXYZ",
+            "relationship": "DATA_TRANSFER"
+        }}
+
+        Generate realistic values for entity attributes and ensure that relationships properly link the entities by their names. Return only the JSON object.
         """
 
         try:
             # Call the AI model to generate the JSON based on instruction
-            with st.spinner("Generating the scenario.."):
+            with st.spinner("Generating the scenario..."):
                 response = self.model.generate_content(prompt)
 
             # Ensure that we strip the response and only extract the JSON part
