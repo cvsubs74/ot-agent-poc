@@ -8,6 +8,7 @@ from datetime import datetime
 import vertexai
 from vertexai.generative_models import GenerativeModel
 
+from components.UX import UX
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
 from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS, ENTITY_TYPE_ATTRIBUTES
@@ -108,7 +109,7 @@ class GraphChatbot:
 
         # Display questions within the selected category
         if st.session_state.selected_category:
-            self.divider()
+            UX.divider()
             selected_category = st.session_state.selected_category
             questions = categories[selected_category]
             for i in range(0, len(questions), 3):
@@ -278,7 +279,7 @@ class GraphChatbot:
                 Choose a category and subcategory below to construct your scenario.
             </div>
             """, unsafe_allow_html=True)
-        self.divider()
+        UX.divider()
 
         # Pre-seeded graph categories and subcategories
         privacy_scenarios = {
@@ -347,7 +348,7 @@ class GraphChatbot:
                     if cols[j].button(category):
                         st.session_state.graph_creation_selected_category = category
 
-        self.divider()
+        UX.divider()
 
         # Step 2: If a category is selected, show subcategory buttons
         if 'graph_creation_selected_category' in st.session_state and st.session_state.graph_creation_selected_category:
@@ -577,9 +578,3 @@ class GraphChatbot:
             st.error(f"An error occurred: {str(e)}")
             return None
 
-    @staticmethod
-    def divider(height=1):
-        """Utility function to create a divider with specified height."""
-        st.markdown(f"<hr style='height:{height}px; "
-                    f"margin-top: 0;  margin-bottom: 0; border-width:0; background: lightblue;'>",
-                    unsafe_allow_html=True)
