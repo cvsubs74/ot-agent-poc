@@ -231,7 +231,7 @@ class ContextGraphRepository:
         create_table_query = """
         CREATE TABLE IF NOT EXISTS `graph_questions` (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            graph_id INT NOT NULL,
+            graph_id INT DEFAULT NULL,  -- Make graph_id nullable
             question TEXT NOT NULL,
             asked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (graph_id) REFERENCES graphs(id) ON DELETE CASCADE
@@ -319,7 +319,7 @@ class ContextGraphRepository:
         finally:
             cursor.close()
 
-    def list_entities(self):
+    def get_entities(self):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
             cursor.execute("SELECT `id`, `name`, `attributes` FROM `entities`;")
@@ -333,7 +333,7 @@ class ContextGraphRepository:
     def get_entity_by_name(self, name):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
-            cursor.execute("SELECT `id`, `name`, `attributes` FROM `entities` WHERE `name` = %s;", (name,))
+            cursor.execute("SELECT id, name, attributes, graph_id FROM entities WHERE name = %s;", (name,))
             return cursor.fetchone()
         except Exception as e:
             print(f"Error retrieving entity by name '{name}': {e}")
@@ -493,15 +493,25 @@ class ContextGraphRepository:
         finally:
             cursor.close()
 
-    def get_graph_questions(self, graph_id):
+    def get_graph_questions(self, graph_id=None):
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
-            cursor.execute("""
-                SELECT id, question, asked_at
-                FROM graph_questions
-                WHERE graph_id = %s
-                ORDER BY asked_at DESC;
-            """, (graph_id,))
+            if graph_id is not None:
+                # When graph_id is provided, filter by it
+                cursor.execute("""
+                    SELECT id, question, asked_at
+                    FROM graph_questions
+                    WHERE graph_id = %s
+                    ORDER BY asked_at DESC;
+                """, (graph_id,))
+            else:
+                # When graph_id is None, retrieve only questions with no graph_id (graph_id IS NULL)
+                cursor.execute("""
+                    SELECT id, question, asked_at
+                    FROM graph_questions
+                    WHERE graph_id IS NULL
+                    ORDER BY asked_at DESC;
+                """)
             return cursor.fetchall()
         except Exception as e:
             print(f"Error retrieving questions for graph ID {graph_id}: {e}")

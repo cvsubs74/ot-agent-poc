@@ -37,9 +37,7 @@ class GraphChatbot:
 
     def context_graph_analyzer_chatbot(self, graph_id, entity=None):
         # Fetch the graph details by ID, including entities with their attributes
-        if not graph_id:
-            graph_details = self.graph_repo.get_all_graph_details()
-        elif entity:
+        if entity:
             graph_details = self.graph_repo.get_subgraph_for_entity(graph_id, entity)
         else:
             graph_details = self.graph_repo.get_graph_details_by_id(graph_id)
@@ -149,32 +147,83 @@ class GraphChatbot:
 
         # Handle the selected question
         if st.session_state.selected_question:
-            self.handle_question(st.session_state.selected_question, graph_details)
+            response = self.handle_question(st.session_state.selected_question, graph_details)
+            st.markdown(response, unsafe_allow_html=True)
             st.session_state.selected_question = None
 
     def ai_insights_context_graph_analyzer_chatbot(self):
-        # Fetch the graph details by ID, including entities with their attributes
-        with st.spinner("Please wait.."):
-            graph_details = self.graph_repo.get_all_graph_details()
-
         if 'ai_insights_selected_question' not in st.session_state:
             st.session_state.ai_insights_selected_question = None
+
+        if 'ai_insights_question_responses' not in st.session_state:
+            st.session_state.ai_insights_question_responses = {}  # Dictionary to store question-response pairs
+
+        # Retrieve previously asked questions (no filtering by graph_id, as it's across all graphs)
+        questions = self.graph_repo.get_graph_questions()
+        question_options = []
+        selected_question = None
+        if questions:
+            question_options = ["--Select a question--"] + [q['question'] for q in questions]
+
+            # Display the dropdown to select a question from previous questions
+            selected_question = st.selectbox("Select a question:", options=question_options,
+                                             key="ai_insights_select_question")
+
+        # Process selected question from dropdown
+        if selected_question and selected_question != "--Select a question--":
+            st.session_state.ai_insights_selected_question = selected_question
 
         # Define a form for asking custom questions with clear_on_submit=True
         with st.form("ai_insights_question_form", clear_on_submit=True):
             # Provide a text input for custom questions
-            user_question = st.text_input("Ask a question:", key="ai_insights_user_question")
+            user_question = st.text_input("Ask a new question:", key="ai_insights_user_question")
 
             # Detect when the form is submitted (e.g., pressing Enter in the text input)
             submitted = st.form_submit_button("Submit")
 
             if submitted and user_question:
+                # Add the new question if it's not already in the list of previous questions
+                if user_question not in question_options:
+                    self.graph_repo.add_graph_question(None,
+                                                       user_question)  # Add the question with no specific graph_id
                 st.session_state.ai_insights_selected_question = user_question
 
-        # Handle the selected question
+        # Handle the selected or newly submitted question
         if st.session_state.ai_insights_selected_question:
-            self.handle_question(st.session_state.ai_insights_selected_question, graph_details)
-            st.session_state.selected_question = None
+            question = st.session_state.ai_insights_selected_question
+
+            # Check if the response for the selected question is already stored
+            if question in st.session_state.ai_insights_question_responses:
+                # Retrieve the stored response
+                response = st.session_state.ai_insights_question_responses[question]
+            else:
+                # Fetch all graph details, including entities with their attributes
+                with st.spinner("Please wait.."):
+                    graph_details = self.graph_repo.get_all_graph_details()
+
+                # Call handle_question and store the response in session state
+                response = self.handle_question(question, graph_details)
+                st.session_state.ai_insights_question_responses[question] = response
+
+            # Display the response
+            st.markdown(response, unsafe_allow_html=True)
+
+        UX.divider()
+        st.write("")
+        entities = self.graph_repo.get_entities()
+        entity_names = ["--Select an entity--"] + [entity['name'] for entity in entities]
+        selected_entity_name = st.selectbox("Select an Entity to Explore", entity_names,
+                                            key="ai_insights_selected_entity_name")
+        if selected_entity_name != "--Select an entity--":
+            entity = self.graph_repo.get_entity_by_name(selected_entity_name)
+            subgraph_data = self.graph_repo.get_subgraph_for_entity(entity["graph_id"], selected_entity_name)
+
+            if subgraph_data:
+                sub_entities = subgraph_data['entities']
+                sub_relationships = subgraph_data['relationships']
+
+                # Visualize the subgraph
+                self.graph_visualizer.visualize(sub_entities, sub_relationships)
 
     def handle_question(self, question, graph_details):
         """
@@ -236,13 +285,15 @@ class GraphChatbot:
             # Return the response content
             if response and hasattr(response, 'text'):
                 # Show the response from the model as Markdown
-                st.markdown(response.text, unsafe_allow_html=True)
+                response = response.text
             else:
                 st.warning("Please try again later.")
         except Exception as e:
             # Log the exception for debugging purposes
             st.error(f"An error occurred: {str(e)}")
             st.warning("Please try again later.")
+
+        return response
 
     def get_actions_from_graph(self, graph_data):
         """
