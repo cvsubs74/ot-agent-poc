@@ -80,8 +80,22 @@ class OTExplorer:
         EntityActions(self.context_graph_repo).actions()
 
     def chatbot(self):
-        self.graph_chatbot.context_graph_analyzer_chatbot(
-            None, None)
+        """Handle the AI Insights functionality."""
+        st.markdown("""
+        <div style='font-size: 1em; margin-bottom: 15px;'>
+            Welcome to the AI Insights section, where you can unlock the full power of AI-driven analysis across your organizational data. 
+            <br><br>
+            Use this feature to:
+            <ul>
+                <li>Ask complex, context-specific questions about relationships, risks, compliance, and entity attributes.</li>
+                <li>Receive real-time, AI-generated insights that are grounded in the relationships and data within your organization.</li>
+                <li>Leverage the chatbot to explore data flows, identify compliance issues, assess risks, and even trigger corrective actions directly from the chat interface.</li>
+                <li>Automatically tailor responses to your organization's unique graph structure, providing actionable intelligence that can inform decision-making.</li>
+            </ul>
+            The AI Insights section is your go-to resource for understanding and managing the intricate web of data, vendors, policies, and risks that define your organization.
+        </div>
+        """, unsafe_allow_html=True)
+        self.graph_chatbot.ai_insights_context_graph_analyzer_chatbot()
 
     def run(self):
         """Main function to run the Streamlit app."""

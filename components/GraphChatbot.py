@@ -152,6 +152,30 @@ class GraphChatbot:
             self.handle_question(st.session_state.selected_question, graph_details)
             st.session_state.selected_question = None
 
+    def ai_insights_context_graph_analyzer_chatbot(self):
+        # Fetch the graph details by ID, including entities with their attributes
+        with st.spinner("Please wait.."):
+            graph_details = self.graph_repo.get_all_graph_details()
+
+        if 'ai_insights_selected_question' not in st.session_state:
+            st.session_state.ai_insights_selected_question = None
+
+        # Define a form for asking custom questions with clear_on_submit=True
+        with st.form("ai_insights_question_form", clear_on_submit=True):
+            # Provide a text input for custom questions
+            user_question = st.text_input("Ask a question:", key="ai_insights_user_question")
+
+            # Detect when the form is submitted (e.g., pressing Enter in the text input)
+            submitted = st.form_submit_button("Submit")
+
+            if submitted and user_question:
+                st.session_state.ai_insights_selected_question = user_question
+
+        # Handle the selected question
+        if st.session_state.ai_insights_selected_question:
+            self.handle_question(st.session_state.ai_insights_selected_question, graph_details)
+            st.session_state.selected_question = None
+
     def handle_question(self, question, graph_details):
         """
         Handles the logic of answering a graph-related question by injecting the graph details into the response.
