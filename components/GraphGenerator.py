@@ -3,7 +3,6 @@ import logging
 import uuid
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
-from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -43,14 +42,6 @@ class ContextGraphGenerator:
 
         source_type = self.entities[source_name]
         target_type = self.entities[target_name]
-
-        # Validate if the relationship is allowed between the given entity types
-        allowed_combinations = ALLOWED_RELATIONSHIPS.get(relationship_type, [])
-        if (source_type, target_type) not in allowed_combinations:
-            logger.warning(
-                f"Relationship '{relationship_type.value}' not allowed between {source_type.value} and {target_type.value}."
-            )
-            return False
 
         # Store the relationship in memory
         self.relationships.append({

@@ -38,7 +38,7 @@ class GraphExplorer:
         if not graphs:
             st.info("No scenarios found. Please create a new scenario in the 'Create Scenario' tab.")
         else:
-            graph_options = {f"{graph['name']}": graph for graph in graphs}
+            graph_options = {f"{graph['id']}-{graph['name']}": graph for graph in graphs}
             graph_names = ["--Select a Scenario--"] + list(graph_options.keys())  # Add default option
 
             # Retrieve the graph_id from session state or passed value

@@ -11,7 +11,7 @@ from vertexai.generative_models import GenerativeModel
 from components.UX import UX
 from enums.EntityType import EntityType
 from enums.RelationshipType import RelationshipType
-from repositories.ContextGraphRepository import ALLOWED_RELATIONSHIPS, ENTITY_TYPE_ATTRIBUTES
+from repositories.ContextGraphRepository import ENTITY_TYPE_ATTRIBUTES, ALLOWED_RELATIONSHIPS
 
 
 # Custom JSON encoder to handle datetime objects
@@ -453,7 +453,6 @@ class GraphChatbot:
 
             if generated_json:
                 try:
-                    st.write(generated_json)
                     graph_data = json.loads(generated_json)
                     graph_id, graph_name, success = self.context_graph_generator.create_graph_from_json(graph_data)
                     if success:

@@ -528,13 +528,6 @@ class ContextGraphRepository:
             print(f"Invalid relationship type: {relationship_type}")
             return
 
-        # Validate source and target entity types
-        allowed_combinations = ALLOWED_RELATIONSHIPS.get(relationship_type, [])
-        if (source_type, target_type) not in allowed_combinations:
-            print(
-                f"Invalid source-target combination for relationship type '{relationship_type.value}': {source_type.value} -> {target_type.value}")
-            return
-
         # Get relationship type ID
         relationship_type_id = self.get_relationship_type_id(relationship_type)
         if not relationship_type_id:
