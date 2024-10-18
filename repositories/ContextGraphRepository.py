@@ -388,7 +388,24 @@ class ContextGraphRepository:
         finally:
             cursor.close()
 
-    def update_context_grammar_rule(self, rule_id, active):
+    def update_context_grammar_rule(self, rule_id, active, rule_name, description):
+        cursor = self.connection.cursor()
+        try:
+            update_rule_query = """
+            UPDATE context_grammar
+            SET active = %s, rule_name = %s, description = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_rule_query, (active, rule_name, description, rule_id))
+            self.connection.commit()
+            print(f"Context grammar rule with ID {rule_id} updated successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating context grammar rule: {e}")
+        finally:
+            cursor.close()
+
+    def enable_disable_rule(self, rule_id, active):
         cursor = self.connection.cursor()
         try:
             update_rule_query = """
@@ -402,6 +419,23 @@ class ContextGraphRepository:
         except Exception as e:
             self.connection.rollback()
             print(f"Error updating context grammar rule: {e}")
+        finally:
+            cursor.close()
+
+    def update_context_grammar_rule_description(self, rule_id, description):
+        cursor = self.connection.cursor()
+        try:
+            update_rule_query = """
+            UPDATE context_grammar
+            SET description = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_rule_query, (description, rule_id))
+            self.connection.commit()
+            print(f"Context grammar rule with ID {rule_id} description updated successfully.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating context grammar rule description: {e}")
         finally:
             cursor.close()
 
