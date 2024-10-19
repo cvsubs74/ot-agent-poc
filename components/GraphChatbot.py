@@ -460,13 +460,8 @@ class GraphChatbot:
                         st.success(f"Scenario '{graph_name}' created successfully!")
 
                         # Display the title and summary with a line space using markdown
-                        st.markdown(f"""
-                            <p style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
-                                <strong>{title}</strong>
-                                <br><br>
-                                {summary}
-                            </p>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"**{title}**")  # Display title in bold
+                        st.info(summary)  # Display the summary inside an info box
 
                         # Clear session state variables related to graph creation
                         for key in ['graph_creation_selected_category', 'graph_creation_selected_subcategory']:
@@ -498,13 +493,9 @@ class GraphChatbot:
                         st.success(f"Scenario '{graph_name}' created successfully!")
 
                         # Display the title and summary with a line space using markdown
-                        st.markdown(f"""
-                            <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
-                                <strong>Custom Graph</strong>
-                                <br><br>
-                                {summary}
-                            </div>
-                        """, unsafe_allow_html=True)
+                        title = "Custom Graph"
+                        st.markdown(f"**{title}**")  # Display title in bold
+                        st.info(summary)  # Display the summary inside an info box
 
                         with st.spinner("Generating visuals.."):
                             self.graph_visualizer.visualize_graph(graph_id)
