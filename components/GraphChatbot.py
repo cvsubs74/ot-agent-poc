@@ -461,11 +461,11 @@ class GraphChatbot:
 
                         # Display the title and summary with a line space using markdown
                         st.markdown(f"""
-                            <div style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
+                            <p style="background-color: #f0f0f5; padding: 10px; border-radius: 5px;">
                                 <strong>{title}</strong>
                                 <br><br>
                                 {summary}
-                            </div>
+                            </p>
                         """, unsafe_allow_html=True)
 
                         # Clear session state variables related to graph creation
