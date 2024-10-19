@@ -634,8 +634,6 @@ class GraphChatbot:
 
         # Parse the graph data
         graph_data = json.loads(generated_json)
-        entity_count = len(graph_data.get("entities", []))
-        relationship_count = len(graph_data.get("relationships", []))
 
         # Fetch the context grammar rules from the database
         context_grammar_rules = self.graph_repo.get_enabled_rules()
@@ -649,9 +647,10 @@ class GraphChatbot:
         prompt = f"""
                 Provide a detailed explanation of the graph based on the following context grammar rules:
 
-                {context_grammar}
-
-                The graph contains {entity_count} entities and {relationship_count} relationships. Explain the purpose of the graph and the insights it offers, focusing on the relationships between the entities in business terms. Summarize the overall structure and meaning of the relationships while incorporating the context rules, without describing individual entities by name. Avoid providing any recommendations or action steps.
+                Explain the purpose of the graph and the insights it offers, focusing on the relationships
+                between the entities in business terms. Summarize the overall structure and meaning of the
+                relationships, without describing individual entities
+                by name. Avoid providing any recommendations or action steps.
                 """
 
         try:
