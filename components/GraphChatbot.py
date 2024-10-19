@@ -645,8 +645,6 @@ class GraphChatbot:
 
         # Prepare the high-level business-oriented prompt with context grammar
         prompt = f"""
-                Provide a detailed explanation of the graph based on the following context grammar rules:
-
                 Explain the purpose of the graph and the insights it offers, focusing on the relationships
                 between the entities in business terms. Summarize the overall structure and meaning of the
                 relationships, without describing individual entities
