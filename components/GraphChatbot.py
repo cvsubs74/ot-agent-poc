@@ -638,16 +638,15 @@ class GraphChatbot:
         # Fetch the context grammar rules from the database
         context_grammar_rules = self.graph_repo.get_enabled_rules()
 
-        # Format the context grammar rules into a string for the prompt
-        context_grammar = "\n".join(
-            [f"- **{rule['rule_name']}**: {rule['description']}" for rule in context_grammar_rules]
-        )
-
         # Prepare the high-level business-oriented prompt with context grammar
         prompt = f"""
+                Provide a detailed explanation of the graph based on the following graph data:
+
+                {graph_data}
+
                 Explain the purpose of the graph and the insights it offers, focusing on the relationships
                 between the entities in business terms. Summarize the overall structure and meaning of the
-                relationships, without describing individual entities
+                relationships while incorporating the context rules, without describing individual entities
                 by name. Avoid providing any recommendations or action steps.
                 """
 
