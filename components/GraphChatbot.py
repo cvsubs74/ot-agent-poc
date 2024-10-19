@@ -647,12 +647,12 @@ class GraphChatbot:
 
         # Prepare the high-level business-oriented prompt with context grammar
         prompt = f"""
-        Provide a detailed summary of the graph based on the following context grammar rules:
+                Provide a detailed explanation of the graph based on the following context grammar rules:
 
-        {context_grammar}
+                {context_grammar}
 
-        The graph contains {entity_count} entities and {relationship_count} relationships. Summarize the purpose of the graph, the insights it offers, and explain the relationships between the entities in business terms. Focus on the overall structure and meaning of the relationships while incorporating the context rules, but avoid describing individual entities by name.
-        """
+                The graph contains {entity_count} entities and {relationship_count} relationships. Explain the purpose of the graph and the insights it offers, focusing on the relationships between the entities in business terms. Summarize the overall structure and meaning of the relationships while incorporating the context rules, without describing individual entities by name. Avoid providing any recommendations or action steps.
+                """
 
         try:
             # Call the LLM to generate the summary based on the prompt
