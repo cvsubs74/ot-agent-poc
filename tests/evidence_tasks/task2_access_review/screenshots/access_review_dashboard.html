@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .dashboard { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-approved { color: #00b894; }
+        .status-pending { color: #fdcb6e; }
+        .status-update { color: #e17055; }
+        .review-card {
+            border: 1px solid #dfe6e9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .user-table th, .user-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dfe6e9;
+        }
+        .user-table th { background: #f8f9fa; }
+        .metrics { display: flex; justify-content: space-between; margin: 20px 0; }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 10px;
+            text-align: center;
+        }
+        .reviewer-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h2>Q1 2025 Access Review Dashboard</h2>
+            <div>
+                <span>Review Date: March 7, 2025</span>
+            </div>
+        </div>
+
+        <div class="reviewer-info">
+            <h3>Review Information</h3>
+            <p><strong>Reviewer:</strong> Sarah Chen</p>
+            <p><strong>Position:</strong> Information Security Manager</p>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-card">
+                <h3>Total Users</h3>
+                <p>7</p>
+            </div>
+            <div class="metric-card">
+                <h3>Approved</h3>
+                <p>5</p>
+            </div>
+            <div class="metric-card">
+                <h3>Updates Required</h3>
+                <p>2</p>
+            </div>
+            <div class="metric-card">
+                <h3>Revocations</h3>
+                <p>0</p>
+            </div>
+        </div>
+
+        <table class="user-table">
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Current Access</th>
+                <th>Required Access</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>john.doe</td>
+                <td>System Admin</td>
+                <td>Full Access</td>
+                <td>Full Access</td>
+                <td><span class="status-approved">● Approved</span></td>
+            </tr>
+            <tr>
+                <td>bob.wilson</td>
+                <td>HR Specialist</td>
+                <td>Read Only</td>
+                <td>Read/Write</td>
+                <td><span class="status-update">● Update Required</span></td>
+            </tr>
+            <tr>
+                <td>alice.johnson</td>
+                <td>IT Support</td>
+                <td>Full Access</td>
+                <td>Read/Write</td>
+                <td><span class="status-update">● Update Required</span></td>
+            </tr>
+            <tr>
+                <td>sarah.davis</td>
+                <td>Developer</td>
+                <td>Read/Write</td>
+                <td>Read/Write</td>
+                <td><span class="status-approved">● Approved</span></td>
+            </tr>
+        </table>
+
+        <div class="review-card">
+            <h3>Certification</h3>
+            <p>I certify that this access review was conducted in accordance with company security policies.</p>
+            <p><strong>Digital Signature:</strong> Sarah Chen</p>
+            <p><strong>Date:</strong> March 7, 2025</p>
+        </div>
+    </div>
+</body>
+</html>

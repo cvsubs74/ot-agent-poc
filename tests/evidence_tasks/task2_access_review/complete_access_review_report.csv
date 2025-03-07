@@ -1,0 +1,24 @@
+Quarter,Q1 2025
+Review Date,2025-03-07
+Reviewer,Sarah Chen
+Position,Information Security Manager
+
+Username,Role,Current Access Level,Access Required,Review Status,Approver,Approval Date,Comments
+john.doe,System Admin,Full Access,Full Access,Approved,Tom Anderson,2025-03-07,"Annual review completed, access appropriate for role"
+jane.smith,Finance Manager,Read/Write,Read/Write,Approved,Michael Wong,2025-03-07,"Quarterly review completed, permissions align with job function"
+bob.wilson,HR Specialist,Read Only,Read/Write,Update Required,Lisa Johnson,2025-03-07,"Needs write access for new HR system implementation"
+alice.johnson,IT Support,Full Access,Read/Write,Update Required,Tom Anderson,2025-03-07,"Reduce access level as per least privilege principle"
+mike.brown,Analyst,Read Only,Read Only,Approved,Jane Smith,2025-03-07,"Access level appropriate for current projects"
+sarah.davis,Developer,Read/Write,Read/Write,Approved,Tom Anderson,2025-03-07,"Development environment access validated"
+tom.anderson,Security Officer,Full Access,Full Access,Approved,James Miller,2025-03-07,"Security operations require maintained access level"
+
+Review Summary
+Total Users Reviewed,7
+Approved Without Changes,5
+Updates Required,2
+Access Revocations,0
+
+Certification
+I certify that this access review was conducted in accordance with company security policies.
+Reviewer Signature,[Digital Signature: Sarah Chen]
+Date,2025-03-07

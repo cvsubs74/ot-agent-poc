@@ -1,0 +1,42 @@
+Evidence Task: Incident Response Documentation
+
+Task Description:
+Submit evidence of incident response procedures being followed during the latest security incident, including timeline, actions taken, and resolution steps.
+
+Required Elements:
+1. Incident Overview
+   - Incident ID and date
+   - Type of incident
+   - Systems affected
+   - Initial detection method
+
+2. Response Timeline
+   - Detection time
+   - Response team activation
+   - Key actions and timestamps
+   - Resolution time
+
+3. Actions Taken
+   - Initial containment measures
+   - Investigation steps
+   - Root cause analysis
+   - Remediation actions
+
+4. Supporting Documentation
+   - System logs
+   - Alert screenshots
+   - Communication records
+   - Change documentation
+
+5. Resolution and Follow-up
+   - Final resolution status
+   - Preventive measures implemented
+   - Lessons learned
+   - Recommendations
+
+Validation Criteria:
+- Documentation must be complete and chronological
+- All response actions must be timestamped
+- Root cause must be identified
+- Preventive measures must be documented
+- Supporting evidence must be included

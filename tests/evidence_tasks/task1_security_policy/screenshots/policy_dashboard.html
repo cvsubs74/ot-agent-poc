@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .dashboard { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-complete { color: #00b894; }
+        .status-incomplete { color: #d63031; }
+        .status-review { color: #fdcb6e; }
+        .policy-card {
+            border: 1px solid #dfe6e9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .coverage-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .coverage-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .progress-bar {
+            background: #dfe6e9;
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .progress-fill {
+            background: #00b894;
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        .metrics { display: flex; justify-content: space-between; margin: 20px 0; }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h2>Security Policy Management Dashboard</h2>
+            <div>
+                <span>Last Updated: March 7, 2025</span>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-card">
+                <h3>Total Policies</h3>
+                <p>4</p>
+            </div>
+            <div class="metric-card">
+                <h3>Complete</h3>
+                <p>3</p>
+            </div>
+            <div class="metric-card">
+                <h3>Incomplete</h3>
+                <p>1</p>
+            </div>
+            <div class="metric-card">
+                <h3>Under Review</h3>
+                <p>0</p>
+            </div>
+        </div>
+
+        <div class="coverage-grid">
+            <div class="coverage-item">
+                <h3>Access Control</h3>
+                <p>Authentication and authorization policies</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                </div>
+                <p class="status-complete">● Complete</p>
+            </div>
+            <div class="coverage-item">
+                <h3>Data Protection</h3>
+                <p>Data classification and handling</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                </div>
+                <p class="status-complete">● Complete</p>
+            </div>
+            <div class="coverage-item">
+                <h3>Incident Response</h3>
+                <p>Response procedures and communication</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+                <p class="status-incomplete">● Missing</p>
+            </div>
+            <div class="coverage-item">
+                <h3>Acceptable Use</h3>
+                <p>System usage and user responsibilities</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                </div>
+                <p class="status-complete">● Complete</p>
+            </div>
+        </div>
+
+        <div class="policy-card">
+            <h3>Recent Updates</h3>
+            <ul>
+                <li>Access Control Policy - Updated MFA requirements (March 7, 2025)</li>
+                <li>Data Protection Policy - Added encryption standards (March 7, 2025)</li>
+                <li>Acceptable Use Policy - Updated remote work guidelines (March 7, 2025)</li>
+                <li style="color: #d63031;">Incident Response Policy - Missing required sections</li>
+            </ul>
+        </div>
+
+        <div class="policy-card">
+            <h3>Policy Review Status</h3>
+            <p><strong>Next Review Date:</strong> March 7, 2026</p>
+            <p><strong>Review Cycle:</strong> Annual</p>
+            <p><strong>Policy Owner:</strong> Information Security Team</p>
+        </div>
+    </div>
+</body>
+</html>

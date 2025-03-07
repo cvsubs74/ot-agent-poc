@@ -1,0 +1,8 @@
+Username,Role,Permission Level,Last Access,System
+john.doe,System Admin,Full Access,2025-03-06 14:30:00,ERP
+jane.smith,Finance Manager,Read/Write,2025-03-06 15:45:00,Financial System
+bob.wilson,HR Specialist,Read Only,2025-03-06 12:15:00,HR Portal
+alice.johnson,IT Support,Full Access,2025-03-06 16:20:00,IT Systems
+mike.brown,Analyst,Read Only,2025-03-06 11:00:00,Analytics Platform
+sarah.davis,Developer,Read/Write,2025-03-06 13:45:00,Development Environment
+tom.anderson,Security Officer,Full Access,2025-03-06 17:00:00,Security Console

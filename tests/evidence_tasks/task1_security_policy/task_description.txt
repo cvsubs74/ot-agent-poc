@@ -1,0 +1,31 @@
+Evidence Task: Security Policy Review
+
+Task Description:
+Validate the organization's security policy document. The policy should include sections on access control, data protection, incident response, and acceptable use policies.
+
+Required Elements:
+1. Access Control Policies
+   - User authentication requirements
+   - Access management procedures
+   - Access review processes
+
+2. Data Protection Policies
+   - Data classification framework
+   - Data handling procedures
+   - Data security measures
+
+3. Incident Response Procedures
+   - Incident classification
+   - Response protocols
+   - Communication procedures
+
+4. Acceptable Use Policies
+   - System usage guidelines
+   - Prohibited activities
+   - User responsibilities
+
+Validation Criteria:
+- Document must be current (within last 12 months)
+- All required sections must be present and complete
+- Policies must be clearly defined and actionable
+- Roles and responsibilities must be specified

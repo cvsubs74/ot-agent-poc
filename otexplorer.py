@@ -2,6 +2,7 @@ import streamlit as st
 
 from components.ContextGrammar import ContextGrammar
 from components.EntityActions import EntityActions
+from components.EvidenceValidator import EvidenceValidator
 from components.GraphExplorer import GraphExplorer
 from components.GraphVisualizer import GraphVisualizer
 from components.GraphGenerator import ContextGraphGenerator
@@ -18,14 +19,16 @@ class OTExplorer:
         self.context_graph_generator = ContextGraphGenerator(self.context_graph_repo)
         self.graph_visualizer = GraphVisualizer(self.context_graph_generator)
         self.graph_chatbot = GraphChatbot(
-            self.context_graph_repo, self.context_graph_generator, self.graph_visualizer)
+            self.context_graph_repo, self.context_graph_generator, self.graph_visualizer
+        )
 
     @staticmethod
     def divider(height=1):
         """Utility function to create a divider with specified height."""
-        st.markdown(f"<hr style='height:{height}px; "
-                    f"margin-top: 0;  margin-bottom: 0; border-width:0; background: lightblue;'>",
-                    unsafe_allow_html=True)
+        st.markdown(
+            f"<hr style='height:{height}px; margin-top: 0; margin-bottom: 0; border-width:0; background: lightblue;'>",
+            unsafe_allow_html=True
+        )
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
@@ -70,8 +73,12 @@ class OTExplorer:
         return graph_id
 
     def explore_graph(self, graph_id=None):
-        GraphExplorer(self.context_graph_generator,
-                      self.graph_visualizer, self.context_graph_repo, self.graph_chatbot).explore()
+        GraphExplorer(
+            self.context_graph_generator,
+            self.graph_visualizer,
+            self.context_graph_repo,
+            self.graph_chatbot
+        ).explore()
 
     def context_grammar(self):
         ContextGrammar(self.context_graph_repo).rules()
@@ -97,17 +104,23 @@ class OTExplorer:
         """, unsafe_allow_html=True)
         self.graph_chatbot.ai_insights_context_graph_analyzer_chatbot()
 
+    def evidence_validator(self):
+        """Handle the Evidence Validator functionality."""
+        EvidenceValidator().validate_evidence()
+
     def run(self):
         """Main function to run the Streamlit app."""
         # Step 1: Configure the page
         self.configure_page()
 
         # Step 2: Application Title
-        st.markdown("<h3 style='text-align: center;'>OT Explorer - A New Paradigm in Contextual Intelligence</h3>",
-                    unsafe_allow_html=True)
+        st.markdown(
+            "<h3 style='text-align: center;'>OT Explorer - A New Paradigm in Contextual Intelligence</h3>",
+            unsafe_allow_html=True
+        )
 
         # Step 3: Introduction Section
-        st.write(f"""
+        st.write("""
             #### **Welcome to OT Explorer**
 
             **Unlock the Power of Context-Driven Insights and Actionable Intelligence**
@@ -122,9 +135,10 @@ class OTExplorer:
             Ready to explore and take action? **Create a scenario**, **explore existing scenarios**, or manage **business rules** to see how OT Explorer can transform your decision-making process.
         """)
 
-        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", "Rules", "Actions", and "AI Insights"
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(
-            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights"])
+        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", and "Evidence Validator"
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", "Evidence Validator"]
+        )
 
         with tab1:
             graph_id = self.create_graph()
@@ -140,6 +154,9 @@ class OTExplorer:
 
         with tab5:
             self.chatbot()
+
+        with tab6:
+            self.evidence_validator()
 
 
 if __name__ == "__main__":

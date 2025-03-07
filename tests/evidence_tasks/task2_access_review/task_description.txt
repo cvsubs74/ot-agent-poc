@@ -1,0 +1,36 @@
+Evidence Task: Quarterly Access Review Documentation
+
+Task Description:
+Provide quarterly access review reports showing user access levels, review dates, and approver signatures. The report should include all system users and their current permission levels.
+
+Required Elements:
+1. User Information
+   - Username/ID
+   - Current role
+   - Current access level
+   - System access details
+
+2. Review Details
+   - Review date
+   - Reviewer name and position
+   - Access level validation
+   - Required changes identified
+
+3. Approval Information
+   - Approver name and position
+   - Approval date
+   - Digital or physical signature
+   - Comments/justification
+
+4. Review Summary
+   - Total users reviewed
+   - Access changes required
+   - Access revocations
+   - Certification statement
+
+Validation Criteria:
+- Review must be from current quarter
+- All users must be included in the review
+- Each access level must be validated
+- Proper approvals must be documented
+- Changes must be tracked and justified

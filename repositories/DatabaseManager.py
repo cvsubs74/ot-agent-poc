@@ -20,6 +20,12 @@ class DatabaseManager:
 
     @staticmethod
     def connect():
+        # Check if required environment variables are set
+        required_vars = ["GC_CRED", "MYSQL_CONNECTION_STRING", "SQL_USERNAME", "SQL_PASSWORD", "SQL_DATABASE"]
+        if not all(var in os.environ for var in required_vars):
+            logger.warning("Running in test mode: database connection disabled")
+            return None
+            
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
         instance_connection_name = os.environ["MYSQL_CONNECTION_STRING"]
         db_user = os.environ["SQL_USERNAME"]

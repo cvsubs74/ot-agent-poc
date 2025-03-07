@@ -1,0 +1,29 @@
+COMPANY SECURITY POLICY
+Last Updated: March 7, 2025
+
+1. Introduction
+This document outlines the basic security policies for our organization. All employees must adhere to these guidelines to maintain the security of our systems and data.
+
+2. Access Control
+2.1 User Authentication
+- All users must use strong passwords
+- Passwords must be changed every 90 days
+- Multi-factor authentication is required for remote access
+
+2.2 Access Levels
+- Access is granted on a need-to-know basis
+- Regular access reviews are conducted
+- Temporary access must be documented
+
+3. Data Protection
+3.1 Data Classification
+- Confidential
+- Internal Use Only
+- Public
+
+3.2 Data Handling
+- Encryption required for confidential data
+- Regular backups must be maintained
+- Secure disposal of sensitive information
+
+Note: This is an incomplete policy document missing key sections on incident response procedures and acceptable use policies.

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .dashboard { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-critical { color: #d63031; }
+        .status-warning { color: #fdcb6e; }
+        .status-resolved { color: #00b894; }
+        .incident-card {
+            border: 1px solid #dfe6e9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .timeline {
+            border-left: 2px solid #636e72;
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+        .timeline-item {
+            margin: 10px 0;
+            position: relative;
+        }
+        .timeline-item::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: #636e72;
+            border-radius: 50%;
+            position: absolute;
+            left: -26px;
+            top: 5px;
+        }
+        .metrics { display: flex; justify-content: space-between; margin: 20px 0; }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h2>Security Incident Dashboard</h2>
+            <div>
+                <span>INC-2025-001</span>
+                <span class="status-resolved">● RESOLVED</span>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-card">
+                <h3>Time to Detect</h3>
+                <p>5 minutes</p>
+            </div>
+            <div class="metric-card">
+                <h3>Time to Respond</h3>
+                <p>10 minutes</p>
+            </div>
+            <div class="metric-card">
+                <h3>Time to Resolve</h3>
+                <p>90 minutes</p>
+            </div>
+        </div>
+
+        <div class="incident-card">
+            <h3>Incident Summary</h3>
+            <p>Unauthorized database access attempt detected from external IP</p>
+            <p><strong>Severity:</strong> High</p>
+            <p><strong>Systems Affected:</strong> prod-db-01</p>
+            <p><strong>Root Cause:</strong> Misconfigured firewall rule</p>
+        </div>
+
+        <div class="timeline">
+            <h3>Response Timeline</h3>
+            <div class="timeline-item">
+                <p><strong>10:30 AM</strong> - Initial detection by security monitoring</p>
+            </div>
+            <div class="timeline-item">
+                <p><strong>10:35 AM</strong> - Security team notified</p>
+            </div>
+            <div class="timeline-item">
+                <p><strong>10:40 AM</strong> - System isolated</p>
+            </div>
+            <div class="timeline-item">
+                <p><strong>11:00 AM</strong> - Root cause identified</p>
+            </div>
+            <div class="timeline-item">
+                <p><strong>11:30 AM</strong> - Firewall rules updated</p>
+            </div>
+            <div class="timeline-item">
+                <p><strong>12:00 PM</strong> - Systems restored</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
