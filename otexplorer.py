@@ -7,6 +7,7 @@ from components.GraphExplorer import GraphExplorer
 from components.GraphVisualizer import GraphVisualizer
 from components.GraphGenerator import ContextGraphGenerator
 from components.GraphChatbot import GraphChatbot
+from components.ControlFinder import ControlFinder
 from repositories.ContextGraphRepository import ContextGraphRepository
 from repositories.DatabaseManager import DatabaseManager
 
@@ -108,6 +109,10 @@ class OTExplorer:
         """Handle the Evidence Validator functionality."""
         EvidenceValidator().validate_evidence()
 
+    def control_finder(self):
+        """Handle the Control Finder functionality."""
+        ControlFinder().render()
+
     def run(self):
         """Main function to run the Streamlit app."""
         # Step 1: Configure the page
@@ -135,9 +140,9 @@ class OTExplorer:
             Ready to explore and take action? **Create a scenario**, **explore existing scenarios**, or manage **business rules** to see how OT Explorer can transform your decision-making process.
         """)
 
-        # Step 4: Create tabs for "Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", and "Evidence Validator"
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", "Evidence Validator"]
+        # Step 4: Create tabs for all functionalities
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", "Evidence Validator", "Control Finder"]
         )
 
         with tab1:
@@ -157,6 +162,9 @@ class OTExplorer:
 
         with tab6:
             self.evidence_validator()
+            
+        with tab7:
+            self.control_finder()
 
 
 if __name__ == "__main__":
