@@ -58,6 +58,9 @@ class ControlFinder:
         **Expected Matches (if any):**
         {expected_matches if expected_matches else 'None specified'}
     
+        **Additional Requirement:**
+        Only include and analyze matching controls that have a similarity score above 50.
+    
         For each matching control, please provide an analysis with the following details:
     
         ### Match [Number]
@@ -81,8 +84,8 @@ class ControlFinder:
         3. Consider each framework’s specific implementation approaches.
         4. Include both policy-level and technical controls from each framework.
         5. Clarify relationships between controls across different frameworks.
-        6. If expected matches are provided, explain their relevance or why they might not be the best matches.
-    
+        6. Only include controls with a similarity score over 50.
+        7. If expected matches are provided, explain their relevance or why they might not be the best matches.
         """
         try:
             response = self.model.generate_content(prompt)
