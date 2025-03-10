@@ -1,4 +1,5 @@
-[
+{
+  "controls": [
     {
       "identifier": null,
       "category": "Change Management",
@@ -81072,3 +81073,4 @@
       "id": 9756
     }
   ]
+}
