@@ -33,15 +33,14 @@ class ControlFinder:
             self.test_controls = []
 
     def find_matching_controls(self, input_control, expected_matches=None):
-        """Find matching controls from the base set using Vertex AI."""
+        """Find similar controls from the base set using Vertex AI by comparing the control description with the body and title of each control."""
         prompt = f"""
-        You are a security control expert. Analyze the following security control description and identify matches from our base control set.
+        You are a security control expert. Analyze the following control description and identify similar controls from our base control set.
         Focus on these key aspects:
-        1. **Cross-Framework Mapping:** Identify equivalent or related controls across different frameworks (e.g., NIST 800-53, ISO 27001, CIS).
-        2. **Control Intent:** Emphasize the underlying security objective rather than relying solely on terminology.
-        3. **Implementation Hierarchy:** Evaluate both high-level policies and specific technical controls.
-        4. **Control Dependencies:** Recognize controls that function together across frameworks.
-        5. **Framework-Specific Context:** Understand how each framework uniquely approaches the security objective.
+        1. **Control Comparison:** Compare the input control description against the 'body' and 'title' attributes of each control.
+        2. **Similarity Assessment:** Determine how closely each base control matches the provided description based on the content of its body and title.
+        3. **Similarity Threshold:** Only include controls that achieve a similarity score above 50.
+        4. **Control Intent:** Emphasize the underlying security objectives rather than merely matching keywords.
     
         **Input Control Description:**
         {input_control}
@@ -58,41 +57,31 @@ class ControlFinder:
         **Expected Matches (if any):**
         {expected_matches if expected_matches else 'None specified'}
     
-        **Additional Requirement:**
-        Only include and analyze matching controls that have a similarity score above 50.
-    
         For each matching control, please provide an analysis with the following details:
     
         ### Match [Number]
         - **Control ID:** [ID]
-        - **Control Name:** [Name]
-        - **Framework:** [Framework Name]
+        - **Control Title:** [Title]
         - **Similarity Score:** [0-100]
         - **Match Type:** [Primary/Supporting/Related]
-        - **Cross-Framework Equivalents:**
-          * List equivalent controls from other frameworks.
-        - **Key Alignments:**
-          * **Security Objective:** Explain how the control addresses the core security need.
-          * **Implementation Approach:** Describe how the control achieves the objective.
-        - **Framework Context:**
-          * Explain how this control fits within its framework’s approach.
-          * Note any framework-specific considerations.
+        - **Key Similarities:**
+          * How the control's title and body align with the input description.
+          * The core security objectives addressed.
+        - **Detailed Explanation:**
+          * Explain the rationale for the similarity score.
+          * Describe any unique aspects that make this control a good match.
     
         **Rules:**
-        1. Always search for matches across all frameworks (NIST, ISO, CIS).
-        2. Prioritize security objectives over exact terminology matches.
-        3. Consider each framework’s specific implementation approaches.
-        4. Include both policy-level and technical controls from each framework.
-        5. Clarify relationships between controls across different frameworks.
-        6. Only include controls with a similarity score over 50.
-        7. If expected matches are provided, explain their relevance or why they might not be the best matches.
+        1. Compare the input description with the 'body' and 'title' of each base control.
+        2. Only include controls with a similarity score above 50.
+        3. Focus on the underlying security objectives rather than just keyword matching.
+        4. If expected matches are provided, explain their relevance or why they might not be the best matches.
         """
         try:
             response = self.model.generate_content(prompt)
             return response.text if hasattr(response, "text") else "No matches found."
         except Exception as e:
             return f"Error analyzing controls: {str(e)}"
-
 
     def render(self):
         """Render the control finder interface."""
