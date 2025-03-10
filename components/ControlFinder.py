@@ -35,25 +35,31 @@ class ControlFinder:
     def find_matching_controls(self, input_control, expected_matches=None):
         """Find matching controls from the base set using Vertex AI."""
         prompt = f"""
-        You are a security control expert. Analyze the following security control description and find matches from our base control set.
-        Pay special attention to these key aspects:
-        1. Cross-Framework Mapping: Look for equivalent or related controls across different frameworks (NIST 800-53, ISO 27001, CIS)
-        2. Control Intent: Focus on the underlying security objective, not just terminology matches
-        3. Implementation Hierarchy: Consider both high-level policies and specific technical controls
-        4. Control Dependencies: Identify controls that work together across frameworks
-        5. Framework-Specific Context: Consider how each framework approaches the security objective
-
-        Input Control Description:
+        You are a security control expert. Analyze the following security control description and identify matches from our base control set.
+        Focus on these key aspects:
+        1. **Cross-Framework Mapping:** Identify equivalent or related controls across different frameworks (e.g., NIST 800-53, ISO 27001, CIS).
+        2. **Control Intent:** Emphasize the underlying security objective rather than relying solely on terminology.
+        3. **Implementation Hierarchy:** Evaluate both high-level policies and specific technical controls.
+        4. **Control Dependencies:** Recognize controls that function together across frameworks.
+        5. **Framework-Specific Context:** Understand how each framework uniquely approaches the security objective.
+    
+        **Input Control Description:**
         {input_control}
-
-        Base Controls:
+    
+        **Base Controls:**
         {json.dumps(self.base_controls, indent=2)}
-
-        Expected Matches (if any):
+        // Each control in the base data follows this format:
+        // {{
+        //   "body": "A) There shall be a written report or document demonstrating that the data processing ...",
+        //   "id": 9687,
+        //   "title": "Lawfulness Assessment of the Processing"
+        // }}
+    
+        **Expected Matches (if any):**
         {expected_matches if expected_matches else 'None specified'}
-
-        For each matching control, provide this analysis:
-
+    
+        For each matching control, please provide an analysis with the following details:
+    
         ### Match [Number]
         - **Control ID:** [ID]
         - **Control Name:** [Name]
@@ -61,28 +67,29 @@ class ControlFinder:
         - **Similarity Score:** [0-100]
         - **Match Type:** [Primary/Supporting/Related]
         - **Cross-Framework Equivalents:**
-          * List equivalent controls from other frameworks
+          * List equivalent controls from other frameworks.
         - **Key Alignments:**
-          * Security Objective: How the control addresses the core security need
-          * Implementation Approach: How the control achieves the objective
+          * **Security Objective:** Explain how the control addresses the core security need.
+          * **Implementation Approach:** Describe how the control achieves the objective.
         - **Framework Context:**
-          * How this control fits within its framework's approach
-          * Any framework-specific considerations
-
-        Rules:
-        1. ALWAYS look for matches across ALL frameworks (NIST, ISO, CIS)
-        2. Focus on security objectives rather than exact terminology matches
-        3. Consider framework-specific implementation approaches
-        4. Include both policy and technical controls from each framework
-        5. Explain relationships between controls across frameworks
-        6. If expected matches are provided, explain their relevance or why they might not be the best matches
+          * Explain how this control fits within its framework’s approach.
+          * Note any framework-specific considerations.
+    
+        **Rules:**
+        1. Always search for matches across all frameworks (NIST, ISO, CIS).
+        2. Prioritize security objectives over exact terminology matches.
+        3. Consider each framework’s specific implementation approaches.
+        4. Include both policy-level and technical controls from each framework.
+        5. Clarify relationships between controls across different frameworks.
+        6. If expected matches are provided, explain their relevance or why they might not be the best matches.
+    
         """
-
         try:
             response = self.model.generate_content(prompt)
             return response.text if hasattr(response, "text") else "No matches found."
         except Exception as e:
             return f"Error analyzing controls: {str(e)}"
+
 
     def render(self):
         """Render the control finder interface."""
