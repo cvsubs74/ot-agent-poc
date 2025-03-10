@@ -17,7 +17,7 @@ class ControlFinder:
         
         # Load base controls from JSON file
         try:
-            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'base_controls.json'), 'r') as f:
+            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'BaseControls.json'), 'r') as f:
                 controls_data = json.load(f)
                 self.base_controls = controls_data['controls']
         except Exception as e:
