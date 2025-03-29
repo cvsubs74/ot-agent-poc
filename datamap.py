@@ -176,7 +176,6 @@ class DataMap:
             st.subheader("Law Definitions")
             st.markdown("""
             <div class="card">
-                <h3>What is a Law?</h3>
                 <p>A law is a system of rules created and enforced through social or governmental institutions to regulate behavior. 
                 In the context of data protection, laws establish the legal framework for how organizations must handle personal data.</p>
             </div>
@@ -204,7 +203,6 @@ class DataMap:
             st.subheader("Jurisdictions")
             st.markdown("""
             <div class="card">
-                <h3>What are Jurisdictions?</h3>
                 <p>Jurisdictions are geographical areas with specific legal authority. In data protection, different jurisdictions may have different laws and regulations governing how personal data must be handled.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -227,7 +225,6 @@ class DataMap:
             st.subheader("Legal Basis")
             st.markdown("""
             <div class="card">
-                <h3>What is a Legal Basis?</h3>
                 <p>A legal basis is the lawful ground for processing personal data. Data protection laws typically require organizations to have a valid legal basis before they can process personal data.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -252,7 +249,6 @@ class DataMap:
             st.subheader("Data Elements")
             st.markdown("""
             <div class="card">
-                <h3>What are Data Elements?</h3>
                 <p>Data elements are specific pieces of information that can be collected about individuals. They are the building blocks of personal data and may include items like names, email addresses, or identification numbers.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -277,7 +273,6 @@ class DataMap:
             st.subheader("Data Subject Types")
             st.markdown("""
             <div class="card">
-                <h3>What are Data Subject Types?</h3>
                 <p>Data subject types refer to the categories of individuals whose personal data is being processed. 
                 Different types of data subjects may have different rights and protections under data protection laws.</p>
             </div>
@@ -303,7 +298,6 @@ class DataMap:
             st.subheader("Data Categories")
             st.markdown("""
             <div class="card">
-                <h3>What are Data Categories?</h3>
                 <p>Data categories are groupings of similar types of personal data. 
                 They help organizations classify and manage personal data according to its nature and sensitivity.</p>
             </div>
@@ -329,7 +323,6 @@ class DataMap:
             st.subheader("Context")
             st.markdown("""
             <div class="card">
-                <h3>What is Context?</h3>
                 <p>Context refers to the specific circumstances or purposes for which personal data is collected and processed. 
                 Under most data protection laws, organizations must clearly state the context in which they process personal data.</p>
             </div>
@@ -355,7 +348,6 @@ class DataMap:
             st.subheader("Sensitivity")
             st.markdown("""
             <div class="card">
-                <h3>What is Sensitivity?</h3>
                 <p>Sensitivity refers to the level of risk associated with certain types of personal data. 
                 Some categories of data are considered more sensitive than others and require additional protections.</p>
             </div>
