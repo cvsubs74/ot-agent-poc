@@ -199,6 +199,81 @@ class DataMap:
             else:
                 st.warning("No data available in the database.")
         
+        # Jurisdictions tab
+        with tabs[1]:
+            st.subheader("Jurisdictions")
+            st.markdown("""
+            <div class="card">
+                <h3>What are Jurisdictions?</h3>
+                <p>Jurisdictions are geographical areas with specific legal authority. In data protection, different jurisdictions may have different laws and regulations governing how personal data must be handled.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get jurisdiction data from repository
+            jurisdictions = self.glossary_repository.get_jurisdictions()
+            if jurisdictions:
+                jurisdiction_data = {
+                    "Jurisdiction": [],
+                    "Description": []
+                }
+                for jurisdiction in jurisdictions:
+                    jurisdiction_data["Jurisdiction"].append(jurisdiction["name"])
+                    jurisdiction_data["Description"].append(jurisdiction["description"])
+                
+                st.dataframe(pd.DataFrame(jurisdiction_data))
+            else:
+                st.warning("No data available in the database.")
+        
+        # Legal Basis tab
+        with tabs[2]:
+            st.subheader("Legal Basis")
+            st.markdown("""
+            <div class="card">
+                <h3>What is a Legal Basis?</h3>
+                <p>A legal basis is the lawful ground for processing personal data. Data protection laws typically require organizations to have a valid legal basis before they can process personal data.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get legal basis data from repository
+            legal_bases = self.glossary_repository.get_legal_bases()
+            if legal_bases:
+                legal_basis_data = {
+                    "Legal Basis": [],
+                    "Description": []
+                }
+                for legal_basis in legal_bases:
+                    legal_basis_data["Legal Basis"].append(legal_basis["name"])
+                    legal_basis_data["Description"].append(legal_basis["description"])
+                
+                st.dataframe(pd.DataFrame(legal_basis_data))
+            else:
+                st.warning("No data available in the database.")
+        
+        # Data Elements tab
+        with tabs[3]:
+            st.subheader("Data Elements")
+            st.markdown("""
+            <div class="card">
+                <h3>What are Data Elements?</h3>
+                <p>Data elements are specific pieces of information that can be collected about individuals. They are the building blocks of personal data and may include items like names, email addresses, or identification numbers.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get data element data from repository
+            data_elements = self.glossary_repository.get_data_elements()
+            if data_elements:
+                data_element_data = {
+                    "Data Element": [],
+                    "Description": []
+                }
+                for data_element in data_elements:
+                    data_element_data["Data Element"].append(data_element["name"])
+                    data_element_data["Description"].append(data_element["description"])
+                
+                st.dataframe(pd.DataFrame(data_element_data))
+            else:
+                st.warning("No data available in the database.")
+        
         # Data Subject Types tab
         with tabs[4]:
             st.subheader("Data Subject Types")
