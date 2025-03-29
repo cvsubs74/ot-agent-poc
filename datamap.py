@@ -213,12 +213,10 @@ class DataMap:
             jurisdictions = self.glossary_repository.get_jurisdictions()
             if jurisdictions:
                 jurisdiction_data = {
-                    "Jurisdiction": [],
-                    "Description": []
+                    "Jurisdiction": []
                 }
                 for jurisdiction in jurisdictions:
                     jurisdiction_data["Jurisdiction"].append(jurisdiction["name"])
-                    jurisdiction_data["Description"].append(jurisdiction["description"])
                 
                 st.dataframe(pd.DataFrame(jurisdiction_data))
             else:
