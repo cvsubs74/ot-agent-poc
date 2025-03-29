@@ -238,7 +238,7 @@ class GlossaryRepository:
         """Get all jurisdictions from the database."""
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
-            cursor.execute("SELECT id, name FROM jurisdiction;")
+            cursor.execute("SELECT id, name, description FROM jurisdiction;")
             return cursor.fetchall()
         except Exception as e:
             print(f"Error retrieving jurisdictions: {e}")
