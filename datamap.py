@@ -914,8 +914,7 @@ class DataMap:
         
         # Create sidebar with navigation
         with st.sidebar:
-            st.title("Data Map")
-            st.markdown("### Navigation")
+            st.title("Regulatory Metamodel")
             
             # Create navigation menu in sidebar
             
@@ -927,7 +926,7 @@ class DataMap:
             if st.button("Glossary", key="glossary_btn"):
                 st.session_state['current_section'] = 'Glossary'
             
-            if st.button("Regulatory", key="regulatory_btn"):
+            if st.button("Regulatory Metadata", key="regulatory_btn"):
                 st.session_state['current_section'] = 'Regulatory'
             
             if st.button("Inventory", key="inventory_btn"):
