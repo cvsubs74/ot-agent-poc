@@ -1,0 +1,527 @@
+-- Privacy Regulation Database Seed Script
+-- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
+
+-- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
+DROP TABLE IF EXISTS law_transfer;
+DROP TABLE IF EXISTS law_context_data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS context_data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS data_subject_type_data_element_sensitivity;
+DROP TABLE IF EXISTS data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS law_data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS law_data_subject_type_data_element_sensitivity;
+DROP TABLE IF EXISTS data_category_data_element;
+DROP TABLE IF EXISTS law_incident_breach_guidance;
+DROP TABLE IF EXISTS law_legal_basis;
+DROP TABLE IF EXISTS law_jurisdiction;
+DROP TABLE IF EXISTS context;
+DROP TABLE IF EXISTS sensitivity;
+DROP TABLE IF EXISTS data_category;
+DROP TABLE IF EXISTS data_subject_type;
+DROP TABLE IF EXISTS data_element;
+DROP TABLE IF EXISTS legal_basis;
+DROP TABLE IF EXISTS jurisdiction;
+DROP TABLE IF EXISTS law;
+
+-- =============================================
+-- GLOSSARY TABLES
+-- =============================================
+
+-- Create Law table
+CREATE TABLE IF NOT EXISTS `law` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `scope` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Jurisdiction table
+CREATE TABLE IF NOT EXISTS `jurisdiction` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Legal Basis table
+CREATE TABLE IF NOT EXISTS `legal_basis` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Data Element table
+CREATE TABLE IF NOT EXISTS `data_element` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Data Subject Type table
+CREATE TABLE IF NOT EXISTS `data_subject_type` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Data Category table
+CREATE TABLE IF NOT EXISTS `data_category` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Sensitivity table
+CREATE TABLE IF NOT EXISTS `sensitivity` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Context table
+CREATE TABLE IF NOT EXISTS `context` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- REGULATORY METADATA TABLES
+-- =============================================
+
+-- Create Law Jurisdiction table
+CREATE TABLE IF NOT EXISTS `law_jurisdiction` (
+    `law_id` INT NOT NULL,
+    `jurisdiction_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`law_id`, `jurisdiction_id`),
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`jurisdiction_id`) REFERENCES `jurisdiction`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Legal Basis table
+CREATE TABLE IF NOT EXISTS `law_legal_basis` (
+    `law_id` INT NOT NULL,
+    `legal_basis_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`law_id`, `legal_basis_id`),
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Incident Breach Guidance table
+CREATE TABLE IF NOT EXISTS `law_incident_breach_guidance` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `threshold` TEXT,
+    `timeframe` VARCHAR(255),
+    `authority` VARCHAR(255),
+    `content` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+);
+
+-- Create Data Category Data Element table
+CREATE TABLE IF NOT EXISTS `data_category_data_element` (
+    `data_category_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`data_category_id`, `data_element_id`),
+    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Data Subject Type Data Element Sensitivity table
+CREATE TABLE IF NOT EXISTS `law_data_subject_type_data_element_sensitivity` (
+    `law_id` INT NOT NULL,
+    `data_subject_type_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`law_id`, `data_subject_type_id`, `data_element_id`, `sensitivity_id`),
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Data Subject Type Data Category Sensitivity table
+CREATE TABLE IF NOT EXISTS `law_data_subject_type_data_category_sensitivity` (
+    `law_id` INT NOT NULL,
+    `data_subject_type_id` INT NOT NULL,
+    `data_category_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`law_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Data Subject Type Data Category Sensitivity table
+CREATE TABLE IF NOT EXISTS `data_subject_type_data_category_sensitivity` (
+    `data_subject_type_id` INT NOT NULL,
+    `data_category_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`data_subject_type_id`, `data_category_id`, `sensitivity_id`),
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Data Subject Type Data Element Sensitivity table
+CREATE TABLE IF NOT EXISTS `data_subject_type_data_element_sensitivity` (
+    `data_subject_type_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`data_subject_type_id`, `data_element_id`, `sensitivity_id`),
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Context Data Subject Type Data Category Sensitivity table
+CREATE TABLE IF NOT EXISTS `law_context_data_subject_type_data_category_sensitivity` (
+    `law_id` INT NOT NULL,
+    `context_id` INT NOT NULL,
+    `data_subject_type_id` INT NOT NULL,
+    `data_category_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`law_id`, `context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Context Data Subject Type Data Category Sensitivity table
+CREATE TABLE IF NOT EXISTS `context_data_subject_type_data_category_sensitivity` (
+    `context_id` INT NOT NULL,
+    `data_subject_type_id` INT NOT NULL,
+    `data_category_id` INT NOT NULL,
+    `sensitivity_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
+    FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Transfer table
+CREATE TABLE IF NOT EXISTS `law_transfer` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `adequacy_countries` TEXT,
+    `transfer_mechanisms` TEXT,
+    `additional_requirements` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+);
+
+-- Create Law Data Subject Access Request Notification Requirements table
+CREATE TABLE IF NOT EXISTS `law_data_subject_access_request_notification_requirements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `conditions` TEXT,
+    `timeframe` VARCHAR(255),
+    `exemptions` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+);
+
+-- =============================================
+-- SEED GLOSSARY DATA
+-- =============================================
+
+-- Seed Law data
+INSERT INTO `law` (`name`, `description`, `scope`) VALUES
+('GDPR', 'General Data Protection Regulation - A comprehensive data protection law in the EU.', 'Applies to organizations processing personal data of individuals in the EU, regardless of the organization\'s location.'),
+('CCPA', 'California Consumer Privacy Act - Enhances privacy rights and consumer protection for residents of California.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
+('CPRA', 'California Privacy Rights Act - Expands and amends the CCPA, introducing additional privacy protections.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
+('LGPD', 'Lei Geral de Proteção de Dados - Brazil\'s General Data Protection Law.', 'Applies to any business or organization that processes the personal data of individuals in Brazil, regardless of where the organization is based.'),
+('PIPEDA', 'Personal Information Protection and Electronic Documents Act - Canada\'s federal privacy law for private-sector organizations.', 'Applies to private-sector organizations across Canada that collect, use or disclose personal information in the course of commercial activities.');
+
+-- Seed Jurisdiction data
+INSERT INTO `jurisdiction` (`name`) VALUES
+('European Union'),
+('California, USA'),
+('Brazil'),
+('Canada'),
+('United Kingdom'),
+('Australia'),
+('Japan'),
+('South Korea'),
+('India'),
+('China');
+
+-- Seed Legal Basis data
+INSERT INTO `legal_basis` (`name`, `description`) VALUES
+('Consent', 'The data subject has given clear consent for processing their personal data for a specific purpose.'),
+('Contract', 'Processing is necessary for the performance of a contract with the data subject or to take steps to enter into a contract.'),
+('Legal Obligation', 'Processing is necessary for compliance with a legal obligation to which the controller is subject.'),
+('Vital Interests', 'Processing is necessary to protect the vital interests of the data subject or another person.'),
+('Public Task', 'Processing is necessary for the performance of a task carried out in the public interest or in the exercise of official authority.'),
+('Legitimate Interests', 'Processing is necessary for the purposes of legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or rights of the data subject.');
+
+-- Seed Data Element data
+INSERT INTO `data_element` (`name`, `description`) VALUES
+('Name', 'An individual\'s first name, last name, or full name.'),
+('Email Address', 'An individual\'s email address used for electronic communication.'),
+('Phone Number', 'An individual\'s telephone number used for voice communication.'),
+('Address', 'An individual\'s physical address including street, city, state, and postal code.'),
+('IP Address', 'A unique identifier assigned to a device connected to a network.'),
+('Device ID', 'A unique identifier assigned to a specific device.'),
+('Social Security Number', 'A unique identifier assigned to an individual for tax and identification purposes in the United States.'),
+('Credit Card Number', 'A unique number assigned to a credit card for payment processing.'),
+('Date of Birth', 'An individual\'s date of birth.'),
+('Biometric Data', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.');
+
+-- Seed Data Subject Type data
+INSERT INTO `data_subject_type` (`name`, `description`) VALUES
+('Customer', 'An individual who purchases goods or services from an organization.'),
+('Employee', 'An individual who works for an organization under an employment contract.'),
+('Contractor', 'An individual who provides services to an organization but is not an employee.'),
+('Job Applicant', 'An individual who applies for a job at an organization.'),
+('Website Visitor', 'An individual who visits an organization\'s website.'),
+('Minor', 'An individual under the age of 18 or the age of majority in their jurisdiction.'),
+('Patient', 'An individual receiving medical care or treatment.'),
+('Student', 'An individual enrolled in an educational institution.');
+
+-- Seed Data Category data
+INSERT INTO `data_category` (`name`, `description`) VALUES
+('Personal Identifiers', 'Information that can directly identify an individual, such as name, email address, or phone number.'),
+('Financial Information', 'Information related to an individual\'s financial status, such as bank account details, credit card numbers, or income.'),
+('Health Information', 'Information related to an individual\'s health status, medical history, or treatment.'),
+('Biometric Information', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
+('Location Data', 'Information about an individual\'s physical location, such as GPS coordinates or IP address geolocation.'),
+('Online Activity', 'Information about an individual\'s online behavior, such as browsing history or search queries.'),
+('Employment Information', 'Information related to an individual\'s employment, such as job title, salary, or performance reviews.'),
+('Education Information', 'Information related to an individual\'s education, such as degrees, grades, or academic records.');
+
+-- Seed Sensitivity data
+INSERT INTO `sensitivity` (`name`, `description`) VALUES
+('Public', 'Information that is publicly available and poses minimal risk if disclosed.'),
+('Internal', 'Information that is intended for internal use within an organization but poses minimal risk if disclosed.'),
+('Confidential', 'Information that requires protection and poses moderate risk if disclosed.'),
+('Restricted', 'Information that requires strict protection and poses significant risk if disclosed.'),
+('Special Category', 'Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin.');
+
+-- Seed Context data
+INSERT INTO `context` (`name`, `description`) VALUES
+('Marketing', 'Processing personal data for marketing purposes, such as sending promotional emails or targeted advertising.'),
+('Customer Service', 'Processing personal data to provide customer service, such as responding to inquiries or resolving complaints.'),
+('Human Resources', 'Processing personal data for human resources purposes, such as payroll, benefits administration, or performance management.'),
+('Finance', 'Processing personal data for financial purposes, such as billing, accounting, or tax compliance.'),
+('Legal', 'Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance.'),
+('IT Security', 'Processing personal data for IT security purposes, such as access control, threat detection, or incident response.'),
+('Research', 'Processing personal data for research purposes, such as market research, scientific research, or product development.');
+
+-- =============================================
+-- SEED REGULATORY METADATA
+-- =============================================
+
+-- Seed Law Jurisdiction data
+INSERT INTO `law_jurisdiction` (`law_id`, `jurisdiction_id`)
+SELECT l.id, j.id
+FROM `law` l, `jurisdiction` j
+WHERE (l.name = 'GDPR' AND j.name = 'European Union') OR
+      (l.name = 'CCPA' AND j.name = 'California, USA') OR
+      (l.name = 'CPRA' AND j.name = 'California, USA') OR
+      (l.name = 'LGPD' AND j.name = 'Brazil') OR
+      (l.name = 'PIPEDA' AND j.name = 'Canada') OR
+      (l.name = 'GDPR' AND j.name = 'United Kingdom');
+
+-- Seed Law Legal Basis data
+INSERT INTO `law_legal_basis` (`law_id`, `legal_basis_id`)
+SELECT l.id, lb.id
+FROM `law` l, `legal_basis` lb
+WHERE (l.name = 'GDPR' AND lb.name = 'Consent') OR
+      (l.name = 'GDPR' AND lb.name = 'Contract') OR
+      (l.name = 'GDPR' AND lb.name = 'Legal Obligation') OR
+      (l.name = 'GDPR' AND lb.name = 'Vital Interests') OR
+      (l.name = 'GDPR' AND lb.name = 'Public Task') OR
+      (l.name = 'GDPR' AND lb.name = 'Legitimate Interests') OR
+      (l.name = 'CCPA' AND lb.name = 'Consent') OR
+      (l.name = 'CCPA' AND lb.name = 'Contract') OR
+      (l.name = 'LGPD' AND lb.name = 'Consent') OR
+      (l.name = 'LGPD' AND lb.name = 'Legal Obligation') OR
+      (l.name = 'LGPD' AND lb.name = 'Legitimate Interests') OR
+      (l.name = 'PIPEDA' AND lb.name = 'Consent') OR
+      (l.name = 'PIPEDA' AND lb.name = 'Legal Obligation');
+
+-- Seed Law Incident Breach Guidance data
+INSERT INTO `law_incident_breach_guidance` (`law_id`, `threshold`, `timeframe`, `authority`, `content`)
+SELECT l.id, 
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Any breach that poses a risk to the rights and freedoms of individuals'
+           WHEN l.name = 'CCPA' THEN 'Unauthorized acquisition of unencrypted personal information'
+           WHEN l.name = 'LGPD' THEN 'Security incidents that may result in risk or damage to data subjects'
+           WHEN l.name = 'PIPEDA' THEN 'Breach of security safeguards involving personal information that poses a real risk of significant harm'
+       END AS threshold,
+       CASE 
+           WHEN l.name = 'GDPR' THEN '72 hours'
+           WHEN l.name = 'CCPA' THEN 'Most expedient time possible'
+           WHEN l.name = 'LGPD' THEN 'Reasonable time period'
+           WHEN l.name = 'PIPEDA' THEN 'As soon as feasible'
+       END AS timeframe,
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Supervisory Authority'
+           WHEN l.name = 'CCPA' THEN 'California Attorney General'
+           WHEN l.name = 'LGPD' THEN 'National Data Protection Authority (ANPD)'
+           WHEN l.name = 'PIPEDA' THEN 'Privacy Commissioner of Canada'
+       END AS authority,
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Under GDPR, organizations must notify the relevant supervisory authority of a personal data breach within 72 hours of becoming aware of it, unless the breach is unlikely to result in a risk to the rights and freedoms of individuals. The notification must include the nature of the breach, categories of data, approximate number of data subjects affected, likely consequences, and measures taken to address the breach.'
+           WHEN l.name = 'CCPA' THEN 'The CCPA does not explicitly include breach notification requirements, but California has a separate breach notification law (California Civil Code 1798.82) that requires businesses to notify California residents when their unencrypted personal information was acquired by an unauthorized person.'
+           WHEN l.name = 'LGPD' THEN 'Under LGPD, data controllers must report data breaches that may result in risk or damage to data subjects to the ANPD within a reasonable time period. The notification must include a description of the affected data, information about the data subjects involved, security measures used, risks related to the incident, and measures taken to reverse or mitigate the effects of the damage.'
+           WHEN l.name = 'PIPEDA' THEN 'Under PIPEDA, organizations must report to the Privacy Commissioner of Canada any breach of security safeguards involving personal information under their control if it is reasonable to believe that the breach creates a real risk of significant harm to an individual. Organizations must also notify affected individuals and keep records of all breaches.'
+       END AS content
+FROM `law` l
+WHERE l.name IN ('GDPR', 'CCPA', 'LGPD', 'PIPEDA');
+
+-- =============================================
+-- SEED ADDITIONAL REGULATORY METADATA
+-- =============================================
+
+-- Seed Data Category Data Element relationships
+INSERT INTO `data_category_data_element` (`data_category_id`, `data_element_id`)
+SELECT dc.id, de.id
+FROM `data_category` dc, `data_element` de
+WHERE 
+    (dc.name = 'Personal Identifiers' AND de.name IN ('Name', 'Email Address', 'Phone Number', 'Address', 'Social Security Number')) OR
+    (dc.name = 'Financial Information' AND de.name IN ('Credit Card Number')) OR
+    (dc.name = 'Biometric Information' AND de.name IN ('Biometric Data')) OR
+    (dc.name = 'Location Data' AND de.name IN ('IP Address', 'Address')) OR
+    (dc.name = 'Online Activity' AND de.name IN ('IP Address', 'Device ID'));
+
+-- Seed Law Data Subject Type Data Element Sensitivity relationships
+INSERT INTO `law_data_subject_type_data_element_sensitivity` (`law_id`, `data_subject_type_id`, `data_element_id`, `sensitivity_id`)
+SELECT l.id, dst.id, de.id, s.id
+FROM `law` l, `data_subject_type` dst, `data_element` de, `sensitivity` s
+WHERE 
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND de.name = 'Name' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND de.name = 'Email Address' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND de.name = 'Credit Card Number' AND s.name = 'Restricted') OR
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND de.name = 'Biometric Data' AND s.name = 'Special Category') OR
+    (l.name = 'CCPA' AND dst.name = 'Customer' AND de.name = 'Name' AND s.name = 'Internal') OR
+    (l.name = 'CCPA' AND dst.name = 'Customer' AND de.name = 'Social Security Number' AND s.name = 'Restricted') OR
+    (l.name = 'LGPD' AND dst.name = 'Customer' AND de.name = 'Name' AND s.name = 'Internal') OR
+    (l.name = 'PIPEDA' AND dst.name = 'Customer' AND de.name = 'Name' AND s.name = 'Internal');
+
+-- Seed Law Data Subject Type Data Category Sensitivity relationships
+INSERT INTO `law_data_subject_type_data_category_sensitivity` (`law_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`)
+SELECT l.id, dst.id, dc.id, s.id
+FROM `law` l, `data_subject_type` dst, `data_category` dc, `sensitivity` s
+WHERE 
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
+    (l.name = 'GDPR' AND dst.name = 'Customer' AND dc.name = 'Health Information' AND s.name = 'Special Category') OR
+    (l.name = 'GDPR' AND dst.name = 'Employee' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
+    (l.name = 'CCPA' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'CCPA' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
+    (l.name = 'LGPD' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'PIPEDA' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal');
+
+-- Seed Data Subject Type Data Category Sensitivity relationships
+INSERT INTO `data_subject_type_data_category_sensitivity` (`data_subject_type_id`, `data_category_id`, `sensitivity_id`)
+SELECT dst.id, dc.id, s.id
+FROM `data_subject_type` dst, `data_category` dc, `sensitivity` s
+WHERE 
+    (dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
+    (dst.name = 'Customer' AND dc.name = 'Health Information' AND s.name = 'Special Category') OR
+    (dst.name = 'Employee' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
+    (dst.name = 'Minor' AND dc.name = 'Personal Identifiers' AND s.name = 'Restricted') OR
+    (dst.name = 'Patient' AND dc.name = 'Health Information' AND s.name = 'Special Category') OR
+    (dst.name = 'Website Visitor' AND dc.name = 'Online Activity' AND s.name = 'Internal');
+
+-- Seed Data Subject Type Data Element Sensitivity relationships
+INSERT INTO `data_subject_type_data_element_sensitivity` (`data_subject_type_id`, `data_element_id`, `sensitivity_id`)
+SELECT dst.id, de.id, s.id
+FROM `data_subject_type` dst, `data_element` de, `sensitivity` s
+WHERE 
+    (dst.name = 'Customer' AND de.name = 'Name' AND s.name = 'Internal') OR
+    (dst.name = 'Customer' AND de.name = 'Email Address' AND s.name = 'Internal') OR
+    (dst.name = 'Customer' AND de.name = 'Credit Card Number' AND s.name = 'Restricted') OR
+    (dst.name = 'Customer' AND de.name = 'Social Security Number' AND s.name = 'Restricted') OR
+    (dst.name = 'Employee' AND de.name = 'Name' AND s.name = 'Internal') OR
+    (dst.name = 'Employee' AND de.name = 'Social Security Number' AND s.name = 'Restricted') OR
+    (dst.name = 'Patient' AND de.name = 'Name' AND s.name = 'Confidential') OR
+    (dst.name = 'Patient' AND de.name = 'Biometric Data' AND s.name = 'Special Category') OR
+    (dst.name = 'Website Visitor' AND de.name = 'IP Address' AND s.name = 'Internal');
+
+-- Seed Law Context Data Subject Type Data Category Sensitivity relationships
+INSERT INTO `law_context_data_subject_type_data_category_sensitivity` (`law_id`, `context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`)
+SELECT l.id, c.id, dst.id, dc.id, s.id
+FROM `law` l, `context` c, `data_subject_type` dst, `data_category` dc, `sensitivity` s
+WHERE 
+    (l.name = 'GDPR' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND c.name = 'Customer Service' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'GDPR' AND c.name = 'Human Resources' AND dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
+    (l.name = 'GDPR' AND c.name = 'Finance' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
+    (l.name = 'CCPA' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'LGPD' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (l.name = 'PIPEDA' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal');
+
+-- Seed Context Data Subject Type Data Category Sensitivity relationships
+INSERT INTO `context_data_subject_type_data_category_sensitivity` (`context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`)
+SELECT c.id, dst.id, dc.id, s.id
+FROM `context` c, `data_subject_type` dst, `data_category` dc, `sensitivity` s
+WHERE 
+    (c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (c.name = 'Customer Service' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (c.name = 'Human Resources' AND dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
+    (c.name = 'Finance' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
+    (c.name = 'IT Security' AND dst.name = 'Employee' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
+    (c.name = 'Research' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal');
+
+-- Seed Law Transfer data
+INSERT INTO `law_transfer` (`law_id`, `adequacy_countries`, `transfer_mechanisms`, `additional_requirements`)
+SELECT l.id,
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Andorra, Argentina, Canada (commercial organizations), Faroe Islands, Guernsey, Israel, Isle of Man, Japan, Jersey, New Zealand, Republic of Korea, Switzerland, United Kingdom, Uruguay'
+           WHEN l.name = 'LGPD' THEN 'Countries with adequate level of protection as determined by ANPD'
+           WHEN l.name = 'PIPEDA' THEN 'Countries with substantially similar legislation'
+           ELSE NULL
+       END AS adequacy_countries,
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Standard Contractual Clauses (SCCs), Binding Corporate Rules (BCRs), Codes of Conduct, Certification Mechanisms'
+           WHEN l.name = 'CCPA' THEN 'Service provider contracts'
+           WHEN l.name = 'LGPD' THEN 'Standard Contractual Clauses, Binding Corporate Rules, Codes of Conduct, Certification, Specific Contractual Clauses'
+           WHEN l.name = 'PIPEDA' THEN 'Contractual or other means'
+           ELSE NULL
+       END AS transfer_mechanisms,
+       CASE 
+           WHEN l.name = 'GDPR' THEN 'Transfer Impact Assessment (TIA), Supplementary Measures'
+           WHEN l.name = 'LGPD' THEN 'Specific authorization from the ANPD may be required'
+           ELSE NULL
+       END AS additional_requirements
+FROM `law` l
+WHERE l.name IN ('GDPR', 'CCPA', 'LGPD', 'PIPEDA');
+
+-- Seed Law Data Subject Access Request Notification Requirements data
+INSERT INTO `law_data_subject_access_request_notification_requirements` (`law_id`, `name`, `description`, `conditions`, `timeframe`, `exemptions`)
+VALUES
+((SELECT id FROM law WHERE name = 'GDPR'), 'Right of Access', 'Data subjects have the right to obtain confirmation as to whether personal data concerning them is being processed, and if so, access to that data.', 'Valid identification may be required to verify the identity of the requestor.', '1 month (can be extended by 2 additional months where necessary)', 'Requests that are manifestly unfounded or excessive; legal prohibitions; adversely affecting rights of others'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Right to Rectification', 'Data subjects have the right to have inaccurate personal data rectified or completed if it is incomplete.', 'Requestor must specify what data is inaccurate and provide correct information.', '1 month (can be extended by 2 additional months where necessary)', 'Requests that are manifestly unfounded or excessive'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Right to Erasure', 'Data subjects have the right to have personal data erased in certain circumstances.', 'Applies when: data is no longer necessary, consent is withdrawn, subject objects, data unlawfully processed, legal obligation.', '1 month (can be extended by 2 additional months where necessary)', 'Legal obligation to keep data; public interest; legal claims'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Right to Know', 'Consumers have the right to request that a business disclose what personal information it collects, uses, shares, or sells.', 'Verifiable consumer request required.', '45 days (can be extended by additional 45 days where necessary)', 'Requests that are manifestly unfounded or excessive; cannot verify identity'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Right to Delete', 'Consumers have the right to request that a business delete personal information about them.', 'Verifiable consumer request required.', '45 days (can be extended by additional 45 days where necessary)', 'Certain business purposes; legal obligations; security purposes'),
+((SELECT id FROM law WHERE name = 'LGPD'), 'Right of Access', 'Data subjects have the right to obtain confirmation of the existence of processing and access to their personal data.', 'Valid identification may be required.', 'Immediately (simplified format) or 15 days (complete declaration)', 'Commercial and industrial secrets'),
+((SELECT id FROM law WHERE name = 'PIPEDA'), 'Right of Access', 'Individuals have the right to access their personal information held by an organization.', 'Request must be in writing; reasonable assistance must be provided.', '30 days (can be extended where necessary)', 'Legal privilege; confidential commercial information; would reveal third-party information');

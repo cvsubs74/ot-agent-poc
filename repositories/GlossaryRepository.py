@@ -1,0 +1,819 @@
+import pymysql.cursors
+import json
+
+class GlossaryRepository:
+    def __init__(self, connection):
+        """Initialize the GlossaryRepository with a database connection."""
+        self.connection = connection
+        self.setup_tables()
+        
+    def setup_tables(self):
+        """Create all the necessary tables for the glossary if they don't exist."""
+        self.create_law_table()
+        self.create_jurisdiction_table()
+        self.create_legal_basis_table()
+        self.create_data_element_table()
+        self.create_data_subject_type_table()
+        self.create_data_category_table()
+        self.create_sensitivity_table()
+        self.create_context_table()
+        
+    def create_law_table(self):
+        """Create the Law table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `law` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `scope` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_jurisdiction_table(self):
+        """Create the Jurisdiction table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `jurisdiction` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_legal_basis_table(self):
+        """Create the Legal Basis table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `legal_basis` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_data_element_table(self):
+        """Create the Data Element table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_element` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_data_subject_type_table(self):
+        """Create the Data Subject Type table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_subject_type` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_data_category_table(self):
+        """Create the Data Category table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_category` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_sensitivity_table(self):
+        """Create the Sensitivity table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `sensitivity` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_context_table(self):
+        """Create the Context table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `context` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    # Law methods
+    def add_law(self, name, description, scope):
+        """Add a new law to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO law (name, description, scope)
+            VALUES (%s, %s, %s);
+            """
+            cursor.execute(insert_query, (name, description, scope))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding law: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_laws(self):
+        """Get all laws from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description, scope FROM law;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving laws: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_law_by_id(self, law_id):
+        """Get a law by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description, scope FROM law WHERE id = %s;", (law_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving law by ID {law_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def update_law(self, law_id, name, description, scope):
+        """Update an existing law."""
+        cursor = self.connection.cursor()
+        try:
+            update_query = """
+            UPDATE law
+            SET name = %s, description = %s, scope = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_query, (name, description, scope, law_id))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating law: {e}")
+            return False
+        finally:
+            cursor.close()
+    
+    def delete_law(self, law_id):
+        """Delete a law by its ID."""
+        cursor = self.connection.cursor()
+        try:
+            delete_query = "DELETE FROM law WHERE id = %s;"
+            cursor.execute(delete_query, (law_id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error deleting law: {e}")
+            return False
+        finally:
+            cursor.close()
+    
+    # Jurisdiction methods
+    def add_jurisdiction(self, name):
+        """Add a new jurisdiction to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO jurisdiction (name)
+            VALUES (%s);
+            """
+            cursor.execute(insert_query, (name,))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding jurisdiction: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_jurisdictions(self):
+        """Get all jurisdictions from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name FROM jurisdiction;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving jurisdictions: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_jurisdiction_by_id(self, jurisdiction_id):
+        """Get a jurisdiction by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name FROM jurisdiction WHERE id = %s;", (jurisdiction_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving jurisdiction by ID {jurisdiction_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Legal Basis methods
+    def add_legal_basis(self, name, description):
+        """Add a new legal basis to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO legal_basis (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding legal basis: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_legal_bases(self):
+        """Get all legal bases from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM legal_basis;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving legal bases: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_legal_basis_by_id(self, legal_basis_id):
+        """Get a legal basis by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM legal_basis WHERE id = %s;", (legal_basis_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving legal basis by ID {legal_basis_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Data Element methods
+    def add_data_element(self, name, description):
+        """Add a new data element to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO data_element (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding data element: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_data_elements(self):
+        """Get all data elements from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_element;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving data elements: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_data_element_by_id(self, data_element_id):
+        """Get a data element by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_element WHERE id = %s;", (data_element_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving data element by ID {data_element_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Data Subject Type methods
+    def add_data_subject_type(self, name, description):
+        """Add a new data subject type to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO data_subject_type (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding data subject type: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_data_subject_types(self):
+        """Get all data subject types from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_subject_type;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving data subject types: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_data_subject_type_by_id(self, data_subject_type_id):
+        """Get a data subject type by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_subject_type WHERE id = %s;", (data_subject_type_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving data subject type by ID {data_subject_type_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Data Category methods
+    def add_data_category(self, name, description):
+        """Add a new data category to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO data_category (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding data category: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_data_categories(self):
+        """Get all data categories from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_category;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving data categories: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_data_category_by_id(self, data_category_id):
+        """Get a data category by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM data_category WHERE id = %s;", (data_category_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving data category by ID {data_category_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Sensitivity methods
+    def add_sensitivity(self, name, description):
+        """Add a new sensitivity level to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO sensitivity (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding sensitivity: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_sensitivities(self):
+        """Get all sensitivity levels from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM sensitivity;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving sensitivities: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_sensitivity_by_id(self, sensitivity_id):
+        """Get a sensitivity level by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM sensitivity WHERE id = %s;", (sensitivity_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving sensitivity by ID {sensitivity_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Context methods
+    def add_context(self, name, description):
+        """Add a new context to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO context (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding context: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_contexts(self):
+        """Get all contexts from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM context;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving contexts: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_context_by_id(self, context_id):
+        """Get a context by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM context WHERE id = %s;", (context_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving context by ID {context_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Seed data methods
+    def seed_data(self):
+        """Seed the database with initial data."""
+        self.seed_laws()
+        self.seed_jurisdictions()
+        self.seed_legal_bases()
+        self.seed_data_elements()
+        self.seed_data_subject_types()
+        self.seed_data_categories()
+        self.seed_sensitivities()
+        self.seed_contexts()
+    
+    def seed_laws(self):
+        """Seed the database with initial law data."""
+        laws = [
+            {
+                "name": "GDPR",
+                "description": "General Data Protection Regulation - A comprehensive data protection law in the EU.",
+                "scope": "Applies to organizations processing personal data of individuals in the EU, regardless of the organization's location."
+            },
+            {
+                "name": "CCPA",
+                "description": "California Consumer Privacy Act - Enhances privacy rights and consumer protection for residents of California.",
+                "scope": "Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds."
+            },
+            {
+                "name": "CPRA",
+                "description": "California Privacy Rights Act - Expands and amends the CCPA, introducing additional privacy protections.",
+                "scope": "Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds."
+            },
+            {
+                "name": "LGPD",
+                "description": "Lei Geral de Proteção de Dados - Brazil's General Data Protection Law.",
+                "scope": "Applies to any business or organization that processes the personal data of individuals in Brazil, regardless of where the organization is based."
+            },
+            {
+                "name": "PIPEDA",
+                "description": "Personal Information Protection and Electronic Documents Act - Canada's federal privacy law for private-sector organizations.",
+                "scope": "Applies to private-sector organizations across Canada that collect, use or disclose personal information in the course of commercial activities."
+            }
+        ]
+        
+        for law in laws:
+            self.add_law(law["name"], law["description"], law["scope"])
+    
+    def seed_jurisdictions(self):
+        """Seed the database with initial jurisdiction data."""
+        jurisdictions = [
+            {"name": "European Union"},
+            {"name": "California, USA"},
+            {"name": "Brazil"},
+            {"name": "Canada"},
+            {"name": "United Kingdom"},
+            {"name": "Australia"},
+            {"name": "Japan"},
+            {"name": "South Korea"},
+            {"name": "India"},
+            {"name": "China"}
+        ]
+        
+        for jurisdiction in jurisdictions:
+            self.add_jurisdiction(jurisdiction["name"])
+    
+    def seed_legal_bases(self):
+        """Seed the database with initial legal basis data."""
+        legal_bases = [
+            {
+                "name": "Consent",
+                "description": "The data subject has given clear consent for processing their personal data for a specific purpose."
+            },
+            {
+                "name": "Contract",
+                "description": "Processing is necessary for the performance of a contract with the data subject or to take steps to enter into a contract."
+            },
+            {
+                "name": "Legal Obligation",
+                "description": "Processing is necessary for compliance with a legal obligation to which the controller is subject."
+            },
+            {
+                "name": "Vital Interests",
+                "description": "Processing is necessary to protect the vital interests of the data subject or another person."
+            },
+            {
+                "name": "Public Task",
+                "description": "Processing is necessary for the performance of a task carried out in the public interest or in the exercise of official authority."
+            },
+            {
+                "name": "Legitimate Interests",
+                "description": "Processing is necessary for the purposes of legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or rights of the data subject."
+            }
+        ]
+        
+        for legal_basis in legal_bases:
+            self.add_legal_basis(legal_basis["name"], legal_basis["description"])
+    
+    def seed_data_elements(self):
+        """Seed the database with initial data element data."""
+        data_elements = [
+            {
+                "name": "Name",
+                "description": "An individual's first name, last name, or full name."
+            },
+            {
+                "name": "Email Address",
+                "description": "An individual's email address used for electronic communication."
+            },
+            {
+                "name": "Phone Number",
+                "description": "An individual's telephone number used for voice communication."
+            },
+            {
+                "name": "Address",
+                "description": "An individual's physical address including street, city, state, and postal code."
+            },
+            {
+                "name": "IP Address",
+                "description": "A unique identifier assigned to a device connected to a network."
+            },
+            {
+                "name": "Device ID",
+                "description": "A unique identifier assigned to a specific device."
+            },
+            {
+                "name": "Social Security Number",
+                "description": "A unique identifier assigned to an individual for tax and identification purposes in the United States."
+            },
+            {
+                "name": "Credit Card Number",
+                "description": "A unique number assigned to a credit card for payment processing."
+            },
+            {
+                "name": "Date of Birth",
+                "description": "An individual's date of birth."
+            },
+            {
+                "name": "Biometric Data",
+                "description": "Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data."
+            }
+        ]
+        
+        for data_element in data_elements:
+            self.add_data_element(data_element["name"], data_element["description"])
+    
+    def seed_data_subject_types(self):
+        """Seed the database with initial data subject type data."""
+        data_subject_types = [
+            {
+                "name": "Customer",
+                "description": "An individual who purchases goods or services from an organization."
+            },
+            {
+                "name": "Employee",
+                "description": "An individual who works for an organization under an employment contract."
+            },
+            {
+                "name": "Contractor",
+                "description": "An individual who provides services to an organization but is not an employee."
+            },
+            {
+                "name": "Job Applicant",
+                "description": "An individual who applies for a job at an organization."
+            },
+            {
+                "name": "Website Visitor",
+                "description": "An individual who visits an organization's website."
+            },
+            {
+                "name": "Minor",
+                "description": "An individual under the age of 18 or the age of majority in their jurisdiction."
+            },
+            {
+                "name": "Patient",
+                "description": "An individual receiving medical care or treatment."
+            },
+            {
+                "name": "Student",
+                "description": "An individual enrolled in an educational institution."
+            }
+        ]
+        
+        for data_subject_type in data_subject_types:
+            self.add_data_subject_type(data_subject_type["name"], data_subject_type["description"])
+    
+    def seed_data_categories(self):
+        """Seed the database with initial data category data."""
+        data_categories = [
+            {
+                "name": "Personal Identifiers",
+                "description": "Information that can directly identify an individual, such as name, email address, or phone number."
+            },
+            {
+                "name": "Financial Information",
+                "description": "Information related to an individual's financial status, such as bank account details, credit card numbers, or income."
+            },
+            {
+                "name": "Health Information",
+                "description": "Information related to an individual's health status, medical history, or treatment."
+            },
+            {
+                "name": "Biometric Information",
+                "description": "Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data."
+            },
+            {
+                "name": "Location Data",
+                "description": "Information about an individual's physical location, such as GPS coordinates or IP address geolocation."
+            },
+            {
+                "name": "Online Activity",
+                "description": "Information about an individual's online behavior, such as browsing history or search queries."
+            },
+            {
+                "name": "Employment Information",
+                "description": "Information related to an individual's employment, such as job title, salary, or performance reviews."
+            },
+            {
+                "name": "Education Information",
+                "description": "Information related to an individual's education, such as degrees, grades, or academic records."
+            }
+        ]
+        
+        for data_category in data_categories:
+            self.add_data_category(data_category["name"], data_category["description"])
+    
+    def seed_sensitivities(self):
+        """Seed the database with initial sensitivity data."""
+        sensitivities = [
+            {
+                "name": "Public",
+                "description": "Information that is publicly available and poses minimal risk if disclosed."
+            },
+            {
+                "name": "Internal",
+                "description": "Information that is intended for internal use within an organization but poses minimal risk if disclosed."
+            },
+            {
+                "name": "Confidential",
+                "description": "Information that requires protection and poses moderate risk if disclosed."
+            },
+            {
+                "name": "Restricted",
+                "description": "Information that requires strict protection and poses significant risk if disclosed."
+            },
+            {
+                "name": "Special Category",
+                "description": "Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin."
+            }
+        ]
+        
+        for sensitivity in sensitivities:
+            self.add_sensitivity(sensitivity["name"], sensitivity["description"])
+    
+    def seed_contexts(self):
+        """Seed the database with initial context data."""
+        contexts = [
+            {
+                "name": "Marketing",
+                "description": "Processing personal data for marketing purposes, such as sending promotional emails or targeted advertising."
+            },
+            {
+                "name": "Customer Service",
+                "description": "Processing personal data to provide customer service, such as responding to inquiries or resolving complaints."
+            },
+            {
+                "name": "Human Resources",
+                "description": "Processing personal data for human resources purposes, such as payroll, benefits administration, or performance management."
+            },
+            {
+                "name": "Finance",
+                "description": "Processing personal data for financial purposes, such as billing, accounting, or tax compliance."
+            },
+            {
+                "name": "Legal",
+                "description": "Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance."
+            },
+            {
+                "name": "IT Security",
+                "description": "Processing personal data for IT security purposes, such as access control, threat detection, or incident response."
+            },
+            {
+                "name": "Research",
+                "description": "Processing personal data for research purposes, such as market research, scientific research, or product development."
+            },
+            {
+                "name": "Healthcare",
+                "description": "Processing personal data for healthcare purposes, such as diagnosis, treatment, or care management."
+            }
+        ]
+        
+        for context in contexts:
+            self.add_context(context["name"], context["description"])
+            
+    def seed_all_data(self):
+        """Seed all glossary tables with initial data."""
+        self.seed_laws()
+        self.seed_jurisdictions()
+        self.seed_legal_bases()
+        self.seed_data_elements()
+        self.seed_data_subject_types()
+        self.seed_data_categories()
+        self.seed_sensitivities()
+        self.seed_contexts()

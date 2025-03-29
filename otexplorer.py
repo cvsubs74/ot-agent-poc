@@ -141,8 +141,8 @@ class OTExplorer:
         """)
 
         # Step 4: Create tabs for all functionalities
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", "Evidence Validator", "Control Finder"]
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+            ["Create Scenarios", "Explore Scenarios", "Rules", "Actions", "AI Insights", "Evidence Validator"]
         )
 
         with tab1:
