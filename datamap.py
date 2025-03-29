@@ -24,12 +24,6 @@ class DataMap:
             self.regulatory_metadata_repository.setup_tables()
             
             # Check if data needs to be seeded
-            self._check_and_seed_data()
-    
-    def _check_and_seed_data(self):
-        """Check if data exists in the database and seed it if necessary."""
-        if self.database_manager.connection:
-            # Check if any laws exist
             laws = self.glossary_repository.get_laws()
             if not laws:
                 # Seed glossary data first
@@ -189,173 +183,21 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get law data from repository
-            if self.database_manager.connection:
-                laws = self.glossary_repository.get_laws()
-                if laws:
-                    law_data = {
-                        "Law Name": [],
-                        "Description": [],
-                        "Scope": []
-                    }
-                    for law in laws:
-                        law_data["Law Name"].append(law["name"])
-                        law_data["Description"].append(law["description"])
-                        law_data["Scope"].append(law["scope"])
-                    
-                    st.dataframe(pd.DataFrame(law_data))
-                else:
-                    st.warning("No law data available in the database.")
-            else:
-                # Fallback to sample data if no database connection
+            laws = self.glossary_repository.get_laws()
+            if laws:
                 law_data = {
-                    "Law Name": ["GDPR", "CCPA/CPRA", "LGPD", "PIPEDA"],
-                    "Region": ["European Union", "California, USA", "Brazil", "Canada"],
-                    "Effective Date": ["May 25, 2018", "Jan 1, 2020/Jan 1, 2023", "Aug 15, 2020", "Jan 1, 2004"],
-                    "Key Features": [
-                        "Data subject rights, DPO requirement, 72-hour breach notification",
-                        "Right to know, delete, opt-out of sale, non-discrimination",
-                        "Similar to GDPR, includes data subject rights and DPO requirements",
-                        "Consent requirements, access rights, oversight by Privacy Commissioner"
-                    ]
+                    "Law Name": [],
+                    "Description": [],
+                    "Scope": []
                 }
+                for law in laws:
+                    law_data["Law Name"].append(law["name"])
+                    law_data["Description"].append(law["description"])
+                    law_data["Scope"].append(law["scope"])
+                
                 st.dataframe(pd.DataFrame(law_data))
-                st.info("Using sample data - no database connection available.")
-        
-        # Jurisdictions tab
-        with tabs[1]:
-            st.subheader("Jurisdictions")
-            st.markdown("""
-            <div class="card">
-                <h3>What is a Jurisdiction?</h3>
-                <p>A jurisdiction refers to the geographic area over which a legal authority extends, such as a country, 
-                state, or region. Different jurisdictions may have different data protection laws and requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get jurisdiction data from repository
-            if self.database_manager.connection:
-                jurisdictions = self.glossary_repository.get_jurisdictions()
-                if jurisdictions:
-                    jurisdiction_data = {
-                        "Jurisdiction": []
-                    }
-                    for jurisdiction in jurisdictions:
-                        jurisdiction_data["Jurisdiction"].append(jurisdiction["name"])
-                    
-                    # Get law-jurisdiction relationships
-                    law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-                    if law_jurisdictions:
-                        # Create a mapping of jurisdictions to laws
-                        jurisdiction_to_laws = {}
-                        for lj in law_jurisdictions:
-                            if lj["jurisdiction_name"] not in jurisdiction_to_laws:
-                                jurisdiction_to_laws[lj["jurisdiction_name"]] = []
-                            jurisdiction_to_laws[lj["jurisdiction_name"]].append(lj["law_name"])
-                        
-                        # Add laws to the jurisdiction data
-                        jurisdiction_data["Key Laws"] = []
-                        for j in jurisdiction_data["Jurisdiction"]:
-                            if j in jurisdiction_to_laws:
-                                jurisdiction_data["Key Laws"].append(", ".join(jurisdiction_to_laws[j]))
-                            else:
-                                jurisdiction_data["Key Laws"].append("")
-                    
-                    st.dataframe(pd.DataFrame(jurisdiction_data))
-                else:
-                    st.warning("No jurisdiction data available in the database.")
             else:
-                # Fallback to sample data if no database connection
-                jurisdiction_data = {
-                    "Jurisdiction": ["European Union", "United States", "California", "Brazil", "Canada", "United Kingdom"],
-                    "Type": ["Supranational", "Federal", "State", "National", "National", "National"],
-                    "Key Laws": ["GDPR", "Various Federal Laws", "CCPA/CPRA", "LGPD", "PIPEDA", "UK GDPR, DPA 2018"]
-                }
-                st.dataframe(pd.DataFrame(jurisdiction_data))
-                st.info("Using sample data - no database connection available.")
-        
-        # Legal Basis tab
-        with tabs[2]:
-            st.subheader("Legal Basis")
-            st.markdown("""
-            <div class="card">
-                <h3>What is a Legal Basis?</h3>
-                <p>A legal basis is the lawful ground for processing personal data. Under most data protection laws, 
-                organizations must have a valid legal basis before they can process personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get legal basis data from repository
-            if self.database_manager.connection:
-                legal_bases = self.glossary_repository.get_legal_bases()
-                if legal_bases:
-                    legal_basis_data = {
-                        "Legal Basis": [],
-                        "Description": []
-                    }
-                    for lb in legal_bases:
-                        legal_basis_data["Legal Basis"].append(lb["name"])
-                        legal_basis_data["Description"].append(lb["description"])
-                    
-                    st.dataframe(pd.DataFrame(legal_basis_data))
-                else:
-                    st.warning("No legal basis data available in the database.")
-            else:
-                # Fallback to sample data
-                legal_basis_data = {
-                    "Legal Basis": ["Consent", "Contract", "Legal Obligation", "Vital Interests", "Public Task", "Legitimate Interests"],
-                    "Description": [
-                        "The data subject has given clear consent for processing their personal data for a specific purpose.",
-                        "Processing is necessary for the performance of a contract with the data subject.",
-                        "Processing is necessary for compliance with a legal obligation.",
-                        "Processing is necessary to protect the vital interests of the data subject or another person.",
-                        "Processing is necessary for the performance of a task carried out in the public interest.",
-                        "Processing is necessary for the purposes of legitimate interests pursued by the controller."
-                    ]
-                }
-                st.dataframe(pd.DataFrame(legal_basis_data))
-                st.info("Using sample data - no database connection available.")
-        
-        # Data Elements tab
-        with tabs[3]:
-            st.subheader("Data Elements")
-            st.markdown("""
-            <div class="card">
-                <h3>What are Data Elements?</h3>
-                <p>Data elements are specific pieces of personal information that can be collected and processed. 
-                They are the building blocks of personal data and can include identifiers, characteristics, and other information.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get data element data from repository
-            if self.database_manager.connection:
-                data_elements = self.glossary_repository.get_data_elements()
-                if data_elements:
-                    data_element_data = {
-                        "Data Element": [],
-                        "Description": []
-                    }
-                    for de in data_elements:
-                        data_element_data["Data Element"].append(de["name"])
-                        data_element_data["Description"].append(de["description"])
-                    
-                    st.dataframe(pd.DataFrame(data_element_data))
-                else:
-                    st.warning("No data element data available in the database.")
-            else:
-                # Fallback to sample data
-                data_element_data = {
-                    "Data Element": ["Name", "Email Address", "Phone Number", "Address", "IP Address", "Device ID"],
-                    "Description": [
-                        "An individual's first name, last name, or full name.",
-                        "An individual's email address used for electronic communication.",
-                        "An individual's telephone number used for voice communication.",
-                        "An individual's physical address including street, city, state, and postal code.",
-                        "A unique identifier assigned to a device connected to a network.",
-                        "A unique identifier assigned to a specific device."
-                    ]
-                }
-                st.dataframe(pd.DataFrame(data_element_data))
-                st.info("Using sample data - no database connection available.")
+                st.warning("No data available in the database.")
         
         # Data Subject Types tab
         with tabs[4]:
@@ -369,35 +211,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get data subject type data from repository
-            if self.database_manager.connection:
-                data_subject_types = self.glossary_repository.get_data_subject_types()
-                if data_subject_types:
-                    data_subject_type_data = {
-                        "Data Subject Type": [],
-                        "Description": []
-                    }
-                    for dst in data_subject_types:
-                        data_subject_type_data["Data Subject Type"].append(dst["name"])
-                        data_subject_type_data["Description"].append(dst["description"])
-                    
-                    st.dataframe(pd.DataFrame(data_subject_type_data))
-                else:
-                    st.warning("No data subject type data available in the database.")
-            else:
-                # Fallback to sample data
+            data_subject_types = self.glossary_repository.get_data_subject_types()
+            if data_subject_types:
                 data_subject_type_data = {
-                    "Data Subject Type": ["Customer", "Employee", "Contractor", "Job Applicant", "Website Visitor", "Minor"],
-                    "Description": [
-                        "An individual who purchases goods or services from an organization.",
-                        "An individual who works for an organization under an employment contract.",
-                        "An individual who provides services to an organization but is not an employee.",
-                        "An individual who applies for a job at an organization.",
-                        "An individual who visits an organization's website.",
-                        "An individual under the age of 18 or the age of majority in their jurisdiction."
-                    ]
+                    "Data Subject Type": [],
+                    "Description": []
                 }
+                for dst in data_subject_types:
+                    data_subject_type_data["Data Subject Type"].append(dst["name"])
+                    data_subject_type_data["Description"].append(dst["description"])
+                
                 st.dataframe(pd.DataFrame(data_subject_type_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Data Categories tab
         with tabs[5]:
@@ -411,35 +237,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get data category data from repository
-            if self.database_manager.connection:
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    data_category_data = {
-                        "Data Category": [],
-                        "Description": []
-                    }
-                    for dc in data_categories:
-                        data_category_data["Data Category"].append(dc["name"])
-                        data_category_data["Description"].append(dc["description"])
-                    
-                    st.dataframe(pd.DataFrame(data_category_data))
-                else:
-                    st.warning("No data category data available in the database.")
-            else:
-                # Fallback to sample data
+            data_categories = self.glossary_repository.get_data_categories()
+            if data_categories:
                 data_category_data = {
-                    "Data Category": ["Personal Identifiers", "Financial Information", "Health Information", "Biometric Information", "Location Data", "Online Activity"],
-                    "Description": [
-                        "Information that can directly identify an individual, such as name, email address, or phone number.",
-                        "Information related to an individual's financial status, such as bank account details, credit card numbers, or income.",
-                        "Information related to an individual's health status, medical history, or treatment.",
-                        "Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.",
-                        "Information about an individual's physical location, such as GPS coordinates or IP address geolocation.",
-                        "Information about an individual's online behavior, such as browsing history or search queries."
-                    ]
+                    "Data Category": [],
+                    "Description": []
                 }
+                for dc in data_categories:
+                    data_category_data["Data Category"].append(dc["name"])
+                    data_category_data["Description"].append(dc["description"])
+                
                 st.dataframe(pd.DataFrame(data_category_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Context tab
         with tabs[6]:
@@ -453,35 +263,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get context data from repository
-            if self.database_manager.connection:
-                contexts = self.glossary_repository.get_contexts()
-                if contexts:
-                    context_data = {
-                        "Context": [],
-                        "Description": []
-                    }
-                    for ctx in contexts:
-                        context_data["Context"].append(ctx["name"])
-                        context_data["Description"].append(ctx["description"])
-                    
-                    st.dataframe(pd.DataFrame(context_data))
-                else:
-                    st.warning("No context data available in the database.")
-            else:
-                # Fallback to sample data
+            contexts = self.glossary_repository.get_contexts()
+            if contexts:
                 context_data = {
-                    "Context": ["Marketing", "Customer Service", "Human Resources", "Finance", "Legal", "IT Security"],
-                    "Description": [
-                        "Processing personal data for marketing purposes, such as sending promotional emails or targeted advertising.",
-                        "Processing personal data to provide customer service, such as responding to inquiries or resolving complaints.",
-                        "Processing personal data for human resources purposes, such as payroll, benefits administration, or performance management.",
-                        "Processing personal data for financial purposes, such as billing, accounting, or tax compliance.",
-                        "Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance.",
-                        "Processing personal data for IT security purposes, such as access control, threat detection, or incident response."
-                    ]
+                    "Context": [],
+                    "Description": []
                 }
+                for ctx in contexts:
+                    context_data["Context"].append(ctx["name"])
+                    context_data["Description"].append(ctx["description"])
+                
                 st.dataframe(pd.DataFrame(context_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Sensitivity tab
         with tabs[7]:
@@ -495,34 +289,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get sensitivity data from repository
-            if self.database_manager.connection:
-                sensitivities = self.glossary_repository.get_sensitivities()
-                if sensitivities:
-                    sensitivity_data = {
-                        "Sensitivity Level": [],
-                        "Description": []
-                    }
-                    for sens in sensitivities:
-                        sensitivity_data["Sensitivity Level"].append(sens["name"])
-                        sensitivity_data["Description"].append(sens["description"])
-                    
-                    st.dataframe(pd.DataFrame(sensitivity_data))
-                else:
-                    st.warning("No sensitivity data available in the database.")
-            else:
-                # Fallback to sample data
+            sensitivities = self.glossary_repository.get_sensitivities()
+            if sensitivities:
                 sensitivity_data = {
-                    "Sensitivity Level": ["Public", "Internal", "Confidential", "Restricted", "Special Category"],
-                    "Description": [
-                        "Information that is publicly available and poses minimal risk if disclosed.",
-                        "Information that is intended for internal use within an organization but poses minimal risk if disclosed.",
-                        "Information that requires protection and poses moderate risk if disclosed.",
-                        "Information that requires strict protection and poses significant risk if disclosed.",
-                        "Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin."
-                    ]
+                    "Sensitivity Level": [],
+                    "Description": []
                 }
+                for sens in sensitivities:
+                    sensitivity_data["Sensitivity Level"].append(sens["name"])
+                    sensitivity_data["Description"].append(sens["description"])
+                
                 st.dataframe(pd.DataFrame(sensitivity_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
@@ -554,35 +333,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get law jurisdiction data from repository
-            if self.database_manager.connection:
-                law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-                if law_jurisdictions:
-                    law_jurisdiction_data = {
-                        "Law": [],
-                        "Jurisdiction": []
-                    }
-                    for lj in law_jurisdictions:
-                        law_jurisdiction_data["Law"].append(lj["law_name"])
-                        law_jurisdiction_data["Jurisdiction"].append(lj["jurisdiction_name"])
-                    
-                    st.dataframe(pd.DataFrame(law_jurisdiction_data))
-                else:
-                    st.warning("No law jurisdiction data available in the database.")
-            else:
-                # Fallback to sample data
+            law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
+            if law_jurisdictions:
                 law_jurisdiction_data = {
-                    "Law": ["GDPR", "GDPR", "CCPA/CPRA", "LGPD", "PIPEDA"],
-                    "Jurisdiction": ["European Union", "EEA Countries", "California, USA", "Brazil", "Canada"],
-                    "Applicability": [
-                        "All EU member states", 
-                        "Norway, Iceland, Liechtenstein", 
-                        "Businesses serving California residents", 
-                        "All of Brazil", 
-                        "All of Canada (with some provincial exceptions)"
-                    ]
+                    "Law": [],
+                    "Jurisdiction": []
                 }
+                for lj in law_jurisdictions:
+                    law_jurisdiction_data["Law"].append(lj["law_name"])
+                    law_jurisdiction_data["Jurisdiction"].append(lj["jurisdiction_name"])
+                
                 st.dataframe(pd.DataFrame(law_jurisdiction_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Law Legal Basis tab
         with tabs[1]:
@@ -594,38 +357,21 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get law legal basis data from repository
-            if self.database_manager.connection:
-                law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
-                if law_legal_bases:
-                    law_legal_basis_data = {
-                        "Law": [],
-                        "Legal Basis": [],
-                        "Description": []
-                    }
-                    for llb in law_legal_bases:
-                        law_legal_basis_data["Law"].append(llb["law_name"])
-                        law_legal_basis_data["Legal Basis"].append(llb["legal_basis_name"])
-                        law_legal_basis_data["Description"].append(llb["legal_basis_description"])
-                    
-                    st.dataframe(pd.DataFrame(law_legal_basis_data))
-                else:
-                    st.warning("No law legal basis data available in the database.")
-            else:
-                # Fallback to sample data
+            law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
+            if law_legal_bases:
                 law_legal_basis_data = {
-                    "Law": ["GDPR", "GDPR", "GDPR", "CCPA", "LGPD", "PIPEDA"],
-                    "Legal Basis": ["Consent", "Contract", "Legitimate Interests", "Consent", "Consent", "Consent"],
-                    "Description": [
-                        "The data subject has given clear consent for processing their personal data for a specific purpose.",
-                        "Processing is necessary for the performance of a contract with the data subject.",
-                        "Processing is necessary for the purposes of legitimate interests pursued by the controller.",
-                        "The consumer has given explicit consent for processing their personal data.",
-                        "The data subject has given consent for processing their personal data.",
-                        "The individual has given consent for processing their personal data."
-                    ]
+                    "Law": [],
+                    "Legal Basis": [],
+                    "Description": []
                 }
+                for llb in law_legal_bases:
+                    law_legal_basis_data["Law"].append(llb["law_name"])
+                    law_legal_basis_data["Legal Basis"].append(llb["legal_basis_name"])
+                    law_legal_basis_data["Description"].append(llb["legal_basis_description"])
+                
                 st.dataframe(pd.DataFrame(law_legal_basis_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Law Incident Breach Notification tab
         with tabs[2]:
@@ -637,41 +383,25 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get law incident breach guidance data from repository
-            if self.database_manager.connection:
-                law_breach_guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances()
-                if law_breach_guidances:
-                    law_breach_data = {
-                        "Law": [],
-                        "Threshold": [],
-                        "Timeframe": [],
-                        "Authority": [],
-                        "Content": []
-                    }
-                    for lbg in law_breach_guidances:
-                        law_breach_data["Law"].append(lbg["law_name"])
-                        law_breach_data["Threshold"].append(lbg["threshold"])
-                        law_breach_data["Timeframe"].append(lbg["timeframe"])
-                        law_breach_data["Authority"].append(lbg["authority"])
-                        law_breach_data["Content"].append(lbg["content"])
-                    
-                    st.dataframe(pd.DataFrame(law_breach_data))
-                else:
-                    st.warning("No law incident breach guidance data available in the database.")
-            else:
-                # Fallback to sample data
+            law_breach_guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances()
+            if law_breach_guidances:
                 law_breach_data = {
-                    "Law": ["GDPR", "CCPA", "LGPD", "PIPEDA"],
-                    "Threshold": [
-                        "Risk to rights and freedoms",
-                        "Unauthorized acquisition of unencrypted data",
-                        "Security incidents with risk to data subjects",
-                        "Real risk of significant harm"
-                    ],
-                    "Timeframe": ["72 hours", "Most expedient time", "Reasonable time", "As soon as feasible"],
-                    "Authority": ["Supervisory Authority", "Attorney General", "ANPD", "Privacy Commissioner"]
+                    "Law": [],
+                    "Threshold": [],
+                    "Timeframe": [],
+                    "Authority": [],
+                    "Content": []
                 }
+                for lbg in law_breach_guidances:
+                    law_breach_data["Law"].append(lbg["law_name"])
+                    law_breach_data["Threshold"].append(lbg["threshold"])
+                    law_breach_data["Timeframe"].append(lbg["timeframe"])
+                    law_breach_data["Authority"].append(lbg["authority"])
+                    law_breach_data["Content"].append(lbg["content"])
+                
                 st.dataframe(pd.DataFrame(law_breach_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Law Transfer tab
         with tabs[3]:
@@ -683,49 +413,23 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get law transfer data from repository
-            if self.database_manager.connection:
-                law_transfers = self.regulatory_metadata_repository.get_law_transfers()
-                if law_transfers:
-                    law_transfer_data = {
-                        "Law": [],
-                        "Adequacy Countries": [],
-                        "Transfer Mechanisms": [],
-                        "Additional Requirements": []
-                    }
-                    for lt in law_transfers:
-                        law_transfer_data["Law"].append(lt["law_name"])
-                        law_transfer_data["Adequacy Countries"].append(lt["adequacy_countries"] or "N/A")
-                        law_transfer_data["Transfer Mechanisms"].append(lt["transfer_mechanisms"] or "N/A")
-                        law_transfer_data["Additional Requirements"].append(lt["additional_requirements"] or "N/A")
-                    
-                    st.dataframe(pd.DataFrame(law_transfer_data))
-                else:
-                    st.warning("No law transfer data available in the database.")
-            else:
-                # Fallback to sample data
+            law_transfers = self.regulatory_metadata_repository.get_law_transfers()
+            if law_transfers:
                 law_transfer_data = {
-                    "Law": ["GDPR", "CCPA", "LGPD", "PIPEDA"],
-                    "Adequacy Countries": [
-                        "Andorra, Argentina, Canada, Faroe Islands, Guernsey, Israel, Isle of Man, Japan, Jersey, New Zealand, Republic of Korea, Switzerland, UK, Uruguay",
-                        "N/A",
-                        "Countries with adequate level of protection as determined by ANPD",
-                        "Countries with substantially similar legislation"
-                    ],
-                    "Transfer Mechanisms": [
-                        "SCCs, BCRs, Codes of Conduct, Certification",
-                        "Service provider contracts",
-                        "SCCs, BCRs, Codes of Conduct, Certification, Specific Contractual Clauses",
-                        "Contractual or other means"
-                    ],
-                    "Additional Requirements": [
-                        "Transfer Impact Assessment (TIA), Supplementary Measures",
-                        "N/A",
-                        "Specific authorization from the ANPD may be required",
-                        "N/A"
-                    ]
+                    "Law": [],
+                    "Adequacy Countries": [],
+                    "Transfer Mechanisms": [],
+                    "Additional Requirements": []
                 }
+                for lt in law_transfers:
+                    law_transfer_data["Law"].append(lt["law_name"])
+                    law_transfer_data["Adequacy Countries"].append(lt["adequacy_countries"] or "N/A")
+                    law_transfer_data["Transfer Mechanisms"].append(lt["transfer_mechanisms"] or "N/A")
+                    law_transfer_data["Additional Requirements"].append(lt["additional_requirements"] or "N/A")
+                
                 st.dataframe(pd.DataFrame(law_transfer_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Data Subject Access Request tab
         with tabs[4]:
@@ -737,50 +441,27 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get DSAR data from repository
-            if self.database_manager.connection:
-                dsar_requirements = self.regulatory_metadata_repository.get_law_data_subject_access_request_notification_requirements()
-                if dsar_requirements:
-                    dsar_data = {
-                        "Law": [],
-                        "Right": [],
-                        "Description": [],
-                        "Conditions": [],
-                        "Timeframe": [],
-                        "Exemptions": []
-                    }
-                    for req in dsar_requirements:
-                        dsar_data["Law"].append(req["law_name"])
-                        dsar_data["Right"].append(req["name"])
-                        dsar_data["Description"].append(req["description"])
-                        dsar_data["Conditions"].append(req["conditions"] or "N/A")
-                        dsar_data["Timeframe"].append(req["timeframe"] or "N/A")
-                        dsar_data["Exemptions"].append(req["exemptions"] or "N/A")
-                    
-                    st.dataframe(pd.DataFrame(dsar_data))
-                else:
-                    st.warning("No data subject access request requirement data available in the database.")
-            else:
-                # Fallback to sample data
+            dsar_requirements = self.regulatory_metadata_repository.get_law_data_subject_access_request_notification_requirements()
+            if dsar_requirements:
                 dsar_data = {
-                    "Law": ["GDPR", "GDPR", "CCPA", "LGPD", "PIPEDA"],
-                    "Right": ["Right of Access", "Right to Erasure", "Right to Know", "Right of Access", "Right of Access"],
-                    "Description": [
-                        "Data subjects have the right to obtain confirmation as to whether personal data concerning them is being processed, and if so, access to that data.",
-                        "Data subjects have the right to have personal data erased in certain circumstances.",
-                        "Consumers have the right to request that a business disclose what personal information it collects, uses, shares, or sells.",
-                        "Data subjects have the right to obtain confirmation of the existence of processing and access to their personal data.",
-                        "Individuals have the right to access their personal information held by an organization."
-                    ],
-                    "Timeframe": [
-                        "1 month (can be extended by 2 additional months where necessary)",
-                        "1 month (can be extended by 2 additional months where necessary)",
-                        "45 days (can be extended by additional 45 days where necessary)",
-                        "Immediately (simplified format) or 15 days (complete declaration)",
-                        "30 days (can be extended where necessary)"
-                    ]
+                    "Law": [],
+                    "Right": [],
+                    "Description": [],
+                    "Conditions": [],
+                    "Timeframe": [],
+                    "Exemptions": []
                 }
+                for req in dsar_requirements:
+                    dsar_data["Law"].append(req["law_name"])
+                    dsar_data["Right"].append(req["name"])
+                    dsar_data["Description"].append(req["description"])
+                    dsar_data["Conditions"].append(req["conditions"] or "N/A")
+                    dsar_data["Timeframe"].append(req["timeframe"] or "N/A")
+                    dsar_data["Exemptions"].append(req["exemptions"] or "N/A")
+                
                 st.dataframe(pd.DataFrame(dsar_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Data Category Data Element tab
         with tabs[5]:
@@ -792,40 +473,19 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get data category data element mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    data_category_elements = self.regulatory_metadata_repository.get_data_category_data_elements()
-                    if data_category_elements:
-                        mapping_data = {
-                            "Data Category": [],
-                            "Data Element": []
-                        }
-                        for mapping in data_category_elements:
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Data Element"].append(mapping["data_element_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No data category to data element mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving data category data element mappings: {e}")
-            else:
-                # Fallback to sample data
+            data_category_elements = self.regulatory_metadata_repository.get_data_category_data_elements()
+            if data_category_elements:
                 mapping_data = {
-                    "Data Category": [
-                        "Contact Information", "Contact Information", "Contact Information",
-                        "Financial Information", "Financial Information",
-                        "Identity Information", "Identity Information"
-                    ],
-                    "Data Element": [
-                        "Email Address", "Phone Number", "Mailing Address",
-                        "Credit Card Number", "Bank Account Number",
-                        "Government ID", "Full Name"
-                    ]
+                    "Data Category": [],
+                    "Data Element": []
                 }
+                for mapping in data_category_elements:
+                    mapping_data["Data Category"].append(mapping["data_category_name"])
+                    mapping_data["Data Element"].append(mapping["data_element_name"])
+                
                 st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Law Data Subject Type Data Element Sensitivity tab
         with tabs[6]:
@@ -837,38 +497,23 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Law": [],
-                            "Data Subject Type": [],
-                            "Data Element": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Law"].append(mapping["law_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Element"].append(mapping["data_element_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No law data subject type data element sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving law data subject type data element sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
+            mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
+            if mappings:
                 mapping_data = {
-                    "Law": ["GDPR", "GDPR", "CCPA", "LGPD"],
-                    "Data Subject Type": ["Customer", "Employee", "Consumer", "Data Subject"],
-                    "Data Element": ["Government ID", "Health Record", "Credit Card Number", "Biometric Data"],
-                    "Sensitivity": ["High", "Special Category", "High", "Special Category"]
+                    "Law": [],
+                    "Data Subject Type": [],
+                    "Data Element": [],
+                    "Sensitivity": []
                 }
+                for mapping in mappings:
+                    mapping_data["Law"].append(mapping["law_name"])
+                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                    mapping_data["Data Element"].append(mapping["data_element_name"])
+                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
                 st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Law Data Subject Type Data Category Sensitivity tab
         with tabs[7]:
@@ -880,38 +525,23 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Law": [],
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Law"].append(mapping["law_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No law data subject type data category sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving law data subject type data category sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
+            mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
+            if mappings:
                 mapping_data = {
-                    "Law": ["GDPR", "GDPR", "CCPA", "LGPD"],
-                    "Data Subject Type": ["Customer", "Employee", "Consumer", "Data Subject"],
-                    "Data Category": ["Identity Information", "Health Information", "Financial Information", "Biometric Information"],
-                    "Sensitivity": ["High", "Special Category", "High", "Special Category"]
+                    "Law": [],
+                    "Data Subject Type": [],
+                    "Data Category": [],
+                    "Sensitivity": []
                 }
+                for mapping in mappings:
+                    mapping_data["Law"].append(mapping["law_name"])
+                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                    mapping_data["Data Category"].append(mapping["data_category_name"])
+                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
                 st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Data Subject Type Data Category Sensitivity tab
         with tabs[8]:
@@ -923,35 +553,21 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No data subject type data category sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving data subject type data category sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
+            mappings = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
+            if mappings:
                 mapping_data = {
-                    "Data Subject Type": ["Customer", "Employee", "Patient", "Minor"],
-                    "Data Category": ["Contact Information", "Employment Information", "Health Information", "Education Information"],
-                    "Sensitivity": ["Medium", "High", "Special Category", "High"]
+                    "Data Subject Type": [],
+                    "Data Category": [],
+                    "Sensitivity": []
                 }
+                for mapping in mappings:
+                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                    mapping_data["Data Category"].append(mapping["data_category_name"])
+                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
                 st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            else:
+                st.warning("No data available in the database.")
         
         # Data Subject Type Data Element Sensitivity tab
         with tabs[9]:
@@ -963,36 +579,21 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Data Subject Type": [],
-                            "Data Element": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Element"].append(mapping["data_element_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No data subject type data element sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving data subject type data element sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
-                mapping_data = {
-                    "Data Subject Type": ["Customer", "Employee", "Patient", "Minor"],
-                    "Data Element": ["Email Address", "Salary Information", "Medical Record", "School Record"],
-                    "Sensitivity": ["Medium", "High", "Special Category", "High"]
-                }
-                st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
-        
+            
+            mappings = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
+            
+            mapping_data = {
+                "Data Subject Type": [],
+                "Data Element": [],
+                "Sensitivity": []
+            }
+            for mapping in mappings:
+                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                mapping_data["Data Element"].append(mapping["data_element_name"])
+                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+            
+            st.dataframe(pd.DataFrame(mapping_data))
+            
         # Law Context Data Subject Type Data Category Sensitivity tab
         with tabs[10]:
             st.markdown("""
@@ -1003,41 +604,23 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Law": [],
-                            "Context": [],
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Law"].append(mapping["law_name"])
-                            mapping_data["Context"].append(mapping["context_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No law context data subject type data category sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving law context data subject type data category sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
-                mapping_data = {
-                    "Law": ["GDPR", "GDPR", "CCPA", "LGPD"],
-                    "Context": ["Marketing", "HR", "Sales", "Customer Service"],
-                    "Data Subject Type": ["Customer", "Employee", "Consumer", "Data Subject"],
-                    "Data Category": ["Contact Information", "Employment Information", "Financial Information", "Contact Information"],
-                    "Sensitivity": ["Medium", "High", "High", "Medium"]
-                }
-                st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            mappings = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
+            
+            mapping_data = {
+                "Law": [],
+                "Context": [],
+                "Data Subject Type": [],
+                "Data Category": [],
+                "Sensitivity": []
+            }
+            for mapping in mappings:
+                mapping_data["Law"].append(mapping["law_name"])
+                mapping_data["Context"].append(mapping["context_name"])
+                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                mapping_data["Data Category"].append(mapping["data_category_name"])
+                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+            
+            st.dataframe(pd.DataFrame(mapping_data))
         
         # Context Data Subject Type Data Category Sensitivity tab
         with tabs[11]:
@@ -1049,38 +632,23 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get mappings from repository
-            if self.database_manager.connection:
-                try:
-                    # This method needs to be implemented in the repository
-                    mappings = self.regulatory_metadata_repository.get_context_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Context": [],
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Context"].append(mapping["context_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                        
-                        st.dataframe(pd.DataFrame(mapping_data))
-                    else:
-                        st.warning("No context data subject type data category sensitivity mappings available in the database.")
-                except Exception as e:
-                    st.error(f"Error retrieving context data subject type data category sensitivity mappings: {e}")
-            else:
-                # Fallback to sample data
-                mapping_data = {
-                    "Context": ["Marketing", "HR", "Sales", "Customer Service"],
-                    "Data Subject Type": ["Customer", "Employee", "Consumer", "Customer"],
-                    "Data Category": ["Contact Information", "Employment Information", "Financial Information", "Contact Information"],
-                    "Sensitivity": ["Medium", "High", "High", "Medium"]
-                }
-                st.dataframe(pd.DataFrame(mapping_data))
-                st.info("Using sample data - no database connection available.")
+            
+            mappings = self.regulatory_metadata_repository.get_context_data_subject_type_data_category_sensitivities()
+            
+            mapping_data = {
+                "Context": [],
+                "Data Subject Type": [],
+                "Data Category": [],
+                "Sensitivity": []
+            }
+            for mapping in mappings:
+                mapping_data["Context"].append(mapping["context_name"])
+                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                mapping_data["Data Category"].append(mapping["data_category_name"])
+                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+            
+            st.dataframe(pd.DataFrame(mapping_data))
+            
 
     def inventory_section(self):
         """Handle the Inventory section with its tabs."""
@@ -1120,13 +688,11 @@ class DataMap:
                 st.selectbox("Asset Type", ["Database", "SaaS Application", "Internal System", "Mobile Application", "Website", "API", "Other"])
                 
                 # Get data categories from repository for the multi-select
-                if self.database_manager.connection:
-                    data_categories = self.glossary_repository.get_data_categories()
-                    if data_categories:
-                        category_options = [dc["name"] for dc in data_categories]
-                        st.multiselect("Data Categories", options=category_options)
-                    else:
-                        st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
+                
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    category_options = [dc["name"] for dc in data_categories]
+                    st.multiselect("Data Categories", options=category_options)
                 else:
                     st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
                 
@@ -1163,35 +729,29 @@ class DataMap:
                 st.text_input("Activity Name")
                 
                 # Get purposes (contexts) from repository for the select box
-                if self.database_manager.connection:
-                    contexts = self.glossary_repository.get_contexts()
-                    if contexts:
-                        purpose_options = [ctx["name"] for ctx in contexts]
-                        st.selectbox("Purpose", options=purpose_options)
-                    else:
-                        st.selectbox("Purpose", options=["Service Provision", "Marketing", "Employment", "Product Improvement"])
+                
+                contexts = self.glossary_repository.get_contexts()
+                if contexts:
+                    purpose_options = [ctx["name"] for ctx in contexts]
+                    st.selectbox("Purpose", options=purpose_options)
                 else:
                     st.selectbox("Purpose", options=["Service Provision", "Marketing", "Employment", "Product Improvement"])
                 
                 # Get data categories from repository for the multi-select
-                if self.database_manager.connection:
-                    data_categories = self.glossary_repository.get_data_categories()
-                    if data_categories:
-                        category_options = [dc["name"] for dc in data_categories]
-                        st.multiselect("Data Categories", options=category_options)
-                    else:
-                        st.multiselect("Data Categories", options=["Identity", "Contact", "Preferences", "HR Data", "Financial", "Usage Data"])
+                
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    category_options = [dc["name"] for dc in data_categories]
+                    st.multiselect("Data Categories", options=category_options)
                 else:
                     st.multiselect("Data Categories", options=["Identity", "Contact", "Preferences", "HR Data", "Financial", "Usage Data"])
                 
                 # Get legal bases from repository for the select box
-                if self.database_manager.connection:
-                    legal_bases = self.glossary_repository.get_legal_bases()
-                    if legal_bases:
-                        legal_basis_options = [lb["name"] for lb in legal_bases]
-                        st.selectbox("Legal Basis", options=legal_basis_options)
-                    else:
-                        st.selectbox("Legal Basis", options=["Consent", "Contract", "Legal Obligation", "Legitimate Interest"])
+                
+                legal_bases = self.glossary_repository.get_legal_bases()
+                if legal_bases:
+                    legal_basis_options = [lb["name"] for lb in legal_bases]
+                    st.selectbox("Legal Basis", options=legal_basis_options)
                 else:
                     st.selectbox("Legal Basis", options=["Consent", "Contract", "Legal Obligation", "Legitimate Interest"])
                 
@@ -1259,13 +819,11 @@ class DataMap:
                 st.text_input("Service Type")
                 
                 # Get data categories from repository for the multi-select
-                if self.database_manager.connection:
-                    data_categories = self.glossary_repository.get_data_categories()
-                    if data_categories:
-                        category_options = [dc["name"] for dc in data_categories]
-                        st.multiselect("Data Categories", options=category_options)
-                    else:
-                        st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
+                
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    category_options = [dc["name"] for dc in data_categories]
+                    st.multiselect("Data Categories", options=category_options)
                 else:
                     st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
                 
@@ -1278,6 +836,17 @@ class DataMap:
         # Configure the page
         self.configure_page()
 
+        # Main header and introduction
+        if 'current_section' not in st.session_state or st.session_state['current_section'] == 'Glossary':
+            st.title("DataMap: Privacy Regulation Mapping Tool")
+            
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This is a comprehensive tool designed to help organizations navigate the complex landscape of privacy regulations. 
+                This application provides a structured view of privacy laws, their requirements, and how they relate to different types of data and processing activities.</p>
+                </div>''', unsafe_allow_html=True)
+
+            self.divider(2)
+        
         # Create sidebar with navigation
         with st.sidebar:
             st.title("Data Map")
