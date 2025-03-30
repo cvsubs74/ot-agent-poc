@@ -1569,16 +1569,16 @@ class DataMap:
         """
         st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Legal Basis Inference</div>", unsafe_allow_html=True)
         
-        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>This API helps determine the appropriate legal basis for processing personal data based on regulatory metadata.</p>
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            This API helps determine the appropriate legal basis for processing personal data based on regulatory metadata.<br><br>
             <ul>
                 <li>Recommends suitable legal bases according to applicable regulations</li>
                 <li>Considers processing purpose, data sensitivity, and jurisdiction</li>
                 <li>Ranks recommendations by regulatory preference</li>
                 <li>Provides implementation guidance for each legal basis</li>
             </ul>
-            
-            <p><strong>How the Algorithm Works:</strong></p>
+            <strong>How the Algorithm Works:</strong><br><br>
             <ul>
                 <li><strong>Purpose-Based Analysis:</strong> Finds legal bases for specific law and purpose combinations</li>
                 <li><strong>Preference Ordering:</strong> Ranks legal bases by regulatory preference (lower numbers = higher preference)</li>
@@ -1586,7 +1586,8 @@ class DataMap:
                 <li><strong>Fallback Mechanism:</strong> Uses general legal bases if no purpose-specific ones are found</li>
                 <li><strong>Compliance Guidance:</strong> Provides specific requirements and implementation steps</li>
             </ul>
-        </div>''', unsafe_allow_html=True)
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Create two columns for input form and results
         col1, col2 = st.columns([1, 1])
@@ -1897,16 +1898,16 @@ class DataMap:
         """
         st.markdown("<div class='page-header'><i class='fas fa-exclamation-triangle'></i> &nbsp;Breach Notification</div>", unsafe_allow_html=True)
         
-        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>This API helps determine the notification requirements for data breaches based on regulatory metadata.</p>
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            This API helps determine the notification requirements for data breaches based on regulatory metadata.<br><br>
             <ul>
                 <li>Provides guidance on notification requirements and timelines</li>
                 <li>Identifies authorities that must be notified</li>
                 <li>Calculates risk scores to determine notification necessity</li>
                 <li>Offers documentation templates and remediation guidance</li>
             </ul>
-            
-            <p><strong>How the Algorithm Works:</strong></p>
+            <strong>How the Algorithm Works:</strong><br><br>
             <ul>
                 <li><strong>Law-Specific Guidance:</strong> Retrieves notification requirements for the selected law</li>
                 <li><strong>Risk Assessment:</strong> Calculates risk score based on breach type and impact</li>
@@ -1914,7 +1915,8 @@ class DataMap:
                 <li><strong>Timeline Calculation:</strong> Determines precise notification deadlines</li>
                 <li><strong>Documentation Guidance:</strong> Provides internal documentation templates</li>
             </ul>
-        </div>''', unsafe_allow_html=True)
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Create two columns for input form and results
         col1, col2 = st.columns([1, 1])
