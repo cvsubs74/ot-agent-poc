@@ -1131,20 +1131,11 @@ class DataMap:
 
         st.markdown("<div class='page-header'><i class='fas fa-sitemap'></i> &nbsp;Decision Tree</div>", unsafe_allow_html=True)
         st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>This section visualizes the regulatory metadata as an interactive decision tree using PyVis with a physics-based layout.</p>
+            <p>This section visualizes the regulatory metadata as an interactive decision tree.</p>
             <ul>
                 <li>Visualizes complex relationships between regulatory components in a hierarchical structure</li>
                 <li>Uses directed graph with the selected law as the root node</li>
                 <li>Connects related entities based on their relationships in the regulatory framework</li>
-            </ul>
-            
-            <p><strong>How the Algorithm Works:</strong></p>
-            <ul>
-                <li><strong>Graph Construction:</strong> Builds a directed graph with the law as the root node</li>
-                <li><strong>Physics Simulation:</strong> Uses Barnes-Hut physics for natural clustering of related nodes</li>
-                <li><strong>Interactive Features:</strong> Drag nodes to reposition and explore different arrangements</li>
-                <li><strong>Filtering Options:</strong> Show/hide different node types to focus on specific aspects</li>
-                <li><strong>Dynamic Recalculation:</strong> Physics simulation recalculates when nodes are moved</li>
             </ul>
         </div>''', unsafe_allow_html=True)
 
