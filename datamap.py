@@ -10,9 +10,6 @@ from repositories.GlossaryRepository import GlossaryRepository
 from repositories.RegulatoryMetadataRepository import RegulatoryMetadataRepository
 from repositories.DatabaseManager import DatabaseManager
 
-from streamlit_agraph import agraph, Node, Edge, Config
-
-
 class DataMap:
     def __init__(self):
         """Initialize the DataMap application with repositories."""
