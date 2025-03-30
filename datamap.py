@@ -234,6 +234,17 @@ class DataMap:
         """Handle the Glossary section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-book'></i> &nbsp;Glossary</div>", unsafe_allow_html=True)
         
+        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>The Glossary section provides comprehensive definitions and explanations of key privacy and data protection concepts.</p>
+            <ul>
+                <li>Centralized knowledge base for consistent understanding of regulatory terminology</li>
+                <li>Detailed definitions for privacy laws, jurisdictions, and legal bases</li>
+                <li>Explanations of data elements, subject types, and categories</li>
+                <li>Context and sensitivity classifications with regulatory references</li>
+                <li>Supporting documentation for compliance efforts and training</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
+        
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
             "Data Subject Types", "Data Categories", "Context", "Sensitivity"
@@ -439,6 +450,19 @@ class DataMap:
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-project-diagram'></i> &nbsp;Mappings</div>", unsafe_allow_html=True)
+        
+        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>The Regulatory Mappings section provides detailed relationships between different regulatory components.</p>
+            <ul>
+                <li>Interconnections between privacy laws, jurisdictions, and compliance requirements</li>
+                <li>Foundation for automated inference engines and compliance recommendations</li>
+                <li>Mappings between laws and applicable jurisdictions</li>
+                <li>Legal basis requirements for different processing activities</li>
+                <li>Breach notification timelines and requirements by jurisdiction</li>
+                <li>Data transfer mechanisms and cross-border requirements</li>
+                <li>Sensitivity classifications based on data types and processing contexts</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
         
         tabs = st.tabs([
             "Law Jurisdiction", 
@@ -970,15 +994,8 @@ class DataMap:
         self.configure_page()
 
         # Main header and introduction
-        if 'current_section' not in st.session_state or st.session_state['current_section'] == 'Glossary':
-            st.title("Content Management System")
-            
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This is a comprehensive tool designed to help organizations navigate the complex landscape of privacy regulations. 
-                This application provides a structured view of privacy laws, their requirements, and how they relate to different types of data and processing activities.</p>
-                </div>''', unsafe_allow_html=True)
-
-            self.divider(2)
+        st.title("Content Management System")
+        self.divider(2)
         
         # Create sidebar with navigation
         with st.sidebar:
@@ -1110,18 +1127,27 @@ class DataMap:
         Initially the network stabilizes (nodes become static) but if you drag a node the physics
         simulation restarts and nodes bounce. A legend is shown below the graph.
         """
-        import os
-        import tempfile
         from pyvis.network import Network
         import streamlit.components.v1 as components
 
         st.markdown("<div class='page-header'><i class='fas fa-sitemap'></i> &nbsp;Decision Tree</div>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="card">
-            <p>This section visualizes the regulatory metadata as a decision tree using PyVis with a physics-based layout.
-            The graph will stabilize initially, but dragging a node will re-enable physics and cause a bouncing effect.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This section visualizes the regulatory metadata as an interactive decision tree using PyVis with a physics-based layout.</p>
+            <ul>
+                <li>Visualizes complex relationships between regulatory components in a hierarchical structure</li>
+                <li>Uses directed graph with the selected law as the root node</li>
+                <li>Connects related entities based on their relationships in the regulatory framework</li>
+            </ul>
+            
+            <p><strong>How the Algorithm Works:</strong></p>
+            <ul>
+                <li><strong>Graph Construction:</strong> Builds a directed graph with the law as the root node</li>
+                <li><strong>Physics Simulation:</strong> Uses Barnes-Hut physics for natural clustering of related nodes</li>
+                <li><strong>Interactive Features:</strong> Drag nodes to reposition and explore different arrangements</li>
+                <li><strong>Filtering Options:</strong> Show/hide different node types to focus on specific aspects</li>
+                <li><strong>Dynamic Recalculation:</strong> Physics simulation recalculates when nodes are moved</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
 
         # Get laws for dropdown selection
         laws = self.glossary_repository.get_laws()
@@ -1308,13 +1334,25 @@ class DataMap:
         """
         st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Sensitivity Inference</div>", unsafe_allow_html=True)
         
-        st.markdown("""
-        <div class="card">
-            <p>This API allows you to determine the sensitivity level of data based on regulatory metadata. 
-            Select the relevant attributes and the system will infer the appropriate sensitivity level 
-            according to applicable regulations.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                This API determines the sensitivity level of data based on regulatory metadata.<br><br>
+                <ul>
+                    <li>Analyzes data attributes against regulatory requirements</li>
+                    <li>Provides sensitivity classification (high, medium, low)</li>
+                    <li>Offers compliance recommendations based on sensitivity level</li>
+                    <li>Helps implement appropriate data protection safeguards</li>
+                </ul>
+                <strong>How the Algorithm Works:</strong><br><br>
+                <ul>
+                    <li><strong>Context-Aware Lookup:</strong> Checks for sensitivity classifications matching all parameters</li>
+                    <li><strong>Fallback Mechanism:</strong> Uses more general classifications if no specific match is found</li>
+                    <li><strong>Hierarchical Classification:</strong> Understands relationships between data elements and categories</li>
+                    <li><strong>Regulatory Alignment:</strong> Derives classifications from regulatory mappings</li>
+                    <li><strong>Compliance Guidance:</strong> Provides specific safeguard recommendations by sensitivity level</li>
+                </ul>
+            </div>
+            ''', unsafe_allow_html=True)
         
         # Create two columns for input form and results
         col1, col2 = st.columns([1, 1])
@@ -1531,13 +1569,24 @@ class DataMap:
         """
         st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Legal Basis Inference</div>", unsafe_allow_html=True)
         
-        st.markdown("""
-        <div class="card">
-            <p>This API helps determine the appropriate legal basis for processing personal data 
-            based on regulatory metadata. Select the relevant parameters and the system will 
-            recommend suitable legal bases according to applicable regulations.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This API helps determine the appropriate legal basis for processing personal data based on regulatory metadata.</p>
+            <ul>
+                <li>Recommends suitable legal bases according to applicable regulations</li>
+                <li>Considers processing purpose, data sensitivity, and jurisdiction</li>
+                <li>Ranks recommendations by regulatory preference</li>
+                <li>Provides implementation guidance for each legal basis</li>
+            </ul>
+            
+            <p><strong>How the Algorithm Works:</strong></p>
+            <ul>
+                <li><strong>Purpose-Based Analysis:</strong> Finds legal bases for specific law and purpose combinations</li>
+                <li><strong>Preference Ordering:</strong> Ranks legal bases by regulatory preference (lower numbers = higher preference)</li>
+                <li><strong>Sensitivity Refinement:</strong> Adjusts recommendations based on data sensitivity level</li>
+                <li><strong>Fallback Mechanism:</strong> Uses general legal bases if no purpose-specific ones are found</li>
+                <li><strong>Compliance Guidance:</strong> Provides specific requirements and implementation steps</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
         
         # Create two columns for input form and results
         col1, col2 = st.columns([1, 1])
@@ -1848,13 +1897,24 @@ class DataMap:
         """
         st.markdown("<div class='page-header'><i class='fas fa-exclamation-triangle'></i> &nbsp;Breach Notification</div>", unsafe_allow_html=True)
         
-        st.markdown("""
-        <div class="card">
-            <p>This API helps determine the notification requirements for data breaches based on regulatory metadata. 
-            Input the details of the breach incident, and the system will provide guidance on notification 
-            requirements, timelines, and authorities to notify.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This API helps determine the notification requirements for data breaches based on regulatory metadata.</p>
+            <ul>
+                <li>Provides guidance on notification requirements and timelines</li>
+                <li>Identifies authorities that must be notified</li>
+                <li>Calculates risk scores to determine notification necessity</li>
+                <li>Offers documentation templates and remediation guidance</li>
+            </ul>
+            
+            <p><strong>How the Algorithm Works:</strong></p>
+            <ul>
+                <li><strong>Law-Specific Guidance:</strong> Retrieves notification requirements for the selected law</li>
+                <li><strong>Risk Assessment:</strong> Calculates risk score based on breach type and impact</li>
+                <li><strong>Jurisdiction Analysis:</strong> Considers jurisdiction-specific requirements</li>
+                <li><strong>Timeline Calculation:</strong> Determines precise notification deadlines</li>
+                <li><strong>Documentation Guidance:</strong> Provides internal documentation templates</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
         
         # Create two columns for input form and results
         col1, col2 = st.columns([1, 1])
