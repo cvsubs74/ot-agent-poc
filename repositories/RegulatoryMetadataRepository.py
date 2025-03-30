@@ -21,6 +21,7 @@ class RegulatoryMetadataRepository:
         self.create_context_data_subject_type_data_category_sensitivity_table()
         self.create_law_transfer_table()
         self.create_law_data_subject_access_request_notification_requirements_table()
+        self.create_law_purpose_category_legal_basis_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""
@@ -236,6 +237,27 @@ class RegulatoryMetadataRepository:
             `timeframe` VARCHAR(255),
             `exemptions` TEXT,
             FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_law_purpose_category_legal_basis_table(self):
+        """Create the Law Purpose Category Legal Basis table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `law_purpose_category_legal_basis` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `law_id` INT NOT NULL,
+            `purpose_category_id` INT NOT NULL,
+            `legal_basis_id` INT NOT NULL,
+            `preference_order` INT DEFAULT 1,
+            `description` TEXT,
+            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE,
+            UNIQUE KEY `unique_law_purpose_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`)
         );
         """
         cursor.execute(create_table_query)
@@ -1335,5 +1357,274 @@ class RegulatoryMetadataRepository:
         self.seed_law_jurisdictions()
         self.seed_law_legal_bases()
         self.seed_law_incident_breach_guidances()
+        self.seed_law_purpose_category_legal_bases()
         self.seed_law_transfers()
         self.seed_law_data_subject_access_request_notification_requirements()
+        
+    # Law Purpose Category Legal Basis methods
+    def add_law_purpose_category_legal_basis(self, law_id, purpose_category_id, legal_basis_id, preference_order=1, description=None):
+        """Add a new law purpose category legal basis relationship to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO law_purpose_category_legal_basis (law_id, purpose_category_id, legal_basis_id, preference_order, description)
+            VALUES (%s, %s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (law_id, purpose_category_id, legal_basis_id, preference_order, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding law purpose category legal basis: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_law_purpose_category_legal_bases(self, law_id=None, purpose_category_id=None):
+        """Get law purpose category legal basis relationships from the database.
+        
+        Args:
+            law_id (int, optional): Filter by law ID
+            purpose_category_id (int, optional): Filter by purpose category ID
+            
+        Returns:
+            list: List of law purpose category legal basis relationships
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            if law_id and purpose_category_id:
+                query = """
+                SELECT lpcb.id, l.id as law_id, l.name as law_name, 
+                       pc.id as purpose_category_id, pc.name as purpose_category_name, 
+                       lb.id as legal_basis_id, lb.name as legal_basis_name,
+                       lpcb.preference_order, lpcb.description
+                FROM law_purpose_category_legal_basis lpcb
+                JOIN law l ON lpcb.law_id = l.id
+                JOIN purpose_category pc ON lpcb.purpose_category_id = pc.id
+                JOIN legal_basis lb ON lpcb.legal_basis_id = lb.id
+                WHERE lpcb.law_id = %s AND lpcb.purpose_category_id = %s
+                ORDER BY lpcb.preference_order;
+                """
+                cursor.execute(query, (law_id, purpose_category_id))
+            elif law_id:
+                query = """
+                SELECT lpcb.id, l.id as law_id, l.name as law_name, 
+                       pc.id as purpose_category_id, pc.name as purpose_category_name, 
+                       lb.id as legal_basis_id, lb.name as legal_basis_name,
+                       lpcb.preference_order, lpcb.description
+                FROM law_purpose_category_legal_basis lpcb
+                JOIN law l ON lpcb.law_id = l.id
+                JOIN purpose_category pc ON lpcb.purpose_category_id = pc.id
+                JOIN legal_basis lb ON lpcb.legal_basis_id = lb.id
+                WHERE lpcb.law_id = %s
+                ORDER BY pc.name, lpcb.preference_order;
+                """
+                cursor.execute(query, (law_id,))
+            elif purpose_category_id:
+                query = """
+                SELECT lpcb.id, l.id as law_id, l.name as law_name, 
+                       pc.id as purpose_category_id, pc.name as purpose_category_name, 
+                       lb.id as legal_basis_id, lb.name as legal_basis_name,
+                       lpcb.preference_order, lpcb.description
+                FROM law_purpose_category_legal_basis lpcb
+                JOIN law l ON lpcb.law_id = l.id
+                JOIN purpose_category pc ON lpcb.purpose_category_id = pc.id
+                JOIN legal_basis lb ON lpcb.legal_basis_id = lb.id
+                WHERE lpcb.purpose_category_id = %s
+                ORDER BY l.name, lpcb.preference_order;
+                """
+                cursor.execute(query, (purpose_category_id,))
+            else:
+                query = """
+                SELECT lpcb.id, l.id as law_id, l.name as law_name, 
+                       pc.id as purpose_category_id, pc.name as purpose_category_name, 
+                       lb.id as legal_basis_id, lb.name as legal_basis_name,
+                       lpcb.preference_order, lpcb.description
+                FROM law_purpose_category_legal_basis lpcb
+                JOIN law l ON lpcb.law_id = l.id
+                JOIN purpose_category pc ON lpcb.purpose_category_id = pc.id
+                JOIN legal_basis lb ON lpcb.legal_basis_id = lb.id
+                ORDER BY l.name, pc.name, lpcb.preference_order;
+                """
+                cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving law purpose category legal bases: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def update_law_purpose_category_legal_basis(self, id, preference_order=None, description=None):
+        """Update an existing law purpose category legal basis relationship."""
+        cursor = self.connection.cursor()
+        try:
+            update_parts = []
+            params = []
+            
+            if preference_order is not None:
+                update_parts.append("preference_order = %s")
+                params.append(preference_order)
+            
+            if description is not None:
+                update_parts.append("description = %s")
+                params.append(description)
+            
+            if not update_parts:
+                return True  # Nothing to update
+            
+            params.append(id)  # For the WHERE clause
+            
+            update_query = f"""
+            UPDATE law_purpose_category_legal_basis
+            SET {', '.join(update_parts)}
+            WHERE id = %s;
+            """
+            
+            cursor.execute(update_query, params)
+            self.connection.commit()
+            return True
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error updating law purpose category legal basis: {e}")
+            return False
+        finally:
+            cursor.close()
+    
+    def delete_law_purpose_category_legal_basis(self, id):
+        """Delete a law purpose category legal basis relationship from the database."""
+        cursor = self.connection.cursor()
+        try:
+            delete_query = "DELETE FROM law_purpose_category_legal_basis WHERE id = %s;"
+            cursor.execute(delete_query, (id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error deleting law purpose category legal basis: {e}")
+            return False
+        finally:
+            cursor.close()
+            
+    def seed_law_purpose_category_legal_bases(self):
+        """Seed the database with initial law purpose category legal basis data."""
+        # Get law IDs
+        gdpr_id = self._get_law_id_by_name("GDPR")
+        ccpa_id = self._get_law_id_by_name("CCPA")
+        hipaa_id = self._get_law_id_by_name("HIPAA")
+        
+        # Get purpose category IDs
+        contractual_necessity_id = self._get_purpose_category_id_by_name("Contractual Necessity")
+        legal_compliance_id = self._get_purpose_category_id_by_name("Legal Compliance")
+        vital_interests_id = self._get_purpose_category_id_by_name("Vital Interests")
+        public_interest_id = self._get_purpose_category_id_by_name("Public Interest")
+        legitimate_interests_id = self._get_purpose_category_id_by_name("Legitimate Business Interests")
+        marketing_id = self._get_purpose_category_id_by_name("Marketing and Advertising")
+        research_id = self._get_purpose_category_id_by_name("Research and Development")
+        service_provision_id = self._get_purpose_category_id_by_name("Service Provision")
+        security_id = self._get_purpose_category_id_by_name("Security and Fraud Prevention")
+        analytics_id = self._get_purpose_category_id_by_name("Analytics and Improvement")
+        employment_id = self._get_purpose_category_id_by_name("Employment Management")
+        healthcare_id = self._get_purpose_category_id_by_name("Healthcare Provision")
+        
+        # Get legal basis IDs
+        consent_id = self._get_legal_basis_id_by_name("Consent")
+        contract_id = self._get_legal_basis_id_by_name("Contract")
+        legal_obligation_id = self._get_legal_basis_id_by_name("Legal Obligation")
+        vital_interest_id = self._get_legal_basis_id_by_name("Vital Interest")
+        public_task_id = self._get_legal_basis_id_by_name("Public Task")
+        legitimate_interest_id = self._get_legal_basis_id_by_name("Legitimate Interest")
+        
+        # GDPR mappings
+        if gdpr_id:
+            # Contractual Necessity -> Contract (1), Legitimate Interest (2)
+            if contractual_necessity_id and contract_id and legitimate_interest_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, contractual_necessity_id, contract_id, 1, "Primary legal basis for processing necessary for contract performance")
+                self.add_law_purpose_category_legal_basis(gdpr_id, contractual_necessity_id, legitimate_interest_id, 2, "Secondary legal basis if contract performance is not applicable")
+            
+            # Legal Compliance -> Legal Obligation (1)
+            if legal_compliance_id and legal_obligation_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, legal_compliance_id, legal_obligation_id, 1, "Processing necessary for compliance with legal obligations")
+            
+            # Vital Interests -> Vital Interest (1), Legitimate Interest (2)
+            if vital_interests_id and vital_interest_id and legitimate_interest_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, vital_interests_id, vital_interest_id, 1, "Processing necessary to protect vital interests")
+                self.add_law_purpose_category_legal_basis(gdpr_id, vital_interests_id, legitimate_interest_id, 2, "Secondary legal basis if vital interest is not applicable")
+            
+            # Public Interest -> Public Task (1), Legal Obligation (2)
+            if public_interest_id and public_task_id and legal_obligation_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, public_interest_id, public_task_id, 1, "Processing necessary for the performance of a task in the public interest")
+                self.add_law_purpose_category_legal_basis(gdpr_id, public_interest_id, legal_obligation_id, 2, "Secondary legal basis if public task is not applicable")
+            
+            # Legitimate Business Interests -> Legitimate Interest (1), Consent (2)
+            if legitimate_interests_id and legitimate_interest_id and consent_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, legitimate_interests_id, legitimate_interest_id, 1, "Processing necessary for legitimate interests")
+                self.add_law_purpose_category_legal_basis(gdpr_id, legitimate_interests_id, consent_id, 2, "Secondary legal basis if legitimate interest is not applicable")
+            
+            # Marketing and Advertising -> Consent (1), Legitimate Interest (2)
+            if marketing_id and consent_id and legitimate_interest_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, marketing_id, consent_id, 1, "Primary legal basis for marketing activities")
+                self.add_law_purpose_category_legal_basis(gdpr_id, marketing_id, legitimate_interest_id, 2, "Secondary legal basis for existing customers (soft opt-in)")
+            
+            # Research and Development -> Legitimate Interest (1), Consent (2)
+            if research_id and legitimate_interest_id and consent_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, research_id, legitimate_interest_id, 1, "Primary legal basis for research activities")
+                self.add_law_purpose_category_legal_basis(gdpr_id, research_id, consent_id, 2, "Secondary legal basis for research involving special categories of data")
+            
+            # Service Provision -> Contract (1), Legitimate Interest (2)
+            if service_provision_id and contract_id and legitimate_interest_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, service_provision_id, contract_id, 1, "Primary legal basis for service provision")
+                self.add_law_purpose_category_legal_basis(gdpr_id, service_provision_id, legitimate_interest_id, 2, "Secondary legal basis if contract is not applicable")
+            
+            # Security and Fraud Prevention -> Legitimate Interest (1), Legal Obligation (2)
+            if security_id and legitimate_interest_id and legal_obligation_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, security_id, legitimate_interest_id, 1, "Primary legal basis for security and fraud prevention")
+                self.add_law_purpose_category_legal_basis(gdpr_id, security_id, legal_obligation_id, 2, "Secondary legal basis if required by law")
+            
+            # Analytics and Improvement -> Legitimate Interest (1), Consent (2)
+            if analytics_id and legitimate_interest_id and consent_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, analytics_id, legitimate_interest_id, 1, "Primary legal basis for analytics and improvement")
+                self.add_law_purpose_category_legal_basis(gdpr_id, analytics_id, consent_id, 2, "Secondary legal basis if legitimate interest is not applicable")
+            
+            # Employment Management -> Contract (1), Legal Obligation (2), Legitimate Interest (3)
+            if employment_id and contract_id and legal_obligation_id and legitimate_interest_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, employment_id, contract_id, 1, "Primary legal basis for employment management")
+                self.add_law_purpose_category_legal_basis(gdpr_id, employment_id, legal_obligation_id, 2, "Secondary legal basis for legal requirements")
+                self.add_law_purpose_category_legal_basis(gdpr_id, employment_id, legitimate_interest_id, 3, "Tertiary legal basis for legitimate employer interests")
+            
+            # Healthcare Provision -> Vital Interest (1), Legal Obligation (2), Consent (3)
+            if healthcare_id and vital_interest_id and legal_obligation_id and consent_id:
+                self.add_law_purpose_category_legal_basis(gdpr_id, healthcare_id, vital_interest_id, 1, "Primary legal basis for emergency healthcare")
+                self.add_law_purpose_category_legal_basis(gdpr_id, healthcare_id, legal_obligation_id, 2, "Secondary legal basis for legal requirements")
+                self.add_law_purpose_category_legal_basis(gdpr_id, healthcare_id, consent_id, 3, "Tertiary legal basis for non-emergency healthcare")
+        
+        # CCPA mappings
+        if ccpa_id and consent_id:
+            # For CCPA, most processing is allowed with notice, but consent (opt-out) is required for certain activities
+            purpose_categories = [
+                contractual_necessity_id, legal_compliance_id, vital_interests_id, public_interest_id,
+                legitimate_interests_id, marketing_id, research_id, service_provision_id,
+                security_id, analytics_id, employment_id, healthcare_id
+            ]
+            
+            for purpose_category_id in purpose_categories:
+                if purpose_category_id:
+                    self.add_law_purpose_category_legal_basis(ccpa_id, purpose_category_id, consent_id, 1, "Opt-out consent required for CCPA compliance")
+        
+        # HIPAA mappings
+        if hipaa_id and healthcare_id and consent_id and legal_obligation_id:
+            self.add_law_purpose_category_legal_basis(hipaa_id, healthcare_id, consent_id, 1, "Authorization required for uses and disclosures of PHI")
+            self.add_law_purpose_category_legal_basis(hipaa_id, healthcare_id, legal_obligation_id, 2, "Required disclosures to individuals and HHS")
+    
+    def _get_purpose_category_id_by_name(self, name):
+        """Helper method to get purpose category ID by name."""
+        cursor = self.connection.cursor()
+        try:
+            query = "SELECT id FROM purpose_category WHERE name = %s;"
+            cursor.execute(query, (name,))
+            result = cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting purpose category ID: {e}")
+            return None
+        finally:
+            cursor.close()

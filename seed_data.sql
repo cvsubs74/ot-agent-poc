@@ -2,6 +2,7 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS law_purpose_category_legal_basis;
 DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
 DROP TABLE IF EXISTS law_transfer;
 DROP TABLE IF EXISTS law_context_data_subject_type_data_category_sensitivity;
@@ -19,6 +20,7 @@ DROP TABLE IF EXISTS sensitivity;
 DROP TABLE IF EXISTS data_category;
 DROP TABLE IF EXISTS data_subject_type;
 DROP TABLE IF EXISTS data_element;
+DROP TABLE IF EXISTS purpose_category;
 DROP TABLE IF EXISTS legal_basis;
 DROP TABLE IF EXISTS jurisdiction;
 DROP TABLE IF EXISTS law;
@@ -77,6 +79,14 @@ CREATE TABLE IF NOT EXISTS `data_category` (
 
 -- Create Sensitivity table
 CREATE TABLE IF NOT EXISTS `sensitivity` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Purpose Category table
+CREATE TABLE IF NOT EXISTS `purpose_category` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT,
@@ -243,6 +253,21 @@ CREATE TABLE IF NOT EXISTS `law_data_subject_access_request_notification_require
     FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
 );
 
+-- Create Law Purpose Category Legal Basis table
+CREATE TABLE IF NOT EXISTS `law_purpose_category_legal_basis` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `purpose_category_id` INT NOT NULL,
+    `legal_basis_id` INT NOT NULL,
+    `preference_order` INT DEFAULT 1,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_law_purpose_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`)
+);
+
 -- =============================================
 -- SEED GLOSSARY DATA
 -- =============================================
@@ -319,6 +344,21 @@ INSERT INTO `sensitivity` (`name`, `description`) VALUES
 ('Confidential', 'Information that requires protection and poses moderate risk if disclosed.'),
 ('Restricted', 'Information that requires strict protection and poses significant risk if disclosed.'),
 ('Special Category', 'Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin.');
+
+-- Seed Purpose Category data
+INSERT INTO `purpose_category` (`name`, `description`) VALUES
+('Contractual Necessity', 'Processing necessary for the performance of a contract with the data subject'),
+('Legal Compliance', 'Processing necessary for compliance with a legal obligation'),
+('Vital Interests', 'Processing necessary to protect vital interests of the data subject or another person'),
+('Public Interest', 'Processing necessary for the performance of a task carried out in the public interest'),
+('Legitimate Business Interests', 'Processing necessary for the legitimate interests pursued by the controller or a third party'),
+('Marketing and Advertising', 'Processing for direct marketing, advertising, and promotional activities'),
+('Research and Development', 'Processing for scientific, historical research, or statistical purposes'),
+('Service Provision', 'Processing necessary to provide the requested service to the data subject'),
+('Security and Fraud Prevention', 'Processing for security, fraud detection, prevention, and investigation'),
+('Analytics and Improvement', 'Processing for analytics, measurement, and service improvement'),
+('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
+('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
 
 -- Seed Context data
 INSERT INTO `context` (`name`, `description`) VALUES
@@ -525,3 +565,73 @@ VALUES
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Right to Delete', 'Consumers have the right to request that a business delete personal information about them.', 'Verifiable consumer request required.', '45 days (can be extended by additional 45 days where necessary)', 'Certain business purposes; legal obligations; security purposes'),
 ((SELECT id FROM law WHERE name = 'LGPD'), 'Right of Access', 'Data subjects have the right to obtain confirmation of the existence of processing and access to their personal data.', 'Valid identification may be required.', 'Immediately (simplified format) or 15 days (complete declaration)', 'Commercial and industrial secrets'),
 ((SELECT id FROM law WHERE name = 'PIPEDA'), 'Right of Access', 'Individuals have the right to access their personal information held by an organization.', 'Request must be in writing; reasonable assistance must be provided.', '30 days (can be extended where necessary)', 'Legal privilege; confidential commercial information; would reveal third-party information');
+
+-- Seed Law Purpose Category Legal Basis data
+-- GDPR mappings
+INSERT INTO `law_purpose_category_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`, `preference_order`, `description`)
+VALUES
+-- Contractual Necessity -> Contract (1), Legitimate Interests (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Contractual Necessity'), (SELECT id FROM legal_basis WHERE name = 'Contract'), 1, 'Primary legal basis for processing necessary for contract performance'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Contractual Necessity'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 2, 'Secondary legal basis if contract performance is not applicable'),
+
+-- Legal Compliance -> Legal Obligation (1)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Legal Compliance'), (SELECT id FROM legal_basis WHERE name = 'Legal Obligation'), 1, 'Processing necessary for compliance with legal obligations'),
+
+-- Vital Interests -> Vital Interests (1), Legitimate Interests (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Vital Interests'), (SELECT id FROM legal_basis WHERE name = 'Vital Interests'), 1, 'Processing necessary to protect vital interests'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Vital Interests'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 2, 'Secondary legal basis if vital interest is not applicable'),
+
+-- Public Interest -> Public Task (1), Legal Obligation (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Public Interest'), (SELECT id FROM legal_basis WHERE name = 'Public Task'), 1, 'Processing necessary for the performance of a task in the public interest'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Public Interest'), (SELECT id FROM legal_basis WHERE name = 'Legal Obligation'), 2, 'Secondary legal basis if public task is not applicable'),
+
+-- Legitimate Business Interests -> Legitimate Interests (1), Consent (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Legitimate Business Interests'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 1, 'Processing necessary for legitimate interests'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Legitimate Business Interests'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 2, 'Secondary legal basis if legitimate interest is not applicable'),
+
+-- Marketing and Advertising -> Consent (1), Legitimate Interests (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Marketing and Advertising'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Primary legal basis for marketing activities'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Marketing and Advertising'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 2, 'Secondary legal basis for existing customers (soft opt-in)'),
+
+-- Research and Development -> Legitimate Interests (1), Consent (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Research and Development'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 1, 'Primary legal basis for research activities'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Research and Development'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 2, 'Secondary legal basis for research involving special categories of data'),
+
+-- Service Provision -> Contract (1), Legitimate Interests (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Service Provision'), (SELECT id FROM legal_basis WHERE name = 'Contract'), 1, 'Primary legal basis for service provision'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Service Provision'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 2, 'Secondary legal basis if contract is not applicable'),
+
+-- Security and Fraud Prevention -> Legitimate Interests (1), Legal Obligation (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Security and Fraud Prevention'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 1, 'Primary legal basis for security and fraud prevention'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Security and Fraud Prevention'), (SELECT id FROM legal_basis WHERE name = 'Legal Obligation'), 2, 'Secondary legal basis if required by law'),
+
+-- Analytics and Improvement -> Legitimate Interests (1), Consent (2)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Analytics and Improvement'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 1, 'Primary legal basis for analytics and improvement'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Analytics and Improvement'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 2, 'Secondary legal basis if legitimate interest is not applicable'),
+
+-- Employment Management -> Contract (1), Legal Obligation (2), Legitimate Interests (3)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Employment Management'), (SELECT id FROM legal_basis WHERE name = 'Contract'), 1, 'Primary legal basis for employment management'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Employment Management'), (SELECT id FROM legal_basis WHERE name = 'Legal Obligation'), 2, 'Secondary legal basis for legal requirements'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Employment Management'), (SELECT id FROM legal_basis WHERE name = 'Legitimate Interests'), 3, 'Tertiary legal basis for legitimate employer interests'),
+
+-- Healthcare Provision -> Vital Interests (1), Legal Obligation (2), Consent (3)
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Healthcare Provision'), (SELECT id FROM legal_basis WHERE name = 'Vital Interests'), 1, 'Primary legal basis for emergency healthcare'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Healthcare Provision'), (SELECT id FROM legal_basis WHERE name = 'Legal Obligation'), 2, 'Secondary legal basis for legal requirements'),
+((SELECT id FROM law WHERE name = 'GDPR'), (SELECT id FROM purpose_category WHERE name = 'Healthcare Provision'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 3, 'Tertiary legal basis for non-emergency healthcare');
+
+-- CCPA mappings
+INSERT INTO `law_purpose_category_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`, `preference_order`, `description`)
+VALUES
+-- For CCPA, most processing is allowed with notice, but consent (opt-out) is required for certain activities
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Contractual Necessity'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Legal Compliance'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Vital Interests'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Public Interest'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Legitimate Business Interests'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Marketing and Advertising'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Research and Development'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Service Provision'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Security and Fraud Prevention'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Analytics and Improvement'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Employment Management'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
+((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Healthcare Provision'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance');

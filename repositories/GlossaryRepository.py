@@ -17,6 +17,7 @@ class GlossaryRepository:
         self.create_data_category_table()
         self.create_sensitivity_table()
         self.create_context_table()
+        self.create_purpose_category_table()
         
     def create_law_table(self):
         """Create the Law table."""
@@ -128,6 +129,21 @@ class GlossaryRepository:
         cursor = self.connection.cursor()
         create_table_query = """
         CREATE TABLE IF NOT EXISTS `context` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_purpose_category_table(self):
+        """Create the Purpose Category table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `purpose_category` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `name` VARCHAR(255) NOT NULL,
             `description` TEXT,
@@ -515,6 +531,49 @@ class GlossaryRepository:
             return None
         finally:
             cursor.close()
+            
+    # Purpose Category methods
+    def add_purpose_category(self, name, description):
+        """Add a new purpose category to the database."""
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO purpose_category (name, description)
+            VALUES (%s, %s);
+            """
+            cursor.execute(insert_query, (name, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding purpose category: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_purpose_categories(self):
+        """Get all purpose categories from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM purpose_category;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving purpose categories: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_purpose_category_by_id(self, purpose_category_id):
+        """Get a purpose category by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description FROM purpose_category WHERE id = %s;", (purpose_category_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving purpose category by ID {purpose_category_id}: {e}")
+            return None
+        finally:
+            cursor.close()
     
     # Seed data methods
     def seed_data(self):
@@ -527,6 +586,7 @@ class GlossaryRepository:
         self.seed_data_categories()
         self.seed_sensitivities()
         self.seed_contexts()
+        self.seed_purpose_categories()
     
     def seed_laws(self):
         """Seed the database with initial law data."""
@@ -806,6 +866,68 @@ class GlossaryRepository:
         
         for context in contexts:
             self.add_context(context["name"], context["description"])
+    
+    def seed_purpose_categories(self):
+        """Seed the database with initial purpose category data."""
+        purpose_categories = [
+            {
+                "name": "Contractual Necessity",
+                "description": "Processing necessary for the performance of a contract with the data subject"
+            },
+            {
+                "name": "Legal Compliance",
+                "description": "Processing necessary for compliance with a legal obligation"
+            },
+            {
+                "name": "Vital Interests",
+                "description": "Processing necessary to protect vital interests of the data subject or another person"
+            },
+            {
+                "name": "Public Interest",
+                "description": "Processing necessary for the performance of a task carried out in the public interest"
+            },
+            {
+                "name": "Legitimate Business Interests",
+                "description": "Processing necessary for the legitimate interests pursued by the controller or a third party"
+            },
+            {
+                "name": "Marketing and Advertising",
+                "description": "Processing for direct marketing, advertising, and promotional activities"
+            },
+            {
+                "name": "Research and Development",
+                "description": "Processing for scientific, historical research, or statistical purposes"
+            },
+            {
+                "name": "Service Provision",
+                "description": "Processing necessary to provide the requested service to the data subject"
+            },
+            {
+                "name": "Security and Fraud Prevention",
+                "description": "Processing for security, fraud detection, prevention, and investigation"
+            },
+            {
+                "name": "Analytics and Improvement",
+                "description": "Processing for analytics, measurement, and service improvement"
+            },
+            {
+                "name": "Employment Management",
+                "description": "Processing related to employment, workforce management, and HR functions"
+            },
+            {
+                "name": "Healthcare Provision",
+                "description": "Processing for healthcare services, treatment, and management"
+            }
+        ]
+        
+        for purpose_category in purpose_categories:
+            try:
+                self.add_purpose_category(
+                    name=purpose_category["name"],
+                    description=purpose_category["description"]
+                )
+            except Exception as e:
+                print(f"Error seeding purpose category: {e}")
             
     def seed_all_data(self):
         """Seed all glossary tables with initial data."""
@@ -817,3 +939,4 @@ class GlossaryRepository:
         self.seed_data_categories()
         self.seed_sensitivities()
         self.seed_contexts()
+        self.seed_purpose_categories()

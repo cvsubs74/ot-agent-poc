@@ -17,20 +17,6 @@ class DataMap:
         self.glossary_repository = GlossaryRepository(self.database_manager.connection)
         self.regulatory_metadata_repository = RegulatoryMetadataRepository(self.database_manager.connection)
         
-        # Initialize database tables if connection is available
-        if self.database_manager.connection:
-            # Setup tables
-            self.glossary_repository.setup_tables()
-            self.regulatory_metadata_repository.setup_tables()
-            
-            # Check if data needs to be seeded
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                # Seed glossary data first
-                self.glossary_repository.seed_all_data()
-                # Then seed regulatory metadata that depends on glossary data
-                self.regulatory_metadata_repository.seed_all_data()
-
     @staticmethod
     def divider(height=1):
         """Utility function to create a divider with specified height."""
@@ -41,19 +27,76 @@ class DataMap:
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
-        st.set_page_config(page_title="Data Map - Regulatory and Data Mapping Tool", layout="wide")
+        st.set_page_config(page_title="Content Management System", layout="wide")
 
         # Inject custom CSS for styling
         st.markdown("""
         <style>
+        /* Import Font Awesome for icons */
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+        
         /* Main styling */
         .main {
             background-color: #f8f9fa;
         }
         
+        /* Page header styling */
+        .page-header {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+        }
+        
+        .page-header i {
+            margin-right: 0.75rem;
+            color: #3498db;
+        }
+        
+        /* Tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 2px;
+            background-color: white;
+            border-radius: 4px;
+            padding: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            height: 40px;
+            border-radius: 4px;
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #e9f7fe !important;
+            color: #3498db !important;
+            font-weight: 600;
+        }
+        
+        /* Card styling for content sections */
+        .stDataFrame, div.stTable {
+            border: none !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+            border-radius: 6px !important;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            font-weight: 500;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
         /* Sidebar styling */
-        .css-1d391kg {
-            background-color: #2c3e50;
+        .css-1d391kg, [data-testid="stSidebar"] {
+            background-color: white !important;
+            border-right: 1px solid #f0f0f0;
         }
         
         /* Tab styling */
@@ -110,21 +153,46 @@ class DataMap:
         
         /* Sidebar menu styling */
         .sidebar-menu {
-            padding: 10px;
+            padding: 10px 15px;
             margin-bottom: 10px;
             border-radius: 5px;
-            background-color: #34495e;
-            color: white;
+            color: #333;
             cursor: pointer;
             transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            text-align: left;
+            display: flex;
+            align-items: center;
         }
         
         .sidebar-menu:hover {
-            background-color: #2c3e50;
+            background-color: #f8f9fa;
+            border-left: 3px solid #3498db;
         }
         
         .sidebar-menu.active {
-            background-color: #1abc9c;
+            background-color: #f8f9fa;
+            border-left: 3px solid #1abc9c;
+            font-weight: 600;
+        }
+        
+        /* Icon styling */
+        .sidebar-menu i {
+            width: 20px;
+            text-align: center;
+            margin-right: 8px;
+        }
+        
+        /* Sidebar section headers */
+        .sidebar-section-header {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
         }
         
         /* Header styling */
@@ -164,7 +232,7 @@ class DataMap:
 
     def glossary_section(self):
         """Handle the Glossary section with its tabs."""
-        st.header("Glossary")
+        st.markdown("<div class='page-header'><i class='fas fa-book'></i> &nbsp;Glossary</div>", unsafe_allow_html=True)
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
@@ -370,7 +438,7 @@ class DataMap:
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
-        st.header("Regulatory Metadata")
+        st.markdown("<div class='page-header'><i class='fas fa-project-diagram'></i> &nbsp;Mappings</div>", unsafe_allow_html=True)
         
         tabs = st.tabs([
             "Law Jurisdiction", 
@@ -717,7 +785,7 @@ class DataMap:
 
     def inventory_section(self):
         """Handle the Inventory section with its tabs."""
-        st.header("Inventory")
+        st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Inventory</div>", unsafe_allow_html=True)
         
         tabs = st.tabs([
             "Assets", "Processing Activities", "Legal Entities", "Vendors"
@@ -903,7 +971,7 @@ class DataMap:
 
         # Main header and introduction
         if 'current_section' not in st.session_state or st.session_state['current_section'] == 'Glossary':
-            st.title("DataMap: Privacy Regulation Mapping Tool")
+            st.title("Content Management System")
             
             st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
                 <p>This is a comprehensive tool designed to help organizations navigate the complex landscape of privacy regulations. 
@@ -914,48 +982,106 @@ class DataMap:
         
         # Create sidebar with navigation
         with st.sidebar:
-            st.title("Regulatory Metamodel")
-            
-            # Create navigation menu in sidebar
+            st.title("Regulatory Content")
             
             # Store the current section in session state if not already there
             if 'current_section' not in st.session_state:
                 st.session_state['current_section'] = 'Glossary'
             
-            # Navigation buttons
-            if st.button("Glossary", key="glossary_btn"):
+            # First section: Regulatory Metadata
+            st.markdown("<div class='sidebar-section-header'>Regulatory Metadata</div>", unsafe_allow_html=True)
+            
+            # Create menu items with emoji icons directly in the button text
+            # Glossary menu item
+            if st.button("📚 Glossary", key="glossary_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Glossary'
             
-            if st.button("Regulatory Metadata", key="regulatory_btn"):
+            # Mappings menu item
+            if st.button("🔄 Mappings", key="regulatory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Regulatory'
-                
-            if st.button("Decision Tree", key="decision_tree_btn"):
+            
+            # Decision Tree menu item
+            if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
-                
-            if st.button("Sensitivity Inference API", key="sensitivity_api_btn"):
+            
+            # Second section: Inference APIs
+            st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
+            
+            # Sensitivity Inference menu item
+            if st.button("🛡️ Sensitivity Inference", key="sensitivity_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Sensitivity API'
-                
-            if st.button("Legal Basis Inference API", key="legal_basis_api_btn"):
+            
+            # Legal Basis Inference menu item
+            if st.button("⚖️ Legal Basis Inference", key="legal_basis_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Legal Basis API'
-                
-            if st.button("Breach Notification API", key="breach_api_btn"):
+            
+            # Breach Notification menu item
+            if st.button("⚠️ Breach Notification", key="breach_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Breach API'
             
-            # Highlight active section
+            # Style the menu items with improved CSS for left alignment
             st.markdown(f"""
             <style>
-            div[data-testid="stButton"] > button[kind="secondary"] {{
-                background-color: #3498db;
-                color: white;
+            /* Style for all buttons */
+            div[data-testid="stButton"] > button {{
+                background-color: transparent;
+                color: #333;
+                border: none;
+                text-align: left !important;
+                font-weight: normal;
+                padding: 8px 10px;
+                border-radius: 4px;
+                box-shadow: none;
+                width: 100%;
+                margin: 0;
+                transition: all 0.2s ease;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
             }}
+            
+            /* Style for active button */
             div[data-testid="stButton"] > button#{'glossary_btn' if st.session_state['current_section'] == 'Glossary' else 
                                                  'regulatory_btn' if st.session_state['current_section'] == 'Regulatory' else
                                                  'decision_tree_btn' if st.session_state['current_section'] == 'Decision Tree' else
                                                  'sensitivity_api_btn' if st.session_state['current_section'] == 'Sensitivity API' else
                                                  'legal_basis_api_btn' if st.session_state['current_section'] == 'Legal Basis API' else
                                                  'breach_api_btn'} {{
-                background-color: #1abc9c;
-                color: white;
+                color: #3498db;
+                font-weight: 600;
+                background-color: #f8f9fa;
+                border-left: 3px solid #3498db;
+            }}
+            
+            /* Hover effect for buttons */
+            div[data-testid="stButton"] > button:hover {{
+                background-color: #f8f9fa;
+                color: #3498db;
+            }}
+            
+            /* Force text alignment in buttons */
+            div[data-testid="stButton"] > button p {{
+                text-align: left !important;
+                display: inline-block;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            /* Override any Streamlit defaults that might center text */
+            .stButton {{
+                text-align: left !important;
+            }}
+            
+            /* Section header styling */
+            .sidebar-section-header {{
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: #6c757d;
+                margin-top: 20px;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                text-align: left;
             }}
             </style>
             """, unsafe_allow_html=True)
@@ -968,6 +1094,7 @@ class DataMap:
         if st.session_state['current_section'] == 'Glossary':
             self.glossary_section()
         elif st.session_state['current_section'] == 'Regulatory':
+            # Rename the section title in the UI
             self.regulatory_metadata_section()
         elif st.session_state['current_section'] == 'Decision Tree':
             self.decision_tree_section()
@@ -988,7 +1115,7 @@ class DataMap:
         from pyvis.network import Network
         import streamlit.components.v1 as components
 
-        st.header("Regulatory Decision Tree (PyVis)")
+        st.markdown("<div class='page-header'><i class='fas fa-sitemap'></i> &nbsp;Decision Tree</div>", unsafe_allow_html=True)
         st.markdown("""
         <div class="card">
             <p>This section visualizes the regulatory metadata as a decision tree using PyVis with a physics-based layout.
@@ -1179,7 +1306,7 @@ class DataMap:
         """Implement a sensitivity inference API based on regulatory metadata.
         This allows users to input data attributes and get sensitivity predictions.
         """
-        st.header("Sensitivity Inference API")
+        st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Sensitivity Inference</div>", unsafe_allow_html=True)
         
         st.markdown("""
         <div class="card">
@@ -1402,7 +1529,7 @@ class DataMap:
         """Implement a legal basis inference API based on regulatory metadata.
         This allows users to input processing parameters and get legal basis recommendations.
         """
-        st.header("Legal Basis Inference API")
+        st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Legal Basis Inference</div>", unsafe_allow_html=True)
         
         st.markdown("""
         <div class="card">
@@ -1435,32 +1562,15 @@ class DataMap:
             else:
                 selected_jurisdiction = None
             
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options)
+            # Get purpose categories (new)
+            purpose_categories = self.glossary_repository.get_purpose_categories()
+            if purpose_categories:
+                purpose_category_options = [pc["name"] for pc in purpose_categories]
+                selected_purpose_category = st.selectbox("Select Purpose Category", options=purpose_category_options)
             else:
-                st.warning("No data subject types available.")
+                st.warning("No purpose categories available.")
                 return
-            
-            # Get contexts/purposes
-            contexts = self.glossary_repository.get_contexts()
-            if contexts:
-                context_options = [context["name"] for context in contexts]
-                selected_context = st.selectbox("Select Processing Purpose", options=context_options)
-            else:
-                selected_context = None
-            
-            # Get data categories
-            data_categories = self.glossary_repository.get_data_categories()
-            if data_categories:
-                dc_options = [dc["name"] for dc in data_categories]
-                selected_data_category = st.selectbox("Select Data Category", options=dc_options)
-            else:
-                st.warning("No data categories available.")
-                return
-            
+                                    
             # Add sensitivity level selection
             sensitivities = self.glossary_repository.get_sensitivities()
             if sensitivities:
@@ -1483,10 +1593,8 @@ class DataMap:
                     legal_bases = self._infer_legal_basis(
                         selected_law, 
                         selected_jurisdiction,
-                        selected_dst, 
-                        selected_context, 
-                        selected_data_category,
-                        selected_sensitivity
+                        selected_sensitivity,
+                        selected_purpose_category
                     )
                 
                 if legal_bases:
@@ -1576,13 +1684,10 @@ class DataMap:
                     The legal basis recommendations were determined based on the following factors:
                     - **Law**: {selected_law}
                     - **Jurisdiction**: {selected_jurisdiction if selected_jurisdiction else 'Not specified'}
-                    - **Data Subject Type**: {selected_dst}
-                    - **Processing Purpose**: {selected_context}
-                    - **Data Category**: {selected_data_category}
+                    - **Purpose Category**: {selected_purpose_category}
                     - **Sensitivity Level**: {selected_sensitivity}
                     
-                    According to the regulatory metadata, when processing {selected_data_category} data 
-                    for {selected_dst} under {selected_law} for the purpose of {selected_context}, 
+                    According to the regulatory metadata, when processing {selected_sensitivity} data under {selected_law} for the purpose category of {selected_purpose_category}, 
                     the recommended legal bases are listed above in order of preference.
                     """)
                     
@@ -1633,20 +1738,64 @@ class DataMap:
                 </div>
                 """, unsafe_allow_html=True)
     
-    def _infer_legal_basis(self, law, jurisdiction, data_subject_type, context, data_category, sensitivity):
+    def _infer_legal_basis(self, law, jurisdiction, sensitivity, purpose_category=None):
         """Internal method to infer appropriate legal bases based on regulatory metadata.
         
         Args:
             law (str): The name of the selected law
             jurisdiction (str): The name of the jurisdiction (can be None)
-            data_subject_type (str): The name of the data subject type
-            context (str): The name of the context/purpose
-            data_category (str): The name of the data category
             sensitivity (str): The sensitivity level
+            purpose_category (str): The purpose category for processing
             
         Returns:
             list: A list of recommended legal bases or None if not found
         """
+        # First, try to get legal bases based on purpose category if available
+        if purpose_category:
+            # Get law ID
+            law_id = None
+            laws = self.glossary_repository.get_laws()
+            for l in laws:
+                if l["name"] == law:
+                    law_id = l["id"]
+                    break
+            
+            # Get purpose category ID
+            purpose_category_id = None
+            purpose_categories = self.glossary_repository.get_purpose_categories()
+            for pc in purpose_categories:
+                if pc["name"] == purpose_category:
+                    purpose_category_id = pc["id"]
+                    break
+            
+            if law_id and purpose_category_id:
+                # Get legal bases recommended for this law and purpose category combination
+                law_purpose_legal_bases = self.regulatory_metadata_repository.get_law_purpose_category_legal_bases(
+                    law_id=law_id, purpose_category_id=purpose_category_id
+                )
+                
+                if law_purpose_legal_bases:
+                    # Get full legal basis information
+                    all_legal_bases = self.glossary_repository.get_legal_bases()
+                    
+                    # Get the full legal basis objects and sort by preference order
+                    recommended_legal_bases = []
+                    for lb in all_legal_bases:
+                        for lplb in law_purpose_legal_bases:
+                            if lb["id"] == lplb["legal_basis_id"]:
+                                lb["preference_order"] = lplb["preference_order"]
+                                lb["recommendation_description"] = lplb["description"]
+                                recommended_legal_bases.append(lb)
+                    
+                    # Sort by preference order (lower number = higher preference)
+                    recommended_legal_bases.sort(key=lambda x: x.get("preference_order", 999))
+                    
+                    # Further refine based on sensitivity
+                    self._refine_by_sensitivity(recommended_legal_bases, sensitivity)
+                    
+                    return recommended_legal_bases
+        
+        # Fall back to the original method if purpose category approach doesn't yield results
         # Get all legal bases for the selected law
         law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
         filtered_legal_bases = [item for item in law_legal_bases if item["law_name"] == law]
@@ -1663,34 +1812,41 @@ class DataMap:
         # Get the full legal basis objects for the filtered names
         recommended_legal_bases = [lb for lb in all_legal_bases if lb["name"] in legal_basis_names]
         
-        # Sort legal bases based on appropriateness for the given parameters
-        # This is a simplified logic - in a real system, this would be more sophisticated
+        # Sort legal bases based on sensitivity
+        self._refine_by_sensitivity(recommended_legal_bases, sensitivity)
         
+        return recommended_legal_bases
+        
+    def _refine_by_sensitivity(self, legal_bases, sensitivity):
+        """Helper method to refine legal basis recommendations based on data sensitivity.
+        
+        Args:
+            legal_bases (list): List of legal basis objects to sort
+            sensitivity (str): The sensitivity level (high, medium, low)
+        """
         # For high sensitivity data, prioritize explicit consent and legal obligation
         if sensitivity.lower() == "high":
-            recommended_legal_bases.sort(key=lambda lb: 
+            legal_bases.sort(key=lambda lb: 
                 ("consent" in lb["name"].lower(), "legal obligation" in lb["name"].lower()), 
                 reverse=True)
         # For medium sensitivity, legitimate interests might be appropriate
         elif sensitivity.lower() == "medium":
-            recommended_legal_bases.sort(key=lambda lb: 
+            legal_bases.sort(key=lambda lb: 
                 ("consent" in lb["name"].lower(), "contract" in lb["name"].lower(), 
                  "legitimate" in lb["name"].lower()), 
                 reverse=True)
         # For low sensitivity, contract and legitimate interests are often suitable
         else:
-            recommended_legal_bases.sort(key=lambda lb: 
+            legal_bases.sort(key=lambda lb: 
                 ("contract" in lb["name"].lower(), "legitimate" in lb["name"].lower(), 
                  "consent" in lb["name"].lower()), 
                 reverse=True)
-        
-        return recommended_legal_bases
         
     def breach_notification_api(self):
         """Implement an incident breach notification API based on regulatory metadata.
         This helps users determine notification requirements for data breaches.
         """
-        st.header("Incident Breach Notification API")
+        st.markdown("<div class='page-header'><i class='fas fa-exclamation-triangle'></i> &nbsp;Breach Notification</div>", unsafe_allow_html=True)
         
         st.markdown("""
         <div class="card">
