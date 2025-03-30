@@ -45,9 +45,8 @@ class DataMap:
             font-size: 1.8rem;
             font-weight: 600;
             color: #2c3e50;
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
             display: flex;
             align-items: center;
         }
