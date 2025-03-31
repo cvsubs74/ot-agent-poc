@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS sensitivity;
 DROP TABLE IF EXISTS data_category;
 DROP TABLE IF EXISTS data_subject_type;
 DROP TABLE IF EXISTS data_element;
+DROP TABLE IF EXISTS breach_type;
 DROP TABLE IF EXISTS purpose_category;
 DROP TABLE IF EXISTS legal_basis;
 DROP TABLE IF EXISTS jurisdiction;
@@ -90,6 +91,15 @@ CREATE TABLE IF NOT EXISTS `purpose_category` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Breach Type table
+CREATE TABLE IF NOT EXISTS `breach_type` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `category` VARCHAR(100),
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -359,6 +369,38 @@ INSERT INTO `purpose_category` (`name`, `description`) VALUES
 ('Analytics and Improvement', 'Processing for analytics, measurement, and service improvement'),
 ('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
 ('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
+
+-- Seed Breach Type data
+INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
+-- Cyber Attacks category
+('Phishing Attack', 'Cybercriminals impersonate trusted entities to deceive individuals into providing sensitive information such as usernames, passwords, and credit card details.', 'Cyber Attack'),
+('Malware Attack', 'Harmful programs such as viruses, spyware, and Trojans that infiltrate systems through infected email attachments, malicious websites, or removable media.', 'Cyber Attack'),
+('Ransomware Attack', 'Malware that encrypts a victim''s files, making them inaccessible without a decryption key, followed by a ransom demand for the key.', 'Cyber Attack'),
+('SQL Injection', 'Attackers insert malicious SQL code into a database query, allowing them to access, modify, or delete database contents.', 'Cyber Attack'),
+('Man-in-the-Middle Attack', 'The attacker intercepts and manipulates communication between two parties without their knowledge.', 'Cyber Attack'),
+('Denial of Service (DoS)', 'Attacks that aim to disrupt the normal functioning of a network, service, or website by overwhelming it with a flood of traffic.', 'Cyber Attack'),
+('Distributed Denial of Service (DDoS)', 'Similar to DoS but using multiple compromised systems to launch the attack, making it more powerful and harder to mitigate.', 'Cyber Attack'),
+('Advanced Persistent Threat (APT)', 'Highly sophisticated and persistent attacks, often conducted by well-funded cybercriminals or nation-states, aiming to infiltrate and control networks for prolonged periods.', 'Cyber Attack'),
+('Zero-day Exploit', 'Attacks that exploit previously unknown vulnerabilities in software or hardware before developers have had a chance to create and release patches.', 'Cyber Attack'),
+('Credential Stuffing', 'Attackers use stolen account credentials from one service to gain unauthorized access to other services where users have reused the same credentials.', 'Cyber Attack'),
+('API Abuse', 'Exploiting vulnerabilities in application programming interfaces to gain unauthorized access to data or functionality.', 'Cyber Attack'),
+
+-- Insider Threats category
+('Malicious Insider', 'Data theft or sabotage by a disgruntled employee or contractor with legitimate access to systems and data.', 'Insider Threat'),
+('Accidental Exposure', 'Unintentional disclosure of sensitive information by employees through mistakes or negligence.', 'Insider Threat'),
+('Privilege Misuse', 'Authorized users accessing data or systems beyond what is necessary for their job functions.', 'Insider Threat'),
+('Compromised Insider', 'An employee whose credentials have been stolen or who has been manipulated through social engineering.', 'Insider Threat'),
+
+-- Physical Breaches category
+('Device Theft', 'Theft of physical devices such as laptops, smartphones, or storage media containing sensitive data.', 'Physical Breach'),
+('Unauthorized Physical Access', 'Gaining unauthorized entry to facilities where sensitive data is stored or processed.', 'Physical Breach'),
+('Dumpster Diving', 'Retrieving discarded documents or media containing sensitive information from trash containers.', 'Physical Breach'),
+('Tailgating', 'Following an authorized person into a secure area without proper authentication.', 'Physical Breach'),
+
+-- Supply Chain Breaches category
+('Third-Party Vendor Breach', 'Security incidents at third-party vendors that compromise data they process or store on behalf of their clients.', 'Supply Chain Breach'),
+('Software Supply Chain Attack', 'Compromising software updates or components to distribute malware to target organizations, as seen in the SolarWinds attack.', 'Supply Chain Breach'),
+('Hardware Supply Chain Attack', 'Tampering with hardware components during manufacturing or distribution to introduce vulnerabilities or backdoors.', 'Supply Chain Breach');
 
 -- Seed Context data
 INSERT INTO `context` (`name`, `description`) VALUES

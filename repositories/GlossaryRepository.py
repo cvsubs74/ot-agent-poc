@@ -18,6 +18,7 @@ class GlossaryRepository:
         self.create_sensitivity_table()
         self.create_context_table()
         self.create_purpose_category_table()
+        self.create_breach_type_table()
         
     def create_law_table(self):
         """Create the Law table."""
@@ -147,6 +148,22 @@ class GlossaryRepository:
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `name` VARCHAR(255) NOT NULL,
             `description` TEXT,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_breach_type_table(self):
+        """Create the Breach Type table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `breach_type` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `category` VARCHAR(100),
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -575,6 +592,57 @@ class GlossaryRepository:
         finally:
             cursor.close()
     
+    # Breach Type methods
+    def get_breach_types(self):
+        """Get all breach types from the database."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description, category FROM breach_type;")
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error retrieving breach types: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_breach_type_by_id(self, breach_type_id):
+        """Get a breach type by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT id, name, description, category FROM breach_type WHERE id = %s;", (breach_type_id,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error retrieving breach type by ID {breach_type_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def add_breach_type(self, name, description, category=None):
+        """Add a new breach type to the database.
+        
+        Args:
+            name (str): The name of the breach type
+            description (str): A description of the breach type
+            category (str, optional): The category of the breach type
+            
+        Returns:
+            int: The ID of the newly created breach type or None if there was an error
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO breach_type (name, description, category) VALUES (%s, %s, %s);",
+                (name, description, category)
+            )
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding breach type: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+    
     # Seed data methods
     def seed_data(self):
         """Seed the database with initial data."""
@@ -582,6 +650,7 @@ class GlossaryRepository:
         self.seed_jurisdictions()
         self.seed_legal_bases()
         self.seed_data_elements()
+        self.seed_breach_types()
         self.seed_data_subject_types()
         self.seed_data_categories()
         self.seed_sensitivities()
@@ -929,6 +998,56 @@ class GlossaryRepository:
             except Exception as e:
                 print(f"Error seeding purpose category: {e}")
             
+    def seed_breach_types(self):
+        """Seed the database with initial breach type data."""
+        breach_types = [
+            # Cyber Attacks category
+            ("Phishing Attack", "Cybercriminals impersonate trusted entities to deceive individuals into providing sensitive information such as usernames, passwords, and credit card details.", "Cyber Attack"),
+            ("Malware Attack", "Harmful programs such as viruses, spyware, and Trojans that infiltrate systems through infected email attachments, malicious websites, or removable media.", "Cyber Attack"),
+            ("Ransomware Attack", "Malware that encrypts a victim's files, making them inaccessible without a decryption key, followed by a ransom demand for the key.", "Cyber Attack"),
+            ("SQL Injection", "Attackers insert malicious SQL code into a database query, allowing them to access, modify, or delete database contents.", "Cyber Attack"),
+            ("Man-in-the-Middle Attack", "The attacker intercepts and manipulates communication between two parties without their knowledge.", "Cyber Attack"),
+            ("Denial of Service (DoS)", "Attacks that aim to disrupt the normal functioning of a network, service, or website by overwhelming it with a flood of traffic.", "Cyber Attack"),
+            ("Distributed Denial of Service (DDoS)", "Similar to DoS but using multiple compromised systems to launch the attack, making it more powerful and harder to mitigate.", "Cyber Attack"),
+            ("Advanced Persistent Threat (APT)", "Highly sophisticated and persistent attacks, often conducted by well-funded cybercriminals or nation-states, aiming to infiltrate and control networks for prolonged periods.", "Cyber Attack"),
+            ("Zero-day Exploit", "Attacks that exploit previously unknown vulnerabilities in software or hardware before developers have had a chance to create and release patches.", "Cyber Attack"),
+            ("Credential Stuffing", "Attackers use stolen account credentials from one service to gain unauthorized access to other services where users have reused the same credentials.", "Cyber Attack"),
+            ("API Abuse", "Exploiting vulnerabilities in application programming interfaces to gain unauthorized access to data or functionality.", "Cyber Attack"),
+            
+            # Insider Threats category
+            ("Malicious Insider", "Data theft or sabotage by a disgruntled employee or contractor with legitimate access to systems and data.", "Insider Threat"),
+            ("Accidental Exposure", "Unintentional disclosure of sensitive information by employees through mistakes or negligence.", "Insider Threat"),
+            ("Privilege Misuse", "Authorized users accessing data or systems beyond what is necessary for their job functions.", "Insider Threat"),
+            ("Compromised Insider", "An employee whose credentials have been stolen or who has been manipulated through social engineering.", "Insider Threat"),
+            
+            # Physical Breaches category
+            ("Device Theft", "Theft of physical devices such as laptops, smartphones, or storage media containing sensitive data.", "Physical Breach"),
+            ("Unauthorized Physical Access", "Gaining unauthorized entry to facilities where sensitive data is stored or processed.", "Physical Breach"),
+            ("Dumpster Diving", "Retrieving discarded documents or media containing sensitive information from trash containers.", "Physical Breach"),
+            ("Tailgating", "Following an authorized person into a secure area without proper authentication.", "Physical Breach"),
+            
+            # Supply Chain Breaches category
+            ("Third-Party Vendor Breach", "Security incidents at third-party vendors that compromise data they process or store on behalf of their clients.", "Supply Chain Breach"),
+            ("Software Supply Chain Attack", "Compromising software updates or components to distribute malware to target organizations, as seen in the SolarWinds attack.", "Supply Chain Breach"),
+            ("Hardware Supply Chain Attack", "Tampering with hardware components during manufacturing or distribution to introduce vulnerabilities or backdoors.", "Supply Chain Breach"),
+        ]
+        
+        cursor = self.connection.cursor()
+        try:
+            for name, description, category in breach_types:
+                cursor.execute("SELECT id FROM breach_type WHERE name = %s;", (name,))
+                if not cursor.fetchone():
+                    cursor.execute(
+                        "INSERT INTO breach_type (name, description, category) VALUES (%s, %s, %s);",
+                        (name, description, category)
+                    )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding breach types: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+            
     def seed_all_data(self):
         """Seed all glossary tables with initial data."""
         self.seed_laws()
@@ -940,3 +1059,4 @@ class GlossaryRepository:
         self.seed_sensitivities()
         self.seed_contexts()
         self.seed_purpose_categories()
+        self.seed_breach_types()

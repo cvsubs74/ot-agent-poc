@@ -246,7 +246,7 @@ class DataMap:
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
-            "Data Subject Types", "Data Categories", "Context", "Sensitivity"
+            "Data Subject Types", "Data Categories", "Context", "Sensitivity", "Purpose Categories", "Breach Types"
         ])
         
         # Law tab
@@ -443,6 +443,71 @@ class DataMap:
                     sensitivity_data["Description"].append(sens["description"])
                 
                 st.dataframe(pd.DataFrame(sensitivity_data))
+            else:
+                st.warning("No data available in the database.")
+        
+        # Purpose Categories tab
+        with tabs[8]:
+            st.subheader("Purpose Categories")
+            st.markdown("""
+            <div class="card">
+                <p>Purpose categories define the specific reasons for which personal data is processed. 
+                Under most data protection laws, organizations must clearly specify the purpose for which they collect and process personal data.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get purpose categories data from repository
+            purpose_categories = self.glossary_repository.get_purpose_categories()
+            if purpose_categories:
+                purpose_category_data = {
+                    "Purpose Category": [],
+                    "Description": []
+                }
+                for purpose in purpose_categories:
+                    purpose_category_data["Purpose Category"].append(purpose["name"])
+                    purpose_category_data["Description"].append(purpose["description"])
+                
+                st.dataframe(pd.DataFrame(purpose_category_data))
+            else:
+                st.warning("No data available in the database.")
+        
+        # Breach Types tab
+        with tabs[9]:
+            st.subheader("Breach Types")
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about different types of data breaches that can affect organizations.</p>
+                <ul>
+                    <li>Categorized by source and attack vector (cyber attacks, insider threats, physical breaches, supply chain)</li>
+                    <li>Detailed descriptions of each breach type and its characteristics</li>
+                    <li>Helps in identifying and classifying security incidents</li>
+                    <li>Supports breach notification requirements under various regulations</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get breach types data from repository
+            breach_types = self.glossary_repository.get_breach_types()
+            if breach_types:
+                # Group breach types by category
+                categories = {}
+                for breach_type in breach_types:
+                    category = breach_type["category"]
+                    if category not in categories:
+                        categories[category] = []
+                    categories[category].append(breach_type)
+                
+                # Display breach types by category
+                for category, types in categories.items():
+                    st.markdown(f"<h3>{category}</h3>", unsafe_allow_html=True)
+                    
+                    breach_type_data = {
+                        "Breach Type": [],
+                        "Description": []
+                    }
+                    for breach in types:
+                        breach_type_data["Breach Type"].append(breach["name"])
+                        breach_type_data["Description"].append(breach["description"])
+                    
+                    st.dataframe(pd.DataFrame(breach_type_data))
             else:
                 st.warning("No data available in the database.")
 
