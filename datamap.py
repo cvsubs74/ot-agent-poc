@@ -1126,6 +1126,7 @@ class DataMap:
         Initially the network stabilizes (nodes become static) but if you drag a node the physics
         simulation restarts and nodes bounce. A legend is shown below the graph.
         """
+        import tempfile
         from pyvis.network import Network
         import streamlit.components.v1 as components
 
