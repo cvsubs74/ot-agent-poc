@@ -15,6 +15,12 @@ DROP TABLE IF EXISTS data_category_data_element;
 DROP TABLE IF EXISTS law_incident_breach_guidance;
 DROP TABLE IF EXISTS law_legal_basis;
 DROP TABLE IF EXISTS law_jurisdiction;
+DROP TABLE IF EXISTS policy_data_domain;
+DROP TABLE IF EXISTS policy_dataset;
+DROP TABLE IF EXISTS dataset;
+DROP TABLE IF EXISTS policy;
+DROP TABLE IF EXISTS data_domain;
+DROP TABLE IF EXISTS asset;
 DROP TABLE IF EXISTS context;
 DROP TABLE IF EXISTS sensitivity;
 DROP TABLE IF EXISTS data_category;
@@ -411,6 +417,139 @@ INSERT INTO `context` (`name`, `description`) VALUES
 ('Legal', 'Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance.'),
 ('IT Security', 'Processing personal data for IT security purposes, such as access control, threat detection, or incident response.'),
 ('Research', 'Processing personal data for research purposes, such as market research, scientific research, or product development.');
+
+-- =============================================
+-- INVENTORY TABLES
+-- =============================================
+
+-- Create Asset table
+CREATE TABLE IF NOT EXISTS `asset` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Data Domain table
+CREATE TABLE IF NOT EXISTS `data_domain` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Policy table
+CREATE TABLE IF NOT EXISTS `policy` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `policy_type` VARCHAR(100),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Dataset table
+CREATE TABLE IF NOT EXISTS `dataset` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `asset_id` INT NOT NULL,
+    `source_system` VARCHAR(255),
+    `data_domain_id` INT,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_domain_id`) REFERENCES `data_domain`(`id`) ON DELETE SET NULL
+);
+
+-- Create Policy-Dataset relationship table
+CREATE TABLE IF NOT EXISTS `policy_dataset` (
+    `policy_id` INT NOT NULL,
+    `dataset_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`policy_id`, `dataset_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`dataset_id`) REFERENCES `dataset`(`id`) ON DELETE CASCADE
+);
+
+-- Create Policy-Data Domain relationship table
+CREATE TABLE IF NOT EXISTS `policy_data_domain` (
+    `policy_id` INT NOT NULL,
+    `data_domain_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`policy_id`, `data_domain_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_domain_id`) REFERENCES `data_domain`(`id`) ON DELETE CASCADE
+);
+
+-- Seed Asset data
+INSERT INTO `asset` (`name`, `description`) VALUES
+('CRM System', 'Customer Relationship Management system containing customer data and interactions'),
+('ERP System', 'Enterprise Resource Planning system for managing business processes'),
+('HR Portal', 'Human Resources portal for employee data management'),
+('Marketing Platform', 'Platform for managing marketing campaigns and customer engagement'),
+('Financial Database', 'Database containing financial records and transactions');
+
+-- Seed Data Domain data
+INSERT INTO `data_domain` (`name`, `description`) VALUES
+('Customer Data', 'Data related to customers and their interactions'),
+('Employee Data', 'Data related to employees and HR processes'),
+('Financial Data', 'Data related to financial transactions and records'),
+('Marketing Data', 'Data related to marketing campaigns and analytics'),
+('Operational Data', 'Data related to business operations and processes');
+
+-- Seed Policy data
+INSERT INTO `policy` (`name`, `description`, `policy_type`) VALUES
+('Data Retention', 'Policy governing how long data should be retained', 'Retention'),
+('Data Access Control', 'Policy governing who can access specific data', 'Access Control'),
+('Data Encryption', 'Policy governing encryption requirements for data', 'Security'),
+('Data Backup', 'Policy governing backup requirements for data', 'Backup'),
+('Data Quality', 'Policy governing data quality standards', 'Quality'),
+('Data Classification', 'Policy governing classification of data sensitivity', 'Classification'),
+('Data Sharing', 'Policy governing how data can be shared with third parties', 'Sharing');
+
+-- Seed Dataset data
+INSERT INTO `dataset` (`name`, `asset_id`, `source_system`, `data_domain_id`, `description`) VALUES
+('Customer Profiles', 1, 'Salesforce', 1, 'Core customer profile information'),
+('Customer Interactions', 1, 'Salesforce', 1, 'Records of customer interactions and support tickets'),
+('Employee Records', 3, 'Workday', 2, 'Core employee records and personal information'),
+('Payroll Data', 3, 'Workday', 3, 'Employee payroll and compensation data'),
+('Financial Transactions', 5, 'Oracle', 3, 'Records of financial transactions'),
+('Marketing Campaigns', 4, 'HubSpot', 4, 'Marketing campaign data and metrics'),
+('Customer Segmentation', 4, 'HubSpot', 4, 'Customer segmentation data for targeted marketing'),
+('Inventory Data', 2, 'SAP', 5, 'Inventory and supply chain data'),
+('Sales Data', 2, 'SAP', 3, 'Sales records and revenue data'),
+('Customer Analytics', 4, 'Tableau', 1, 'Customer behavior analytics and insights');
+
+-- Seed Policy-Dataset relationships
+INSERT INTO `policy_dataset` (`policy_id`, `dataset_id`) VALUES
+(1, 1), -- Data Retention -> Customer Profiles
+(2, 1), -- Data Access Control -> Customer Profiles
+(3, 1), -- Data Encryption -> Customer Profiles
+(1, 3), -- Data Retention -> Employee Records
+(2, 3), -- Data Access Control -> Employee Records
+(3, 3), -- Data Encryption -> Employee Records
+(1, 5), -- Data Retention -> Financial Transactions
+(4, 5), -- Data Backup -> Financial Transactions
+(6, 5), -- Data Classification -> Financial Transactions
+(5, 6), -- Data Quality -> Marketing Campaigns
+(7, 6), -- Data Sharing -> Marketing Campaigns
+(4, 8), -- Data Backup -> Inventory Data
+(5, 8); -- Data Quality -> Inventory Data
+
+-- Seed Policy-Data Domain relationships
+INSERT INTO `policy_data_domain` (`policy_id`, `data_domain_id`) VALUES
+(1, 1), -- Data Retention -> Customer Data
+(2, 1), -- Data Access Control -> Customer Data
+(7, 1), -- Data Sharing -> Customer Data
+(1, 2), -- Data Retention -> Employee Data
+(2, 2), -- Data Access Control -> Employee Data
+(3, 2), -- Data Encryption -> Employee Data
+(1, 3), -- Data Retention -> Financial Data
+(4, 3), -- Data Backup -> Financial Data
+(6, 3), -- Data Classification -> Financial Data
+(5, 4), -- Data Quality -> Marketing Data
+(7, 4), -- Data Sharing -> Marketing Data
+(4, 5), -- Data Backup -> Operational Data
+(5, 5); -- Data Quality -> Operational Data
 
 -- =============================================
 -- SEED REGULATORY METADATA

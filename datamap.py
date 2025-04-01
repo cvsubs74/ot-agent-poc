@@ -5,9 +5,15 @@ os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "500"
 
 import streamlit as st
 import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from pyvis.network import Network
+import streamlit.components.v1 as components
 
 from repositories.GlossaryRepository import GlossaryRepository
 from repositories.RegulatoryMetadataRepository import RegulatoryMetadataRepository
+from repositories.InventoryRepository import InventoryRepository
 from repositories.DatabaseManager import DatabaseManager
 
 class DataMap:
@@ -16,6 +22,7 @@ class DataMap:
         self.database_manager = DatabaseManager()
         self.glossary_repository = GlossaryRepository(self.database_manager.connection)
         self.regulatory_metadata_repository = RegulatoryMetadataRepository(self.database_manager.connection)
+        self.inventory_repository = InventoryRepository(self.database_manager.connection)
         
     @staticmethod
     def divider(height=1):
@@ -876,181 +883,557 @@ class DataMap:
         st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Inventory</div>", unsafe_allow_html=True)
         
         tabs = st.tabs([
-            "Assets", "Processing Activities", "Legal Entities", "Vendors"
+            "Assets", "Datasets", "Data Domains", "Policies", "Visualization"
         ])
         
         # Assets tab
         with tabs[0]:
             st.subheader("Assets Inventory")
-            st.markdown("""
-            <div class="card">
-                <h3>Data Assets</h3>
-                <p>This section provides an inventory of data assets within the organization, including databases, 
-                applications, and other systems that store or process personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an inventory of data assets within the organization, including systems and applications that store or process data.</p>
+                <ul>
+                    <li>Core systems that contain or process data</li>
+                    <li>Applications and databases that serve as data sources</li>
+                    <li>Systems that support business operations and data processing</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
             
-            # For now, we'll use sample data since we haven't created an assets table yet
-            assets_data = {
-                "Asset Name": ["Customer Database", "Marketing Platform", "HR System", "Mobile App"],
-                "Type": ["Database", "SaaS Application", "Internal System", "Mobile Application"],
-                "Data Categories": ["Customer PII", "Marketing Data", "Employee Data", "User Data"],
-                "Risk Level": ["High", "Medium", "High", "Medium"],
-                "Owner": ["Data Team", "Marketing", "HR Department", "Product Team"]
-            }
-            st.dataframe(pd.DataFrame(assets_data))
-            
-            # Add a note about future integration
-            st.info("This section will be integrated with the database in a future update. Currently showing sample data.")
-            
-            # Add a form to add new assets (placeholder for now)
-            with st.expander("Add New Asset"):
-                st.text_input("Asset Name")
-                st.selectbox("Asset Type", ["Database", "SaaS Application", "Internal System", "Mobile Application", "Website", "API", "Other"])
+            # Get assets data from repository
+            assets = self.inventory_repository.get_assets()
+            if assets:
+                assets_data = {
+                    "Asset Name": [],
+                    "Description": []
+                }
+                for asset in assets:
+                    assets_data["Asset Name"].append(asset["name"])
+                    assets_data["Description"].append(asset["description"])
                 
-                # Get data categories from repository for the multi-select
+                st.dataframe(pd.DataFrame(assets_data))
                 
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    category_options = [dc["name"] for dc in data_categories]
-                    st.multiselect("Data Categories", options=category_options)
-                else:
-                    st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
-                
-                st.selectbox("Risk Level", ["Low", "Medium", "High"])
-                st.text_input("Owner")
-                st.button("Add Asset")
+                # Add expandable sections for each asset to show its datasets
+                st.markdown("### Asset Details")
+                for asset in assets:
+                    with st.expander(f"{asset['name']}"):
+                        datasets = self.inventory_repository.get_datasets_by_asset_id(asset["id"])
+                        if datasets:
+                            datasets_data = {
+                                "Dataset": [],
+                                "Source System": [],
+                                "Data Domain": [],
+                                "Description": []
+                            }
+                            for dataset in datasets:
+                                datasets_data["Dataset"].append(dataset["name"])
+                                datasets_data["Source System"].append(dataset["source_system"])
+                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
+                                datasets_data["Description"].append(dataset["description"])
+                            
+                            st.dataframe(pd.DataFrame(datasets_data))
+                        else:
+                            st.info("No datasets available for this asset.")
+            else:
+                st.warning("No data available in the database.")
         
-        # Processing Activities tab
+        # Datasets tab
         with tabs[1]:
-            st.subheader("Processing Activities")
-            st.markdown("""
-            <div class="card">
-                <h3>Data Processing Activities</h3>
-                <p>This section catalogs the various data processing activities performed by the organization, 
-                as required by many data protection regulations including GDPR Article 30.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("Datasets Inventory")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an inventory of datasets within the organization, organized by the assets they belong to and the data domains they are part of.</p>
+                <ul>
+                    <li>Datasets from various source systems</li>
+                    <li>Relationships between datasets, assets, and data domains</li>
+                    <li>Policies applied to each dataset</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
             
-            # For now, we'll use sample data since we haven't created a processing activities table yet
-            processing_data = {
-                "Activity Name": ["Customer Onboarding", "Marketing Campaigns", "Employee Management", "App Analytics"],
-                "Purpose": ["Service Provision", "Marketing", "Employment", "Product Improvement"],
-                "Data Categories": ["Identity, Contact", "Contact, Preferences", "HR Data, Financial", "Usage Data"],
-                "Legal Basis": ["Contract", "Consent", "Legal Obligation", "Legitimate Interest"],
-                "Retention Period": ["7 years", "3 years", "Duration of employment + 5 years", "2 years"]
-            }
-            st.dataframe(pd.DataFrame(processing_data))
-            
-            # Add a note about future integration
-            st.info("This section will be integrated with the database in a future update. Currently showing sample data.")
-            
-            # Add a form to add new processing activities (placeholder for now)
-            with st.expander("Add New Processing Activity"):
-                st.text_input("Activity Name")
+            # Get datasets data from repository
+            datasets = self.inventory_repository.get_datasets()
+            if datasets:
+                datasets_data = {
+                    "Dataset": [],
+                    "Asset": [],
+                    "Source System": [],
+                    "Data Domain": [],
+                    "Description": []
+                }
+                for dataset in datasets:
+                    datasets_data["Dataset"].append(dataset["name"])
+                    datasets_data["Asset"].append(dataset["asset_name"])
+                    datasets_data["Source System"].append(dataset["source_system"])
+                    datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
+                    datasets_data["Description"].append(dataset["description"])
                 
-                # Get purposes (contexts) from repository for the select box
+                st.dataframe(pd.DataFrame(datasets_data))
                 
-                contexts = self.glossary_repository.get_contexts()
-                if contexts:
-                    purpose_options = [ctx["name"] for ctx in contexts]
-                    st.selectbox("Purpose", options=purpose_options)
-                else:
-                    st.selectbox("Purpose", options=["Service Provision", "Marketing", "Employment", "Product Improvement"])
-                
-                # Get data categories from repository for the multi-select
-                
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    category_options = [dc["name"] for dc in data_categories]
-                    st.multiselect("Data Categories", options=category_options)
-                else:
-                    st.multiselect("Data Categories", options=["Identity", "Contact", "Preferences", "HR Data", "Financial", "Usage Data"])
-                
-                # Get legal bases from repository for the select box
-                
-                legal_bases = self.glossary_repository.get_legal_bases()
-                if legal_bases:
-                    legal_basis_options = [lb["name"] for lb in legal_bases]
-                    st.selectbox("Legal Basis", options=legal_basis_options)
-                else:
-                    st.selectbox("Legal Basis", options=["Consent", "Contract", "Legal Obligation", "Legitimate Interest"])
-                
-                st.text_input("Retention Period")
-                st.button("Add Processing Activity")
+                # Add expandable sections for each dataset to show its policies
+                st.markdown("### Dataset Policies")
+                for dataset in datasets:
+                    with st.expander(f"{dataset['name']} ({dataset['asset_name']})"):
+                        policies = self.inventory_repository.get_policies_for_dataset(dataset["id"])
+                        if policies:
+                            policies_data = {
+                                "Policy": [],
+                                "Type": [],
+                                "Description": []
+                            }
+                            for policy in policies:
+                                policies_data["Policy"].append(policy["name"])
+                                policies_data["Type"].append(policy["policy_type"])
+                                policies_data["Description"].append(policy["description"])
+                            
+                            st.dataframe(pd.DataFrame(policies_data))
+                        else:
+                            st.info("No policies applied to this dataset.")
+            else:
+                st.warning("No data available in the database.")
         
-        # Legal Entities tab
+        # Data Domains tab
         with tabs[2]:
-            st.subheader("Legal Entities")
-            st.markdown("""
-            <div class="card">
-                <h3>Legal Entities</h3>
-                <p>This section provides an inventory of legal entities relevant to data protection compliance, 
-                such as controllers, processors, and joint controllers.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("Data Domains")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an overview of data domains, which are logical groupings of related datasets.</p>
+                <ul>
+                    <li>Organizational structure of data</li>
+                    <li>Logical groupings of related datasets</li>
+                    <li>Policies applied at the domain level</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
             
-            # For now, we'll use sample data since we haven't created a legal entities table yet
-            legal_entities_data = {
-                "Entity Name": ["Main Company Inc.", "Subsidiary LLC", "Partner Corp", "Vendor Inc."],
-                "Type": ["Controller", "Joint Controller", "Processor", "Sub-processor"],
-                "Country": ["United States", "United Kingdom", "Germany", "India"],
-                "Role": ["Parent Company", "Subsidiary", "Partner", "Service Provider"]
-            }
-            st.dataframe(pd.DataFrame(legal_entities_data))
-            
-            # Add a note about future integration
-            st.info("This section will be integrated with the database in a future update. Currently showing sample data.")
-            
-            # Add a form to add new legal entities (placeholder for now)
-            with st.expander("Add New Legal Entity"):
-                st.text_input("Entity Name")
-                st.selectbox("Type", options=["Controller", "Joint Controller", "Processor", "Sub-processor"])
-                st.text_input("Country")
-                st.text_input("Role")
-                st.button("Add Legal Entity")
+            # Get data domains from repository
+            data_domains = self.inventory_repository.get_data_domains()
+            if data_domains:
+                data_domain_data = {
+                    "Data Domain": [],
+                    "Description": []
+                }
+                for domain in data_domains:
+                    data_domain_data["Data Domain"].append(domain["name"])
+                    data_domain_data["Description"].append(domain["description"])
+                
+                st.dataframe(pd.DataFrame(data_domain_data))
+                
+                # Add expandable sections for each data domain
+                st.markdown("### Data Domain Details")
+                for domain in data_domains:
+                    with st.expander(f"{domain['name']}"):
+                        # Show datasets in this domain
+                        datasets = self.inventory_repository.get_datasets_by_data_domain_id(domain["id"])
+                        if datasets:
+                            st.markdown("#### Datasets in this Domain")
+                            datasets_data = {
+                                "Dataset": [],
+                                "Asset": [],
+                                "Source System": [],
+                                "Description": []
+                            }
+                            for dataset in datasets:
+                                datasets_data["Dataset"].append(dataset["name"])
+                                datasets_data["Asset"].append(dataset["asset_name"])
+                                datasets_data["Source System"].append(dataset["source_system"])
+                                datasets_data["Description"].append(dataset["description"])
+                            
+                            st.dataframe(pd.DataFrame(datasets_data))
+                        else:
+                            st.info("No datasets in this domain.")
+                        
+                        # Show policies for this domain
+                        policies = self.inventory_repository.get_policies_for_data_domain(domain["id"])
+                        if policies:
+                            st.markdown("#### Policies Applied to this Domain")
+                            policies_data = {
+                                "Policy": [],
+                                "Type": [],
+                                "Description": []
+                            }
+                            for policy in policies:
+                                policies_data["Policy"].append(policy["name"])
+                                policies_data["Type"].append(policy["policy_type"])
+                                policies_data["Description"].append(policy["description"])
+                            
+                            st.dataframe(pd.DataFrame(policies_data))
+                        else:
+                            st.info("No policies applied to this domain.")
+            else:
+                st.warning("No data available in the database.")
         
-        # Vendors tab
+        # Policies tab
         with tabs[3]:
-            st.subheader("Vendors")
-            st.markdown("""
-            <div class="card">
-                <h3>Vendors</h3>
-                <p>This section provides an inventory of vendors that process personal data on behalf of the organization, 
-                including details about their data protection practices and contractual arrangements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("Policies")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an overview of data policies that govern how data is managed, protected, and used within the organization.</p>
+                <ul>
+                    <li>Data governance policies</li>
+                    <li>Data protection and security policies</li>
+                    <li>Data quality and retention policies</li>
+                    <li>Application of policies to datasets and domains</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
             
-            # For now, we'll use sample data since we haven't created a vendors table yet
-            vendors_data = {
-                "Vendor Name": ["Cloud Provider Inc.", "Marketing Platform LLC", "HR Software Corp", "Analytics Co."],
-                "Service Type": ["Cloud Storage", "Email Marketing", "HR Management", "Web Analytics"],
-                "Data Categories": ["All Company Data", "Customer Contact Info", "Employee Data", "Website Usage Data"],
-                "Contract Status": ["Active", "Active", "Active", "Under Review"],
-                "DPA in Place": ["Yes", "Yes", "Yes", "Pending"]
-            }
-            st.dataframe(pd.DataFrame(vendors_data))
+            # Get policies from repository
+            policies = self.inventory_repository.get_policies()
+            if policies:
+                policies_data = {
+                    "Policy": [],
+                    "Type": [],
+                    "Description": []
+                }
+                for policy in policies:
+                    policies_data["Policy"].append(policy["name"])
+                    policies_data["Type"].append(policy["policy_type"])
+                    policies_data["Description"].append(policy["description"])
+                
+                st.dataframe(pd.DataFrame(policies_data))
+                
+                # Add expandable sections for each policy
+                st.markdown("### Policy Application")
+                for policy in policies:
+                    with st.expander(f"{policy['name']} ({policy['policy_type']})"):
+                        # Show datasets with this policy
+                        datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
+                        if datasets:
+                            st.markdown("#### Applied to Datasets")
+                            datasets_data = {
+                                "Dataset": [],
+                                "Asset": [],
+                                "Data Domain": []
+                            }
+                            for dataset in datasets:
+                                datasets_data["Dataset"].append(dataset["name"])
+                                datasets_data["Asset"].append(dataset["asset_name"])
+                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
+                            
+                            st.dataframe(pd.DataFrame(datasets_data))
+                        else:
+                            st.info("Not applied to any datasets.")
+                        
+                        # Show data domains with this policy
+                        domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
+                        if domains:
+                            st.markdown("#### Applied to Data Domains")
+                            domains_data = {
+                                "Data Domain": [],
+                                "Description": []
+                            }
+                            for domain in domains:
+                                domains_data["Data Domain"].append(domain["name"])
+                                domains_data["Description"].append(domain["description"])
+                            
+                            st.dataframe(pd.DataFrame(domains_data))
+                        else:
+                            st.info("Not applied to any data domains.")
+            else:
+                st.warning("No data available in the database.")
+        
+        # Visualization tab
+        with tabs[4]:
+            st.subheader("Data Inventory Visualization")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides a visual representation of the relationships between assets, datasets, data domains, and policies.</p>
+                <ul>
+                    <li>Interactive network graph showing data relationships</li>
+                    <li>Visual mapping of policies to datasets and domains</li>
+                    <li>Hierarchical view of data organization</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
             
-            # Add a note about future integration
-            st.info("This section will be integrated with the database in a future update. Currently showing sample data.")
+            # Create network visualization
+            assets = self.inventory_repository.get_assets()
+            datasets = self.inventory_repository.get_datasets()
+            data_domains = self.inventory_repository.get_data_domains()
+            policies = self.inventory_repository.get_policies()
             
-            # Add a form to add new vendors (placeholder for now)
-            with st.expander("Add New Vendor"):
-                st.text_input("Vendor Name")
-                st.text_input("Service Type")
+            if assets and datasets and data_domains and policies:
+                # Create a network graph
+                net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="#000000")
                 
-                # Get data categories from repository for the multi-select
+                # First, add all nodes to the network
+                # Add nodes for assets (blue)
+                for asset in assets:
+                    net.add_node(f"asset_{asset['id']}", label=asset["name"], title=asset["description"], color="#3498db", shape="dot", size=25)
                 
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    category_options = [dc["name"] for dc in data_categories]
-                    st.multiselect("Data Categories", options=category_options)
-                else:
-                    st.multiselect("Data Categories", options=["Customer PII", "Marketing Data", "Employee Data", "User Data"])
+                # Add nodes for datasets (green)
+                for dataset in datasets:
+                    net.add_node(f"dataset_{dataset['id']}", label=dataset["name"], title=dataset["description"], color="#2ecc71", shape="dot", size=20)
                 
-                st.selectbox("Contract Status", options=["Active", "Pending", "Expired", "Under Review"])
-                st.selectbox("DPA in Place", options=["Yes", "No", "Pending"])
-                st.button("Add Vendor")
+                # Add nodes for data domains (orange)
+                for domain in data_domains:
+                    net.add_node(f"domain_{domain['id']}", label=domain["name"], title=domain["description"], color="#e67e22", shape="dot", size=25)
+                
+                # Add nodes for policies (red)
+                for policy in policies:
+                    net.add_node(f"policy_{policy['id']}", label=policy["name"], title=policy["description"], color="#e74c3c", shape="dot", size=15)
+                
+                # Now add all edges after all nodes have been created
+                # Connect datasets to assets
+                for dataset in datasets:
+                    net.add_edge(f"dataset_{dataset['id']}", f"asset_{dataset['asset_id']}", title="belongs to")
+                    # Connect dataset to its data domain if it has one
+                    if dataset["data_domain_id"]:
+                        # Make sure the domain exists in our data domains list
+                        domain_exists = any(domain["id"] == dataset["data_domain_id"] for domain in data_domains)
+                        if domain_exists:
+                            net.add_edge(f"dataset_{dataset['id']}", f"domain_{dataset['data_domain_id']}", title="part of domain")
+                
+                # Connect policies to datasets
+                for policy in policies:
+                    policy_datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
+                    for dataset in policy_datasets:
+                        # Make sure the dataset exists in our datasets list
+                        if any(d["id"] == dataset["id"] for d in datasets):
+                            net.add_edge(f"policy_{policy['id']}", f"dataset_{dataset['id']}", title="applies to")
+                    
+                    # Connect policies to data domains
+                    policy_domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
+                    for domain in policy_domains:
+                        # Make sure the domain exists in our data domains list
+                        if any(d["id"] == domain["id"] for d in data_domains):
+                            net.add_edge(f"policy_{policy['id']}", f"domain_{domain['id']}", title="applies to")
+                
+                # Set physics layout
+                net.barnes_hut(gravity=-80000, central_gravity=0.3, spring_length=200, spring_strength=0.05, damping=0.09)
+                
+                # Generate the HTML file
+                html_path = "network_graph.html"
+                net.save_graph(html_path)
+                
+                # Display the HTML file
+                with open(html_path, 'r') as f:
+                    html_string = f.read()
+                components.html(html_string, height=600)
+                
+                # Add legend
+                st.markdown('''
+                <div style="display: flex; justify-content: center; margin-top: 20px;">
+                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #3498db; border-radius: 50%; margin-right: 5px;"></span> Assets</div>
+                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #2ecc71; border-radius: 50%; margin-right: 5px;"></span> Datasets</div>
+                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #e67e22; border-radius: 50%; margin-right: 5px;"></span> Data Domains</div>
+                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #e74c3c; border-radius: 50%; margin-right: 5px;"></span> Policies</div>
+                </div>
+                ''', unsafe_allow_html=True)
+                
+                # Instructions for using the visualization
+                st.markdown('''
+                <div style="margin-top: 20px; background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+                    <h4>How to use this visualization:</h4>
+                    <ul>
+                        <li>Click and drag nodes to reposition them</li>
+                        <li>Scroll to zoom in and out</li>
+                        <li>Hover over nodes to see details</li>
+                        <li>Click on a node to focus on its connections</li>
+                    </ul>
+                </div>
+                ''', unsafe_allow_html=True)
+            else:
+                st.warning("Insufficient data to create visualization. Please ensure there are assets, datasets, data domains, and policies in the database.")
+            
+            # No form for adding new assets as per requirement
+        
+        # Datasets tab
+        with tabs[1]:
+            st.subheader("Datasets Inventory")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an inventory of datasets within the organization, organized by the assets they belong to and the data domains they are part of.</p>
+                <ul>
+                    <li>Datasets from various source systems</li>
+                    <li>Relationships between datasets, assets, and data domains</li>
+                    <li>Policies applied to each dataset</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get datasets data from repository
+            datasets = self.inventory_repository.get_datasets()
+            if datasets:
+                datasets_data = {
+                    "Dataset": [],
+                    "Asset": [],
+                    "Source System": [],
+                    "Data Domain": [],
+                    "Description": []
+                }
+                for dataset in datasets:
+                    datasets_data["Dataset"].append(dataset["name"])
+                    datasets_data["Asset"].append(dataset["asset_name"])
+                    datasets_data["Source System"].append(dataset["source_system"])
+                    datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
+                    datasets_data["Description"].append(dataset["description"])
+                
+                st.dataframe(pd.DataFrame(datasets_data))
+                
+                # Add expandable sections for each dataset to show its policies
+                st.markdown("### Dataset Policies")
+                for dataset in datasets:
+                    with st.expander(f"{dataset['name']} ({dataset['asset_name']})"):
+                        policies = self.inventory_repository.get_policies_for_dataset(dataset["id"])
+                        if policies:
+                            policies_data = {
+                                "Policy": [],
+                                "Type": [],
+                                "Description": []
+                            }
+                            for policy in policies:
+                                policies_data["Policy"].append(policy["name"])
+                                policies_data["Type"].append(policy["policy_type"])
+                                policies_data["Description"].append(policy["description"])
+                            
+                            st.dataframe(pd.DataFrame(policies_data))
+                        else:
+                            st.info("No policies applied to this dataset.")
+            else:
+                st.warning("No datasets available in the database.")
+            
+            # No form for adding new datasets as per requirement
+        
+        # Data Domains tab
+        with tabs[2]:
+            st.subheader("Data Domains")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an overview of data domains, which are logical groupings of related datasets.</p>
+                <ul>
+                    <li>Organizational structure of data</li>
+                    <li>Logical groupings of related datasets</li>
+                    <li>Policies applied at the domain level</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get data domains from repository
+            data_domains = self.inventory_repository.get_data_domains()
+            if data_domains:
+                data_domain_data = {
+                    "Data Domain": [],
+                    "Description": []
+                }
+                for domain in data_domains:
+                    data_domain_data["Data Domain"].append(domain["name"])
+                    data_domain_data["Description"].append(domain["description"])
+                
+                st.dataframe(pd.DataFrame(data_domain_data))
+            
+            # Add expandable sections for each data domain
+            if data_domains:
+                st.markdown("### Data Domain Details")
+                for domain in data_domains:
+                    with st.expander(f"{domain['name']}"):
+                        # Show datasets in this domain
+                        datasets = self.inventory_repository.get_datasets_by_data_domain_id(domain["id"])
+                        if datasets:
+                            st.markdown("#### Datasets in this Domain")
+                            datasets_data = {
+                                "Dataset": [],
+                                "Asset": [],
+                                "Source System": [],
+                                "Description": []
+                            }
+                            for dataset in datasets:
+                                datasets_data["Dataset"].append(dataset["name"])
+                                datasets_data["Asset"].append(dataset["asset_name"])
+                                datasets_data["Source System"].append(dataset["source_system"])
+                                datasets_data["Description"].append(dataset["description"])
+                            
+                            st.dataframe(pd.DataFrame(datasets_data))
+                        else:
+                            st.info("No datasets in this domain.")
+                        
+                        # Show policies for this domain
+                        policies = self.inventory_repository.get_policies_for_data_domain(domain["id"])
+                        if policies:
+                            st.markdown("#### Policies Applied to this Domain")
+                            policies_data = {
+                                "Policy": [],
+                                "Type": [],
+                                "Description": []
+                            }
+                            for policy in policies:
+                                policies_data["Policy"].append(policy["name"])
+                                policies_data["Type"].append(policy["policy_type"])
+                                policies_data["Description"].append(policy["description"])
+                            
+                            st.dataframe(pd.DataFrame(policies_data))
+                        else:
+                            st.info("No policies applied to this domain.")
+            else:
+                st.warning("No data domains available in the database.")
+            
+            # No form for adding new data domains as per requirement
+        
+        # Policies tab
+        with tabs[3]:
+            st.subheader("Policies")
+            st.markdown('''
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides an overview of data policies that govern how data is managed, protected, and used within the organization.</p>
+                <ul>
+                    <li>Data governance policies</li>
+                    <li>Data protection and security policies</li>
+                    <li>Data quality and retention policies</li>
+                    <li>Application of policies to datasets and domains</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get policies from repository
+            policies = self.inventory_repository.get_policies()
+            if policies:
+                policies_data = {
+                    "Policy": [],
+                    "Type": [],
+                    "Description": []
+                }
+                for policy in policies:
+                    policies_data["Policy"].append(policy["name"])
+                    policies_data["Type"].append(policy["policy_type"])
+                    policies_data["Description"].append(policy["description"])
+                
+                st.dataframe(pd.DataFrame(policies_data))
+            
+            # Add expandable sections for each policy
+            if policies:
+                st.markdown("### Policy Application")
+                for policy in policies:
+                    with st.expander(f"{policy['name']} ({policy['policy_type']})"):
+                        # Show datasets with this policy
+                        datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
+                        if datasets:
+                            st.markdown("#### Applied to Datasets")
+                            datasets_data = {
+                                "Dataset": [],
+                                "Asset": [],
+                                "Data Domain": []
+                            }
+                            for dataset in datasets:
+                                datasets_data["Dataset"].append(dataset["name"])
+                                datasets_data["Asset"].append(dataset["asset_name"])
+                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
+                            
+                            st.dataframe(pd.DataFrame(datasets_data))
+                        else:
+                            st.info("Not applied to any datasets.")
+                        
+                        # Show data domains with this policy
+                        domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
+                        if domains:
+                            st.markdown("#### Applied to Data Domains")
+                            domains_data = {
+                                "Data Domain": [],
+                                "Description": []
+                            }
+                            for domain in domains:
+                                domains_data["Data Domain"].append(domain["name"])
+                                domains_data["Description"].append(domain["description"])
+                            
+                            st.dataframe(pd.DataFrame(domains_data))
+                        else:
+                            st.info("Not applied to any data domains.")
+            else:
+                st.warning("No policies available in the database.")
+            
+            # No form for adding new policies as per requirement
 
     def run(self):
         """Main function to run the Streamlit app."""
@@ -1084,6 +1467,10 @@ class DataMap:
             # Decision Tree menu item
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
+            
+            # Inventory menu item
+            if st.button("📊 Inventory", key="inventory_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Inventory'
             
             # Second section: Inference APIs
             st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
@@ -1179,6 +1566,8 @@ class DataMap:
             self.regulatory_metadata_section()
         elif st.session_state['current_section'] == 'Decision Tree':
             self.decision_tree_section()
+        elif st.session_state['current_section'] == 'Inventory':
+            self.inventory_section()
         elif st.session_state['current_section'] == 'Sensitivity API':
             self.sensitivity_inference_api()
         elif st.session_state['current_section'] == 'Legal Basis API':
@@ -2017,7 +2406,7 @@ class DataMap:
             data_categories = self.glossary_repository.get_data_categories()
             if data_categories:
                 dc_options = [dc["name"] for dc in data_categories]
-                affected_data_categories = st.multiselect("Affected Data Categories", options=dc_options)
+                affected_data_categories = st.multiselect("Affected Data Categories", options=dc_options, key="breach_data_categories")
             else:
                 st.warning("No data categories available.")
                 return
@@ -2026,7 +2415,7 @@ class DataMap:
             data_subject_types = self.glossary_repository.get_data_subject_types()
             if data_subject_types:
                 dst_options = [dst["name"] for dst in data_subject_types]
-                affected_data_subjects = st.multiselect("Affected Data Subject Types", options=dst_options)
+                affected_data_subjects = st.multiselect("Affected Data Subject Types", options=dst_options, key="breach_data_subject_types")
             else:
                 st.warning("No data subject types available.")
                 return
