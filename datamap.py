@@ -34,7 +34,7 @@ class DataMap:
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
-        st.set_page_config(page_title="Content Management System", layout="wide")
+        st.set_page_config(page_title="Data Governance Platform", layout="wide")
 
         # Inject custom CSS for styling
         st.markdown("""
@@ -1441,13 +1441,11 @@ class DataMap:
         self.configure_page()
 
         # Main header and introduction
-        st.title("Content Management System")
+        st.title("Data Governance Platform")
         self.divider(2)
         
         # Create sidebar with navigation
         with st.sidebar:
-            st.title("Regulatory Content")
-            
             # Store the current section in session state if not already there
             if 'current_section' not in st.session_state:
                 st.session_state['current_section'] = 'Glossary'
@@ -1467,11 +1465,7 @@ class DataMap:
             # Decision Tree menu item
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
-            
-            # Inventory menu item
-            if st.button("📊 Inventory", key="inventory_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Inventory'
-            
+                        
             # Second section: Inference APIs
             st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
             
@@ -1487,6 +1481,13 @@ class DataMap:
             if st.button("⚠️ Breach Notification", key="breach_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Breach API'
             
+            # Third section: Modules
+            st.markdown("<div class='sidebar-section-header'>Modules</div>", unsafe_allow_html=True)
+            
+            # Inventory menu item
+            if st.button("📊 Inventory", key="inventory_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Inventory'
+
             # Style the menu items with improved CSS for left alignment
             st.markdown(f"""
             <style>
