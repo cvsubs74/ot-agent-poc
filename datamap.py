@@ -34,7 +34,7 @@ class DataMap:
 
     def configure_page(self):
         """Configure the Streamlit page settings."""
-        st.set_page_config(page_title="Data Governance Platform", layout="wide")
+        st.set_page_config(page_title="OneTrust Platform", layout="wide")
 
         # Inject custom CSS for styling
         st.markdown("""
@@ -236,18 +236,18 @@ class DataMap:
         </style>
         """, unsafe_allow_html=True)
 
-    def glossary_section(self):
-        """Handle the Glossary section with its tabs."""
-        st.markdown("<div class='page-header'><i class='fas fa-book'></i> &nbsp;Glossary</div>", unsafe_allow_html=True)
+    def core_constructs_section(self):
+        """Handle the Core Constructs section with its tabs."""
+        st.markdown("<div class='page-header'><i class='fas fa-book'></i> &nbsp;Core Constructs</div>", unsafe_allow_html=True)
         
         st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>The Glossary section provides comprehensive definitions and explanations of key privacy and data protection concepts.</p>
+            <p><strong>Core Constructs™</strong> are foundational reference entities that power the entire OneTrust Platform. They establish a unified source of truth across all modules and functions.</p>
             <ul>
-                <li>Centralized knowledge base for consistent understanding of regulatory terminology</li>
-                <li>Detailed definitions for privacy laws, jurisdictions, and legal bases</li>
-                <li>Explanations of data elements, subject types, and categories</li>
-                <li>Context and sensitivity classifications with regulatory references</li>
-                <li>Supporting documentation for compliance efforts and training</li>
+                <li><strong>Centralized Reference Data:</strong> All domain-specific attributes reference master data from Core Constructs, ensuring consistency and eliminating redundancy</li>
+                <li><strong>System-Wide Attribute Types:</strong> Each Core Construct maps to a corresponding system attribute type, enabling seamless integration across the platform</li>
+                <li><strong>Enterprise-Wide Standardization:</strong> Consistent terminology and values across all platform modules promote better governance and reporting</li>
+                <li><strong>Pre-Configured Foundation:</strong> The platform includes comprehensive, ready-to-use reference data for immediate deployment</li>
+                <li><strong>Extensible Architecture:</strong> Core Constructs can be customized to meet organization-specific requirements while maintaining system integrity</li>
             </ul>
         </div>''', unsafe_allow_html=True)
         
@@ -520,18 +520,17 @@ class DataMap:
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
-        st.markdown("<div class='page-header'><i class='fas fa-project-diagram'></i> &nbsp;Mappings</div>", unsafe_allow_html=True)
+        st.markdown("<div class='page-header'><i class='fas fa-project-diagram'></i> &nbsp;Regulatory Intelligence Engine</div>", unsafe_allow_html=True)
         
         st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>The Regulatory Mappings section provides detailed relationships between different regulatory components.</p>
+            <p><strong>Regulatory Mappings™</strong> establish dynamic relationships between Core Constructs, powering the foundational regulatory intelligence across the OneTrust platform. These sophisticated connections form the rule engine that drives automated compliance insights.</p>
             <ul>
-                <li>Interconnections between privacy laws, jurisdictions, and compliance requirements</li>
-                <li>Foundation for automated inference engines and compliance recommendations</li>
-                <li>Mappings between laws and applicable jurisdictions</li>
-                <li>Legal basis requirements for different processing activities</li>
-                <li>Breach notification timelines and requirements by jurisdiction</li>
-                <li>Data transfer mechanisms and cross-border requirements</li>
-                <li>Sensitivity classifications based on data types and processing contexts</li>
+                <li><strong>Intelligent Rule Framework:</strong> Complex relationship matrices between Core Constructs that enable automated regulatory analysis and decision-making</li>
+                <li><strong>Decision Tree Engine:</strong> Powers the platform's regulatory intelligence capabilities through a comprehensive set of interconnected rules</li>
+                <li><strong>API Foundation:</strong> All inference APIs and automated compliance functions are built upon these mapping relationships</li>
+                <li><strong>Cross-Domain Intelligence:</strong> Creates connections across jurisdictions, legal bases, breach requirements, and other regulatory domains</li>
+                <li><strong>Adaptive Compliance Logic:</strong> Continuously updated mapping relationships ensure regulatory insights remain current with evolving requirements</li>
+                <li><strong>Contextual Analysis:</strong> Enables nuanced interpretation of requirements based on specific business contexts and processing activities</li>
             </ul>
         </div>''', unsafe_allow_html=True)
         
@@ -1441,31 +1440,31 @@ class DataMap:
         self.configure_page()
 
         # Main header and introduction
-        st.title("Data Governance Platform")
+        st.title("OneTrust Platform")
         self.divider(2)
         
         # Create sidebar with navigation
         with st.sidebar:
             # Store the current section in session state if not already there
             if 'current_section' not in st.session_state:
-                st.session_state['current_section'] = 'Glossary'
+                st.session_state['current_section'] = 'Core'
             
-            # First section: Regulatory Metadata
-            st.markdown("<div class='sidebar-section-header'>Regulatory Metadata</div>", unsafe_allow_html=True)
+            # First section: Regulatory Intelligence
+            st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence    </div>", unsafe_allow_html=True)
             
             # Create menu items with emoji icons directly in the button text
-            # Glossary menu item
-            if st.button("📚 Glossary", key="glossary_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Glossary'
+            # Core Constructs menu item
+            if st.button("📚 Core Constructs", key="core_constructs_button", use_container_width=True):
+                st.session_state['current_section'] = 'Core'
             
-            # Mappings menu item
-            if st.button("🔄 Mappings", key="regulatory_btn", use_container_width=True):
+            # Regulatory Intelligence menu item
+            if st.button("🔄 Regulatory Intelligence", key="regulatory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Regulatory'
             
             # Decision Tree menu item
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
-                        
+            
             # Second section: Inference APIs
             st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
             
@@ -1510,7 +1509,7 @@ class DataMap:
             }}
             
             /* Style for active button */
-            div[data-testid="stButton"] > button#{'glossary_btn' if st.session_state['current_section'] == 'Glossary' else 
+            div[data-testid="stButton"] > button#{'core_constructs_button' if st.session_state['current_section'] == 'Core' else 
                                                  'regulatory_btn' if st.session_state['current_section'] == 'Regulatory' else
                                                  'decision_tree_btn' if st.session_state['current_section'] == 'Decision Tree' else
                                                  'sensitivity_api_btn' if st.session_state['current_section'] == 'Sensitivity API' else
@@ -1560,8 +1559,8 @@ class DataMap:
             self.divider()
             
         # Main content area based on selected section
-        if st.session_state['current_section'] == 'Glossary':
-            self.glossary_section()
+        if st.session_state['current_section'] == 'Core':
+            self.core_constructs_section()
         elif st.session_state['current_section'] == 'Regulatory':
             # Rename the section title in the UI
             self.regulatory_metadata_section()
