@@ -534,7 +534,8 @@ class DataMap:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        tabs = st.tabs([
+        # Define all tab names
+        all_tab_names = [
             "Law Jurisdiction", 
             "Law Legal Basis", 
             "Law Incident Breach Notification", 
@@ -546,337 +547,831 @@ class DataMap:
             "Data Subject Type Data Category Sensitivity",
             "Data Subject Type Data Element Sensitivity",
             "Law Context Data Subject Type Data Category Sensitivity",
-            "Context Data Subject Type Data Category Sensitivity"
-        ])
+            "Context Data Subject Type Data Category Sensitivity",
+            "Law Purpose Category Legal Basis",
+            "Legal Basis Requirements"
+        ]
         
-        # Law Jurisdiction tab
-        with tabs[0]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law to Jurisdiction Mapping</h3>
-                <p>This section maps data protection laws to their applicable jurisdictions, helping organizations 
-                understand which laws apply in which geographic areas.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        # Define which tabs are used by each inference API
+        inference_api_mappings = {
+            "All": list(range(len(all_tab_names))),  # All tabs
+            "Legal Basis Inference": [1, 12, 13],  # Law Legal Basis tab, Law Purpose Category Legal Basis, Legal Basis Requirements
+            "Breach Notification Inference": [2],  # Law Incident Breach Notification tab
+            "Transfer Mechanism Inference": [3],  # Law Transfer tab
+            "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
+            "Data Sensitivity Inference": [5, 6, 7, 8, 9, 10, 11]  # Various sensitivity-related tabs
+        }
+        
+        # Create a filter for inference APIs
+        st.markdown("<h3>Filter by Inference API</h3>", unsafe_allow_html=True)
+        inference_api_options = list(inference_api_mappings.keys())
+        selected_inference_api = st.selectbox(
+            "Select an Inference API to see relevant mapping tables",
+            inference_api_options,
+            key="inference_api_filter"
+        )
+        
+        # Get the tab indices for the selected inference API
+        visible_tab_indices = inference_api_mappings[selected_inference_api]
+        
+        # Create filtered tab names
+        visible_tab_names = [all_tab_names[i] for i in visible_tab_indices]
+        
+        # Create tabs with filtered names
+        tabs = st.tabs(visible_tab_names)
+        
+        # Create a mapping from filtered tab index to original tab index
+        tab_index_mapping = {i: visible_tab_indices[i] for i in range(len(visible_tab_indices))}
+        
+        # Loop through visible tabs and render content based on the original tab index
+        for i, tab_idx in enumerate(visible_tab_indices):
+            with tabs[i]:
+                # Law Jurisdiction tab
+                if tab_idx == 0:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law to Jurisdiction Mapping</h3>
+                        <p>This section maps data protection laws to their applicable jurisdictions, helping organizations 
+                        understand which laws apply in which geographic areas.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Get law jurisdiction data from repository
-            law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-            if law_jurisdictions:
-                law_jurisdiction_data = {
-                    "Law": [],
-                    "Jurisdiction": []
-                }
-                for lj in law_jurisdictions:
-                    law_jurisdiction_data["Law"].append(lj["law_name"])
-                    law_jurisdiction_data["Jurisdiction"].append(lj["jurisdiction_name"])
+                    # Get law jurisdiction data from repository
+                    law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
+                    if law_jurisdictions:
+                        law_jurisdiction_data = {
+                            "Law": [],
+                            "Jurisdiction": []
+                        }
+                        for lj in law_jurisdictions:
+                            law_jurisdiction_data["Law"].append(lj["law_name"])
+                            law_jurisdiction_data["Jurisdiction"].append(lj["jurisdiction_name"])
                 
-                st.dataframe(pd.DataFrame(law_jurisdiction_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Law Legal Basis tab
-        with tabs[1]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Legal Basis</h3>
-                <p>This section maps data protection laws to their applicable legal bases for processing personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get law legal basis data from repository
-            law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
-            if law_legal_bases:
-                law_legal_basis_data = {
-                    "Law": [],
-                    "Legal Basis": [],
-                    "Description": []
-                }
-                for llb in law_legal_bases:
-                    law_legal_basis_data["Law"].append(llb["law_name"])
-                    law_legal_basis_data["Legal Basis"].append(llb["legal_basis_name"])
-                    law_legal_basis_data["Description"].append(llb["legal_basis_description"])
+                        # Create a DataFrame
+                        df = pd.DataFrame(law_jurisdiction_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_jurisdiction_law_filter")
+                        
+                        with col2:
+                            jurisdictions = sorted(df["Jurisdiction"].unique())
+                            selected_jurisdiction = st.selectbox("Filter by Jurisdiction", ["All"] + list(jurisdictions), key="law_jurisdiction_jurisdiction_filter")
                 
-                st.dataframe(pd.DataFrame(law_legal_basis_data))
-            else:
-                st.warning("No data available in the database.")
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_jurisdiction != "All":
+                            filtered_df = filtered_df[filtered_df["Jurisdiction"] == selected_jurisdiction]
+                        
+                        # Sort by Law and Jurisdiction
+                        filtered_df = filtered_df.sort_values(by=["Law", "Jurisdiction"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
         
-        # Law Incident Breach Notification tab
-        with tabs[2]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Incident Breach Notification</h3>
-                <p>This section provides information about breach notification requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+                # Law Legal Basis tab
+                elif tab_idx == 1:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Legal Basis</h3>
+                        <p>This section maps data protection laws to their applicable legal bases for processing personal data.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Get law incident breach guidance data from repository
-            law_breach_guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances()
-            if law_breach_guidances:
-                law_breach_data = {
-                    "Law": [],
-                    "Threshold": [],
-                    "Timeframe": [],
-                    "Authority": [],
-                    "Content": []
-                }
-                for lbg in law_breach_guidances:
-                    law_breach_data["Law"].append(lbg["law_name"])
-                    law_breach_data["Threshold"].append(lbg["threshold"])
-                    law_breach_data["Timeframe"].append(lbg["timeframe"])
-                    law_breach_data["Authority"].append(lbg["authority"])
-                    law_breach_data["Content"].append(lbg["content"])
+                    # Get law legal basis data from repository
+                    law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
+                    if law_legal_bases:
+                        law_legal_basis_data = {
+                            "Law": [],
+                            "Legal Basis": [],
+                            "Description": []
+                        }
+                        for llb in law_legal_bases:
+                            law_legal_basis_data["Law"].append(llb["law_name"])
+                            law_legal_basis_data["Legal Basis"].append(llb["legal_basis_name"])
+                            law_legal_basis_data["Description"].append(llb["legal_basis_description"])
                 
-                st.dataframe(pd.DataFrame(law_breach_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Law Transfer tab
-        with tabs[3]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Transfer Requirements</h3>
-                <p>This section provides information about cross-border data transfer requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get law transfer data from repository
-            law_transfers = self.regulatory_metadata_repository.get_law_transfers()
-            if law_transfers:
-                law_transfer_data = {
-                    "Law": [],
-                    "Adequacy Countries": [],
-                    "Transfer Mechanisms": [],
-                    "Additional Requirements": []
-                }
-                for lt in law_transfers:
-                    law_transfer_data["Law"].append(lt["law_name"])
-                    law_transfer_data["Adequacy Countries"].append(lt["adequacy_countries"] or "N/A")
-                    law_transfer_data["Transfer Mechanisms"].append(lt["transfer_mechanisms"] or "N/A")
-                    law_transfer_data["Additional Requirements"].append(lt["additional_requirements"] or "N/A")
+                        # Create a DataFrame
+                        df = pd.DataFrame(law_legal_basis_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_legal_basis_law_filter")
+                        
+                        with col2:
+                            legal_bases = sorted(df["Legal Basis"].unique())
+                            selected_legal_basis = st.selectbox("Filter by Legal Basis", ["All"] + list(legal_bases), key="law_legal_basis_lb_filter")
                 
-                st.dataframe(pd.DataFrame(law_transfer_data))
-            else:
-                st.warning("No data available in the database.")
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_legal_basis != "All":
+                            filtered_df = filtered_df[filtered_df["Legal Basis"] == selected_legal_basis]
+                        
+                        # Sort by Law and Legal Basis
+                        filtered_df = filtered_df.sort_values(by=["Law", "Legal Basis"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
         
-        # Data Subject Access Request tab
-        with tabs[4]:
-            st.markdown("""
-            <div class="card">
-                <h3>Data Subject Access Request Requirements</h3>
-                <p>This section provides information about data subject rights and access request requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+                # Law Incident Breach Notification tab
+                elif tab_idx == 2:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Incident Breach Notification</h3>
+                        <p>This section provides information about breach notification requirements across different data protection regulations.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Get DSAR data from repository
-            dsar_requirements = self.regulatory_metadata_repository.get_law_data_subject_access_request_notification_requirements()
-            if dsar_requirements:
-                dsar_data = {
-                    "Law": [],
-                    "Right": [],
-                    "Description": [],
-                    "Conditions": [],
-                    "Timeframe": [],
-                    "Exemptions": []
-                }
-                for req in dsar_requirements:
-                    dsar_data["Law"].append(req["law_name"])
-                    dsar_data["Right"].append(req["name"])
-                    dsar_data["Description"].append(req["description"])
-                    dsar_data["Conditions"].append(req["conditions"] or "N/A")
-                    dsar_data["Timeframe"].append(req["timeframe"] or "N/A")
-                    dsar_data["Exemptions"].append(req["exemptions"] or "N/A")
+                    # Get law incident breach guidance data from repository
+                    law_breach_guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances()
+                    if law_breach_guidances:
+                        law_breach_data = {
+                            "Law": [],
+                            "Threshold": [],
+                            "Timeframe": [],
+                            "Authority": [],
+                            "Content": []
+                        }
+                        for lbg in law_breach_guidances:
+                            law_breach_data["Law"].append(lbg["law_name"])
+                            law_breach_data["Threshold"].append(lbg["threshold"])
+                            law_breach_data["Timeframe"].append(lbg["timeframe"])
+                            law_breach_data["Authority"].append(lbg["authority"])
+                            law_breach_data["Content"].append(lbg["content"])
                 
-                st.dataframe(pd.DataFrame(dsar_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Data Category Data Element tab
-        with tabs[5]:
-            st.markdown("""
-            <div class="card">
-                <h3>Data Category Data Element Mapping</h3>
-                <p>This section maps data categories to their constituent data elements, providing a hierarchical view of data classification.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get data category data element mappings from repository
-            data_category_elements = self.regulatory_metadata_repository.get_data_category_data_elements()
-            if data_category_elements:
-                mapping_data = {
-                    "Data Category": [],
-                    "Data Element": []
-                }
-                for mapping in data_category_elements:
-                    mapping_data["Data Category"].append(mapping["data_category_name"])
-                    mapping_data["Data Element"].append(mapping["data_element_name"])
+                        # Create a DataFrame
+                        df = pd.DataFrame(law_breach_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_breach_law_filter")
+                        
+                        with col2:
+                            timeframes = sorted(df["Timeframe"].unique())
+                            selected_timeframe = st.selectbox("Filter by Timeframe", ["All"] + list(timeframes), key="law_breach_timeframe_filter")
                 
-                st.dataframe(pd.DataFrame(mapping_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Law Data Subject Type Data Element Sensitivity tab
-        with tabs[6]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Data Subject Type Data Element Sensitivity</h3>
-                <p>This section maps laws to data subject types, data elements, and their sensitivity levels, providing a comprehensive view of data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get mappings from repository
-            mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
-            if mappings:
-                mapping_data = {
-                    "Law": [],
-                    "Data Subject Type": [],
-                    "Data Element": [],
-                    "Sensitivity": []
-                }
-                for mapping in mappings:
-                    mapping_data["Law"].append(mapping["law_name"])
-                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                    mapping_data["Data Element"].append(mapping["data_element_name"])
-                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_timeframe != "All":
+                            filtered_df = filtered_df[filtered_df["Timeframe"] == selected_timeframe]
                 
-                st.dataframe(pd.DataFrame(mapping_data))
-            else:
-                st.warning("No data available in the database.")
+                        # Sort by Law
+                        filtered_df = filtered_df.sort_values(by=["Law"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
         
-        # Law Data Subject Type Data Category Sensitivity tab
-        with tabs[7]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps laws to data subject types, data categories, and their sensitivity levels, providing a higher-level view of data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+                # Law Transfer tab
+                elif tab_idx == 3:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Transfer Requirements</h3>
+                        <p>This section provides information about cross-border data transfer requirements across different data protection regulations.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Get mappings from repository
-            mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
-            if mappings:
-                mapping_data = {
-                    "Law": [],
-                    "Data Subject Type": [],
-                    "Data Category": [],
-                    "Sensitivity": []
-                }
-                for mapping in mappings:
-                    mapping_data["Law"].append(mapping["law_name"])
-                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                    mapping_data["Data Category"].append(mapping["data_category_name"])
-                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                    # Get law transfer data from repository
+                    law_transfers = self.regulatory_metadata_repository.get_law_transfers()
+                    if law_transfers:
+                        law_transfer_data = {
+                            "Law": [],
+                            "Adequacy Countries": [],
+                            "Transfer Mechanisms": [],
+                            "Additional Requirements": []
+                        }
+                        for lt in law_transfers:
+                            law_transfer_data["Law"].append(lt["law_name"])
+                            law_transfer_data["Adequacy Countries"].append(lt["adequacy_countries"] or "N/A")
+                            law_transfer_data["Transfer Mechanisms"].append(lt["transfer_mechanisms"] or "N/A")
+                            law_transfer_data["Additional Requirements"].append(lt["additional_requirements"] or "N/A")
                 
-                st.dataframe(pd.DataFrame(mapping_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Data Subject Type Data Category Sensitivity tab
-        with tabs[8]:
-            st.markdown("""
-            <div class="card">
-                <h3>Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps data subject types to data categories and their sensitivity levels, independent of specific laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get mappings from repository
-            mappings = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
-            if mappings:
-                mapping_data = {
-                    "Data Subject Type": [],
-                    "Data Category": [],
-                    "Sensitivity": []
-                }
-                for mapping in mappings:
-                    mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                    mapping_data["Data Category"].append(mapping["data_category_name"])
-                    mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                        # Create a DataFrame
+                        df = pd.DataFrame(law_transfer_data)
+                    
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_transfer_law_filter")
+                        
+                        with col2:
+                            mechanisms = sorted([m for m in df["Transfer Mechanisms"].unique() if m != "N/A"])
+                            selected_mechanism = st.selectbox("Filter by Transfer Mechanism", ["All"] + list(mechanisms), key="law_transfer_mechanism_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_mechanism != "All":
+                            filtered_df = filtered_df[filtered_df["Transfer Mechanisms"].str.contains(selected_mechanism, na=False)]
+                        
+                        # Sort by Law
+                        filtered_df = filtered_df.sort_values(by=["Law"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+                elif tab_idx == 4:                        
+                    # Data Subject Access Request tab
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Data Subject Access Request Requirements</h3>
+                        <p>This section provides information about data subject rights and access request requirements across different data protection regulations.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                st.dataframe(pd.DataFrame(mapping_data))
-            else:
-                st.warning("No data available in the database.")
+                    # Get DSAR data from repository
+                    dsar_requirements = self.regulatory_metadata_repository.get_law_data_subject_access_request_notification_requirements()
+                    if dsar_requirements:
+                        dsar_data = {
+                            "Law": [],
+                            "Right": [],
+                            "Description": [],
+                            "Conditions": [],
+                            "Timeframe": [],
+                            "Exemptions": []
+                        }
+                        for req in dsar_requirements:
+                            dsar_data["Law"].append(req["law_name"])
+                            dsar_data["Right"].append(req["name"])
+                            dsar_data["Description"].append(req["description"])
+                            dsar_data["Conditions"].append(req["conditions"] or "N/A")
+                            dsar_data["Timeframe"].append(req["timeframe"] or "N/A")
+                            dsar_data["Exemptions"].append(req["exemptions"] or "N/A")
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(dsar_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="dsar_law_filter")
+                        
+                        with col2:
+                            rights = sorted(df["Right"].unique())
+                            selected_right = st.selectbox("Filter by Right", ["All"] + list(rights), key="dsar_right_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_right != "All":
+                            filtered_df = filtered_df[filtered_df["Right"] == selected_right]
+                        
+                        # Sort by Law and Right
+                        filtered_df = filtered_df.sort_values(by=["Law", "Right"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
         
-        # Data Subject Type Data Element Sensitivity tab
-        with tabs[9]:
-            st.markdown("""
-            <div class="card">
-                <h3>Data Subject Type Data Element Sensitivity</h3>
-                <p>This section maps data subject types to specific data elements and their sensitivity levels, independent of specific laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get mappings from repository
-            
-            mappings = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
-            
-            mapping_data = {
-                "Data Subject Type": [],
-                "Data Element": [],
-                "Sensitivity": []
-            }
-            for mapping in mappings:
-                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                mapping_data["Data Element"].append(mapping["data_element_name"])
-                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-            
-            st.dataframe(pd.DataFrame(mapping_data))
-            
-        # Law Context Data Subject Type Data Category Sensitivity tab
-        with tabs[10]:
-            st.markdown("""
-            <div class="card">
-                <h3>Law Context Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps laws, processing contexts, data subject types, data categories, and their sensitivity levels, providing a comprehensive view of contextual data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get mappings from repository
-            mappings = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
-            
-            mapping_data = {
-                "Law": [],
-                "Context": [],
-                "Data Subject Type": [],
-                "Data Category": [],
-                "Sensitivity": []
-            }
-            for mapping in mappings:
-                mapping_data["Law"].append(mapping["law_name"])
-                mapping_data["Context"].append(mapping["context_name"])
-                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                mapping_data["Data Category"].append(mapping["data_category_name"])
-                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-            
-            st.dataframe(pd.DataFrame(mapping_data))
+                # Data Category Data Element tab
+                elif tab_idx == 5:                        
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Data Category Data Element Mapping</h3>
+                        <p>This section maps data categories to their constituent data elements, providing a hierarchical view of data classification.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get data category data element mappings from repository
+                    data_category_elements = self.regulatory_metadata_repository.get_data_category_data_elements()
+                    if data_category_elements:
+                        mapping_data = {
+                            "Data Category": [],
+                            "Data Element": []
+                        }
+                        for mapping in data_category_elements:
+                            mapping_data["Data Category"].append(mapping["data_category_name"])
+                            mapping_data["Data Element"].append(mapping["data_element_name"])
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            categories = sorted(df["Data Category"].unique())
+                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="data_category_element_category_filter")
+                        
+                        with col2:
+                            elements = sorted(df["Data Element"].unique())
+                            selected_element = st.selectbox("Filter by Data Element", ["All"] + list(elements), key="data_category_element_element_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_category != "All":
+                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
+                        if selected_element != "All":
+                            filtered_df = filtered_df[filtered_df["Data Element"] == selected_element]
+                        
+                        # Sort by Data Category and Data Element
+                        filtered_df = filtered_df.sort_values(by=["Data Category", "Data Element"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
         
-        # Context Data Subject Type Data Category Sensitivity tab
-        with tabs[11]:
-            st.markdown("""
-            <div class="card">
-                <h3>Context Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps processing contexts, data subject types, data categories, and their sensitivity levels, independent of specific laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
+                # Law Data Subject Type Data Element Sensitivity tab
+                elif tab_idx == 6:                        
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Data Subject Type Data Element Sensitivity</h3>
+                        <p>This section maps laws to data subject types, data elements, and their sensitivity levels, providing a comprehensive view of data protection requirements.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Get mappings from repository
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Law": [],
+                            "Data Subject Type": [],
+                            "Data Element": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Law"].append(mapping["law_name"])
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Element"].append(mapping["data_element_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_dst_de_sens_law_filter")
+                        
+                        with col2:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="law_dst_de_sens_dst_filter")
+                        
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            elements = sorted(df["Data Element"].unique())
+                            selected_element = st.selectbox("Filter by Data Element", ["All"] + list(elements), key="law_dst_de_sens_element_filter")
+                        
+                        with col4:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="law_dst_de_sens_sensitivity_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_element != "All":
+                            filtered_df = filtered_df[filtered_df["Data Element"] == selected_element]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                        
+                        # Sort by Law, Data Subject Type, Data Element
+                        filtered_df = filtered_df.sort_values(by=["Law", "Data Subject Type", "Data Element"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+        
+                # Law Data Subject Type Data Category Sensitivity tab
+                elif tab_idx == 7:                        
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Data Subject Type Data Category Sensitivity</h3>
+                        <p>This section maps laws to data subject types, data categories, and their sensitivity levels, providing a higher-level view of data protection requirements.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            mappings = self.regulatory_metadata_repository.get_context_data_subject_type_data_category_sensitivities()
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Law": [],
+                            "Data Subject Type": [],
+                            "Data Category": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Law"].append(mapping["law_name"])
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Category"].append(mapping["data_category_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_dst_dc_sens_law_filter")
+                        
+                        with col2:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="law_dst_dc_sens_dst_filter")
+                        
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            categories = sorted(df["Data Category"].unique())
+                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="law_dst_dc_sens_category_filter")
+                        
+                        with col4:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="law_dst_dc_sens_sensitivity_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_category != "All":
+                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                        
+                        # Sort by Law, Data Subject Type, Data Category
+                        filtered_df = filtered_df.sort_values(by=["Law", "Data Subject Type", "Data Category"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+        
+                # Data Subject Type Data Category Sensitivity tab
+                elif tab_idx == 8:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Data Subject Type Data Category Sensitivity</h3>
+                        <p>This section maps data subject types to data categories and their sensitivity levels, independent of specific laws.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            mapping_data = {
-                "Context": [],
-                "Data Subject Type": [],
-                "Data Category": [],
-                "Sensitivity": []
-            }
-            for mapping in mappings:
-                mapping_data["Context"].append(mapping["context_name"])
-                mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                mapping_data["Data Category"].append(mapping["data_category_name"])
-                mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Data Subject Type": [],
+                            "Data Category": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Category"].append(mapping["data_category_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                    
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="dst_dc_sens_dst_filter")
+                    
+                        with col2:
+                            categories = sorted(df["Data Category"].unique())
+                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="dst_dc_sens_category_filter")
+                    
+                        col3, _ = st.columns(2)
+                        with col3:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="dst_dc_sens_sensitivity_filter")
+                
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_category != "All":
+                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                
+                        # Sort by Data Subject Type, Data Category
+                        filtered_df = filtered_df.sort_values(by=["Data Subject Type", "Data Category"])
+                
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+        
+                # Data Subject Type Data Element Sensitivity tab
+                elif tab_idx == 9:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Data Subject Type Data Element Sensitivity</h3>
+                        <p>This section maps data subject types to specific data elements and their sensitivity levels, independent of specific laws.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            st.dataframe(pd.DataFrame(mapping_data))
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Data Subject Type": [],
+                            "Data Element": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Element"].append(mapping["data_element_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="dst_de_sens_dst_filter")
+                
+                        with col2:
+                            elements = sorted(df["Data Element"].unique())
+                            selected_element = st.selectbox("Filter by Data Element", ["All"] + list(elements), key="dst_de_sens_element_filter")
+                
+                        col3, _ = st.columns(2)
+                        with col3:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="dst_de_sens_sensitivity_filter")
+                
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_element != "All":
+                            filtered_df = filtered_df[filtered_df["Data Element"] == selected_element]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                
+                        # Sort by Data Subject Type, Data Element
+                        filtered_df = filtered_df.sort_values(by=["Data Subject Type", "Data Element"])
+                
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
             
-
+                # Law Context Data Subject Type Data Category Sensitivity tab
+                elif tab_idx == 10:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Context Data Subject Type Data Category Sensitivity</h3>
+                        <p>This section maps laws, processing contexts, data subject types, data categories, and their sensitivity levels, providing a comprehensive view of contextual data protection requirements.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Law": [],
+                            "Context": [],
+                            "Data Subject Type": [],
+                            "Data Category": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Law"].append(mapping["law_name"])
+                            mapping_data["Context"].append(mapping["context_name"])
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Category"].append(mapping["data_category_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_ctx_dst_dc_sens_law_filter")
+                
+                        with col2:
+                            contexts = sorted(df["Context"].unique())
+                            selected_context = st.selectbox("Filter by Context", ["All"] + list(contexts), key="law_ctx_dst_dc_sens_context_filter")
+                
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="law_ctx_dst_dc_sens_dst_filter")
+                
+                        with col4:
+                            categories = sorted(df["Data Category"].unique())
+                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="law_ctx_dst_dc_sens_category_filter")
+                
+                        col5, _ = st.columns(2)
+                        with col5:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="law_ctx_dst_dc_sens_sensitivity_filter")
+                
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_context != "All":
+                            filtered_df = filtered_df[filtered_df["Context"] == selected_context]
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_category != "All":
+                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                
+                        # Sort by Law, Context, Data Subject Type, Data Category
+                        filtered_df = filtered_df.sort_values(by=["Law", "Context", "Data Subject Type", "Data Category"])
+                
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+        
+                # Context Data Subject Type Data Category Sensitivity tab
+                elif tab_idx == 11:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Context Data Subject Type Data Category Sensitivity</h3>
+                        <p>This section maps processing contexts, data subject types, data categories, and their sensitivity levels, independent of specific laws.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+                    # Get mappings from repository
+                    mappings = self.regulatory_metadata_repository.get_context_data_subject_type_data_category_sensitivities()
+                    if mappings:
+                        mapping_data = {
+                            "Context": [],
+                            "Data Subject Type": [],
+                            "Data Category": [],
+                            "Sensitivity": []
+                        }
+                        for mapping in mappings:
+                            mapping_data["Context"].append(mapping["context_name"])
+                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
+                            mapping_data["Data Category"].append(mapping["data_category_name"])
+                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
+                
+                        # Create a DataFrame
+                        df = pd.DataFrame(mapping_data)
+                
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            contexts = sorted(df["Context"].unique())
+                            selected_context = st.selectbox("Filter by Context", ["All"] + list(contexts), key="ctx_dst_dc_sens_context_filter")
+                
+                        with col2:
+                            subject_types = sorted(df["Data Subject Type"].unique())
+                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="ctx_dst_dc_sens_dst_filter")
+                
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            categories = sorted(df["Data Category"].unique())
+                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="ctx_dst_dc_sens_category_filter")
+                
+                        with col4:
+                            sensitivities = sorted(df["Sensitivity"].unique())
+                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="ctx_dst_dc_sens_sensitivity_filter")
+                
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_context != "All":
+                            filtered_df = filtered_df[filtered_df["Context"] == selected_context]
+                        if selected_subject_type != "All":
+                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
+                        if selected_category != "All":
+                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
+                        if selected_sensitivity != "All":
+                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
+                
+                        # Sort by Context, Data Subject Type, Data Category
+                        filtered_df = filtered_df.sort_values(by=["Context", "Data Subject Type", "Data Category"])
+                
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No data available in the database.")
+            
+                # Law Purpose Category Legal Basis tab
+                elif tab_idx == 12 :
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Law Purpose Category Legal Basis Mapping</h3>
+                        <p>This section maps data protection laws to purpose categories and their applicable legal bases, helping organizations 
+                        determine the appropriate legal basis for different processing purposes under various laws.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+                    # Get law purpose category legal basis data from repository
+                    law_purpose_legal_bases = self.regulatory_metadata_repository.get_law_purpose_category_legal_bases()
+                    if law_purpose_legal_bases:
+                        law_purpose_legal_basis_data = {
+                            "Law": [],
+                            "Purpose Category": [],
+                            "Legal Basis": [],
+                            "Preference Order": [],
+                            "Notes": []
+                        }
+                        for mapping in law_purpose_legal_bases:
+                            law_purpose_legal_basis_data["Law"].append(mapping["law_name"])
+                            law_purpose_legal_basis_data["Purpose Category"].append(mapping["purpose_category_name"])
+                            law_purpose_legal_basis_data["Legal Basis"].append(mapping["legal_basis_name"])
+                            law_purpose_legal_basis_data["Preference Order"].append(mapping["preference_order"])
+                            law_purpose_legal_basis_data["Notes"].append(mapping["description"] if mapping.get("description") else "")
+                
+                        # Create a DataFrame and display it
+                        df = pd.DataFrame(law_purpose_legal_basis_data)
+                
+                        # Add filters for Law and Purpose Category
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            laws = sorted(df["Law"].unique())
+                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws))
+                
+                        with col2:
+                            purpose_categories = sorted(df["Purpose Category"].unique())
+                            selected_purpose = st.selectbox("Filter by Purpose Category", ["All"] + list(purpose_categories))
+                
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_law != "All":
+                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
+                        if selected_purpose != "All":
+                            filtered_df = filtered_df[filtered_df["Purpose Category"] == selected_purpose]
+                
+                        # Sort by Law, Purpose Category, and Preference Order
+                        filtered_df = filtered_df.sort_values(by=["Law", "Purpose Category", "Preference Order"])
+                
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No Law Purpose Category Legal Basis mappings available in the database.")
+                
+                # Legal Basis Requirements tab
+                elif tab_idx == 13:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Legal Basis Requirements</h3>
+                        <p>This section provides detailed compliance requirements for each legal basis, helping organizations understand what they need to do to properly rely on a specific legal basis for processing.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get legal basis requirements from repository
+                    legal_basis_requirements = self.regulatory_metadata_repository.get_legal_basis_requirements()
+                    if legal_basis_requirements:
+                        requirements_data = {
+                            "Legal Basis": [],
+                            "Requirement": []
+                        }
+                        for req in legal_basis_requirements:
+                            requirements_data["Legal Basis"].append(req["legal_basis_name"])
+                            requirements_data["Requirement"].append(req["requirement"])
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(requirements_data)
+                        
+                        # Add filter for Legal Basis
+                        legal_bases = sorted(df["Legal Basis"].unique())
+                        selected_legal_basis = st.selectbox("Filter by Legal Basis", ["All"] + list(legal_bases), key="legal_basis_requirements_filter")
+                        
+                        # Apply filter
+                        filtered_df = df.copy()
+                        if selected_legal_basis != "All":
+                            filtered_df = filtered_df[filtered_df["Legal Basis"] == selected_legal_basis]
+                        
+                        # Sort by Legal Basis
+                        filtered_df = filtered_df.sort_values(by=["Legal Basis"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No Legal Basis Requirements available in the database.")
+            
     def inventory_section(self):
         """Handle the Inventory section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Inventory</div>", unsafe_allow_html=True)
@@ -2106,65 +2601,14 @@ class DataMap:
                         with st.expander(f"{i+1}. {legal_basis['name']}", expanded=True if i == 0 else False):
                             st.markdown(f"**Description**: {legal_basis.get('description', 'No description available')}")
                             
-                            # Add compliance requirements based on the legal basis
+                            # Add compliance requirements from the repository
                             st.markdown("#### Compliance Requirements:")
                             
-                            if "consent" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Must be freely given, specific, informed, and unambiguous
-                                - Clear affirmative action required (no pre-ticked boxes)
-                                - Must be as easy to withdraw as to give consent
-                                - Keep records of when and how consent was obtained
-                                - For children, obtain parental/guardian consent where required
-                                - Regular review and refresh of consent may be necessary
-                                """)
-                            elif "contract" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Processing must be necessary for the performance of a contract
-                                - Cannot process more data than needed for the contract
-                                - Document the contractual necessity for the processing
-                                - Ensure data subject is a party to the contract
-                                - Consider alternative legal bases for any ancillary processing
-                                """)
-                            elif "legal obligation" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Clearly identify the specific legal obligation
-                                - Document the legal provision requiring the processing
-                                - Process only what is necessary to comply with the obligation
-                                - Inform data subjects about the legal requirement
-                                - Maintain records of the legal basis assessment
-                                """)
-                            elif "vital interest" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Only use in life-or-death situations or serious harm prevention
-                                - Document why other legal bases are not applicable
-                                - Process only what is necessary to protect vital interests
-                                - Switch to another legal basis once the emergency has passed
-                                - Consider whether the data subject can provide consent
-                                """)
-                            elif "public interest" in legal_basis['name'].lower() or "official authority" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Must be based on EU or Member State law
-                                - Document the public interest or official authority
-                                - Process only what is necessary for the specified purpose
-                                - Consider data minimization principles
-                                - Implement appropriate safeguards
-                                - Respect data subject rights, including right to object
-                                """)
-                            elif "legitimate interest" in legal_basis['name'].lower():
-                                st.markdown("""
-                                - Conduct and document a Legitimate Interest Assessment (LIA)
-                                - Balance your interests against the individual's rights
-                                - Consider reasonable expectations of data subjects
-                                - Implement appropriate safeguards and transparency
-                                - Respect the right to object to processing
-                                - Regularly review the legitimate interest assessment
-                                """)
+                            if "compliance_requirements" in legal_basis and legal_basis["compliance_requirements"]:
+                                requirements_list = "\n".join([f"- {req}" for req in legal_basis["compliance_requirements"]])
+                                st.markdown(requirements_list)
                             else:
-                                st.markdown("- Document your assessment of this legal basis")
-                                st.markdown("- Ensure processing is necessary for the stated purpose")
-                                st.markdown("- Implement appropriate safeguards")
-                                st.markdown("- Maintain records of processing activities")
+                                st.markdown("No specific compliance requirements available for this legal basis.")
                             
                             # Add compatibility with sensitivity level
                             compatibility = "High" if selected_sensitivity.lower() == "low" else \
@@ -2280,6 +2724,11 @@ class DataMap:
                             if lb["id"] == lplb["legal_basis_id"]:
                                 lb["preference_order"] = lplb["preference_order"]
                                 lb["recommendation_description"] = lplb["description"]
+                                
+                                # Get compliance requirements for this legal basis
+                                requirements = self.regulatory_metadata_repository.get_legal_basis_requirements(lb["id"])
+                                lb["compliance_requirements"] = [req["requirement"] for req in requirements] if requirements else []
+                                
                                 recommended_legal_bases.append(lb)
                     
                     # Sort by preference order (lower number = higher preference)
@@ -2305,7 +2754,13 @@ class DataMap:
         legal_basis_names = [item["legal_basis_name"] for item in filtered_legal_bases]
         
         # Get the full legal basis objects for the filtered names
-        recommended_legal_bases = [lb for lb in all_legal_bases if lb["name"] in legal_basis_names]
+        recommended_legal_bases = []
+        for lb in all_legal_bases:
+            if lb["name"] in legal_basis_names:
+                # Get compliance requirements for this legal basis
+                requirements = self.regulatory_metadata_repository.get_legal_basis_requirements(lb["id"])
+                lb["compliance_requirements"] = [req["requirement"] for req in requirements] if requirements else []
+                recommended_legal_bases.append(lb)
         
         # Sort legal bases based on sensitivity
         self._refine_by_sensitivity(recommended_legal_bases, sensitivity)

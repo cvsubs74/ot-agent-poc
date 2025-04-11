@@ -2,6 +2,7 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS legal_basis_requirements;
 DROP TABLE IF EXISTS law_purpose_category_legal_basis;
 DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
 DROP TABLE IF EXISTS law_transfer;
@@ -284,6 +285,14 @@ CREATE TABLE IF NOT EXISTS `law_purpose_category_legal_basis` (
     UNIQUE KEY `unique_law_purpose_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`)
 );
 
+-- Create Legal Basis Requirements table
+CREATE TABLE IF NOT EXISTS `legal_basis_requirements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `legal_basis_id` INT NOT NULL,
+    `requirement` TEXT NOT NULL,
+    FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE
+);
+
 -- =============================================
 -- SEED GLOSSARY DATA
 -- =============================================
@@ -317,6 +326,42 @@ INSERT INTO `legal_basis` (`name`, `description`) VALUES
 ('Vital Interests', 'Processing is necessary to protect the vital interests of the data subject or another person.'),
 ('Public Task', 'Processing is necessary for the performance of a task carried out in the public interest or in the exercise of official authority.'),
 ('Legitimate Interests', 'Processing is necessary for the purposes of legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or rights of the data subject.');
+
+-- Seed Legal Basis Requirements data
+INSERT INTO `legal_basis_requirements` (`legal_basis_id`, `requirement`) VALUES
+-- Consent requirements
+(1, 'Must be freely given, specific, informed, and unambiguous'),
+(1, 'Clear affirmative action required (no pre-ticked boxes)'),
+(1, 'Must be as easy to withdraw as to give consent'),
+(1, 'Keep records of when and how consent was obtained'),
+(1, 'For children, obtain parental/guardian consent where required'),
+(1, 'Regular review and refresh of consent may be necessary'),
+-- Contract requirements
+(2, 'Processing must be necessary for the performance of a contract'),
+(2, 'The data subject must be a party to the contract'),
+(2, 'Only collect data that is necessary for the contract'),
+(2, 'Document the necessity of each data element for the contract'),
+-- Legal Obligation requirements
+(3, 'Processing must be necessary to comply with a legal obligation'),
+(3, 'The legal obligation must be clearly documented'),
+(3, 'Only process data specifically required by the legal obligation'),
+(3, 'Maintain records of the specific legal requirements'),
+-- Vital Interests requirements
+(4, 'Processing must be necessary to protect someone\'s life'),
+(4, 'Generally only applies in emergency medical situations'),
+(4, 'Document why no other legal basis was available'),
+(4, 'Switch to another legal basis once the emergency is over'),
+-- Public Task requirements
+(5, 'Processing must be necessary for a task in the public interest'),
+(5, 'Must have a clear basis in law'),
+(5, 'Document the specific public interest being served'),
+(5, 'Consider if a less intrusive approach is possible'),
+-- Legitimate Interest requirements
+(6, 'Conduct and document a legitimate interest assessment (LIA)'),
+(6, 'Identify a specific legitimate interest'),
+(6, 'Ensure processing is necessary for that interest'),
+(6, 'Balance your interests against the individual\'s rights'),
+(6, 'Provide clear information about the legitimate interest in privacy notices');
 
 -- Seed Data Element data
 INSERT INTO `data_element` (`name`, `description`) VALUES

@@ -22,6 +22,7 @@ class RegulatoryMetadataRepository:
         self.create_law_transfer_table()
         self.create_law_data_subject_access_request_notification_requirements_table()
         self.create_law_purpose_category_legal_basis_table()
+        self.create_legal_basis_requirements_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""
@@ -258,6 +259,21 @@ class RegulatoryMetadataRepository:
             FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE CASCADE,
             FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE,
             UNIQUE KEY `unique_law_purpose_legal_basis` (`law_id`, `purpose_category_id`, `legal_basis_id`)
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_legal_basis_requirements_table(self):
+        """Create the Legal Basis Requirements table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `legal_basis_requirements` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `legal_basis_id` INT NOT NULL,
+            `requirement` TEXT NOT NULL,
+            FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE
         );
         """
         cursor.execute(create_table_query)
@@ -1628,3 +1644,83 @@ class RegulatoryMetadataRepository:
             return None
         finally:
             cursor.close()
+            
+    # Legal Basis Requirements methods
+    def add_legal_basis_requirement(self, legal_basis_id, requirement):
+        """Add a new requirement for a legal basis.
+        
+        Args:
+            legal_basis_id (int): The ID of the legal basis
+            requirement (str): The compliance requirement text
+            
+        Returns:
+            int: The ID of the newly created requirement or None if failed
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = "INSERT INTO legal_basis_requirements (legal_basis_id, requirement) VALUES (%s, %s);"
+            cursor.execute(query, (legal_basis_id, requirement))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding legal basis requirement: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def get_legal_basis_requirements(self, legal_basis_id=None):
+        """Get requirements for legal bases.
+        
+        Args:
+            legal_basis_id (int, optional): The ID of the legal basis to filter by. If None, get all requirements.
+            
+        Returns:
+            list: A list of dictionaries containing the requirements data
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            if legal_basis_id:
+                query = """
+                SELECT lbr.id, lbr.requirement, lb.id as legal_basis_id, lb.name as legal_basis_name 
+                FROM legal_basis_requirements lbr
+                JOIN legal_basis lb ON lbr.legal_basis_id = lb.id
+                WHERE lbr.legal_basis_id = %s;
+                """
+                cursor.execute(query, (legal_basis_id,))
+            else:
+                query = """
+                SELECT lbr.id, lbr.requirement, lb.id as legal_basis_id, lb.name as legal_basis_name 
+                FROM legal_basis_requirements lbr
+                JOIN legal_basis lb ON lbr.legal_basis_id = lb.id;
+                """
+                cursor.execute(query)
+            
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error getting legal basis requirements: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def delete_legal_basis_requirement(self, requirement_id):
+        """Delete a legal basis requirement.
+        
+        Args:
+            requirement_id (int): The ID of the requirement to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = "DELETE FROM legal_basis_requirements WHERE id = %s;"
+            cursor.execute(query, (requirement_id,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting legal basis requirement: {e}")
+            return False
+        finally:
+            cursor.close()
+            
+
