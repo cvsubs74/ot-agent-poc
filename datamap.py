@@ -38,6 +38,10 @@ class DataMap:
         """Configure the Streamlit page settings."""
         st.set_page_config(page_title="OneTrust Platform", layout="wide")
 
+        # Store the current section in session state if not already there
+        if 'current_section' not in st.session_state:
+            st.session_state['current_section'] = 'Core'
+
         # Inject custom CSS for styling
         st.markdown("""
         <style>
@@ -93,14 +97,7 @@ class DataMap:
             box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
             border-radius: 6px !important;
         }
-        
-        /* Button styling */
-        .stButton > button {
-            font-weight: 500;
-            border-radius: 4px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        
+                
         /* Sidebar styling */
         .css-1d391kg, [data-testid="stSidebar"] {
             background-color: white !important;
@@ -141,22 +138,6 @@ class DataMap:
             margin-bottom: 20px;
             background-color: white;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Button styling */
-        .stButton>button {
-            background-color: #3498db;
-            color: white;
-            border-radius: 5px;
-            border: none;
-            padding: 10px 15px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton>button:hover {
-            background-color: #2980b9;
-            color: white;
         }
         
         /* Sidebar menu styling */
@@ -237,6 +218,74 @@ class DataMap:
         }
         </style>
         """, unsafe_allow_html=True)
+
+        # Style the menu items with improved CSS for left alignment
+        st.markdown(f"""
+            <style>
+            /* Style for all buttons */
+            div[data-testid="stButton"] > button {{
+                background-color: #e6f3ff; /* Light blue background for all buttons */
+                color: #333;
+                border: 1px solid #a8d8ff; /* Light blue border for all buttons */
+                text-align: left !important;
+                font-weight: normal;
+                padding: 8px 10px;
+                border-radius: 4px;
+                box-shadow: none;
+                width: 100%;
+                margin: 0;
+                transition: all 0.2s ease;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+            }}
+            
+            /* Style for active button */
+            div[data-testid="stButton"] > button#{'core_constructs_button' if st.session_state['current_section'] == 'Core' else 
+                                                 'regulatory_btn' if st.session_state['current_section'] == 'Regulatory' else
+                                                 'decision_tree_btn' if st.session_state['current_section'] == 'Decision Tree' else
+                                                 'sensitivity_api_btn' if st.session_state['current_section'] == 'Sensitivity API' else
+                                                 'legal_basis_api_btn' if st.session_state['current_section'] == 'Legal Basis API' else
+                                                 'breach_api_btn'} {{
+                color: #3498db;
+                font-weight: 600;
+                background-color: #f8f9fa;
+                border: 1px solid #3498db; /* Darker blue border for active button */
+                border-left: 3px solid #3498db;
+            }}
+            
+            /* Hover effect for buttons */
+            div[data-testid="stButton"] > button:hover {{
+                background-color: #cce5ff; /* Darker blue background on hover */
+                color: #3498db;
+            }}
+            
+            /* Force text alignment in buttons */
+            div[data-testid="stButton"] > button p {{
+                text-align: left !important;
+                display: inline-block;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            /* Override any Streamlit defaults that might center text */
+            .stButton {{
+                text-align: left !important;
+            }}
+            
+            /* Section header styling */
+            .sidebar-section-header {{
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: #6c757d;
+                margin-top: 20px;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                text-align: left;
+            }}
+            </style>
+            """, unsafe_allow_html=True)        
 
     def core_constructs_section(self):
         """Handle the Core Constructs section with its tabs."""
@@ -588,7 +637,21 @@ class DataMap:
         tabs = st.tabs(visible_tab_names)
         
         # Add explanation about how the selected inference API uses the mapping tables
-        if selected_inference_api == "Legal Basis Inference":
+        if selected_inference_api == "Law Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Law Inference Works</h4>
+                <p>The Law Inference API uses the Law Jurisdiction mapping table to determine which privacy laws apply to an organization:</p>
+                <ul>
+                    <li>Analyzes the jurisdictional scope of privacy regulations</li>
+                    <li>Determines applicable laws based on selected jurisdiction</li>
+                    <li>Provides detailed information about each applicable law</li>
+                    <li>Highlights key compliance requirements and effective dates</li>
+                </ul>
+                <p>The system helps organizations understand their regulatory obligations across different jurisdictions, ensuring comprehensive compliance with all relevant privacy laws.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Legal Basis Inference":
             st.markdown("""
             <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
                 <h4 style="margin-top: 0;">How Legal Basis Inference Works</h4>
@@ -2027,9 +2090,6 @@ class DataMap:
         
         # Create sidebar with navigation
         with st.sidebar:
-            # Store the current section in session state if not already there
-            if 'current_section' not in st.session_state:
-                st.session_state['current_section'] = 'Core'
             
             # First section: Regulatory Intelligence
             st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence    </div>", unsafe_allow_html=True)
@@ -2063,7 +2123,7 @@ class DataMap:
                 st.session_state['current_section'] = 'Legal Basis API'
             
             # Breach Notification menu item
-            if st.button("⚠️ Breach Notification", key="breach_api_btn", use_container_width=True):
+            if st.button("⚠️ Breach Notification Inference", key="breach_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Breach API'
                 
             # Transfer Mechanism Inference menu item
@@ -2081,72 +2141,7 @@ class DataMap:
             if st.button("📊 Inventory", key="inventory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Inventory'
 
-            # Style the menu items with improved CSS for left alignment
-            st.markdown(f"""
-            <style>
-            /* Style for all buttons */
-            div[data-testid="stButton"] > button {{
-                background-color: transparent;
-                color: #333;
-                border: none;
-                text-align: left !important;
-                font-weight: normal;
-                padding: 8px 10px;
-                border-radius: 4px;
-                box-shadow: none;
-                width: 100%;
-                margin: 0;
-                transition: all 0.2s ease;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-            }}
             
-            /* Style for active button */
-            div[data-testid="stButton"] > button#{'core_constructs_button' if st.session_state['current_section'] == 'Core' else 
-                                                 'regulatory_btn' if st.session_state['current_section'] == 'Regulatory' else
-                                                 'decision_tree_btn' if st.session_state['current_section'] == 'Decision Tree' else
-                                                 'sensitivity_api_btn' if st.session_state['current_section'] == 'Sensitivity API' else
-                                                 'legal_basis_api_btn' if st.session_state['current_section'] == 'Legal Basis API' else
-                                                 'breach_api_btn'} {{
-                color: #3498db;
-                font-weight: 600;
-                background-color: #f8f9fa;
-                border-left: 3px solid #3498db;
-            }}
-            
-            /* Hover effect for buttons */
-            div[data-testid="stButton"] > button:hover {{
-                background-color: #f8f9fa;
-                color: #3498db;
-            }}
-            
-            /* Force text alignment in buttons */
-            div[data-testid="stButton"] > button p {{
-                text-align: left !important;
-                display: inline-block;
-                margin: 0;
-                padding: 0;
-            }}
-            
-            /* Override any Streamlit defaults that might center text */
-            .stButton {{
-                text-align: left !important;
-            }}
-            
-            /* Section header styling */
-            .sidebar-section-header {{
-                font-size: 0.9rem;
-                font-weight: 600;
-                color: #6c757d;
-                margin-top: 20px;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                text-align: left;
-            }}
-            </style>
-            """, unsafe_allow_html=True)
             
             # Add some space
             st.markdown("<br>", unsafe_allow_html=True)
@@ -2460,7 +2455,21 @@ class DataMap:
                 {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "dst", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "context", "label": "Context (Optional)", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25, 
+                 "title": {"html": """
+                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
+                        <h3>Sensitivity Lookup Process</h3>
+                        <p>This lookup process determines data sensitivity by:</p>
+                        <ol>
+                            <li>Checking the <b>Law Data Subject Type Data Element Sensitivity</b> table for exact matches</li>
+                            <li>If no match, checking the <b>Law Data Subject Type Data Category Sensitivity</b> table</li>
+                            <li>Considering context factors if provided</li>
+                            <li>Applying law-specific sensitivity rules and thresholds</li>
+                            <li>Returning the appropriate sensitivity level with confidence score</li>
+                        </ol>
+                        <p>The algorithm prioritizes specific element matches over category matches and considers the most restrictive interpretation when multiple laws apply.</p>
+                    </div>
+                """}},
                 {"id": "high", "label": "High Sensitivity", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "medium", "label": "Medium Sensitivity", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "low", "label": "Low Sensitivity", "color": "#2ecc71", "shape": "box", "size": 25}
@@ -2480,7 +2489,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Sensitivity Inference Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Sensitivity Results")
@@ -2712,7 +2721,21 @@ class DataMap:
                 {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "purpose", "label": "Purpose Category", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "sensitivity", "label": "Data Sensitivity", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Legal Basis Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Legal Basis Lookup", "color": "#2ecc71", "shape": "box", "size": 25,
+                 "title": {"html": """
+                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
+                        <h3>Legal Basis Lookup Process</h3>
+                        <p>This lookup process determines appropriate legal bases by:</p>
+                        <ol>
+                            <li>Querying the <b>Law Purpose Category Legal Basis</b> table for matches</li>
+                            <li>Filtering results based on the selected law, purpose, and data sensitivity</li>
+                            <li>Ranking legal bases by appropriateness for the specific scenario</li>
+                            <li>Considering sensitivity thresholds for each legal basis type</li>
+                            <li>Providing implementation requirements for each recommended basis</li>
+                        </ol>
+                        <p>The algorithm prioritizes more protective legal bases for higher sensitivity data and considers purpose-specific requirements defined in each law.</p>
+                    </div>
+                """}},
                 {"id": "consent", "label": "Consent", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "contract", "label": "Contract", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "legitimate", "label": "Legitimate Interest", "color": "#2ecc71", "shape": "box", "size": 25},
@@ -2734,7 +2757,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Legal Basis Inference Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Legal Basis Recommendations")
@@ -3062,7 +3085,6 @@ class DataMap:
             with col_dates2:
                 occurrence_date = st.date_input("Date Breach Occurred (if known)", value=None)
             
-            # Add a button to trigger analysis
             analyze_button = st.button("Analyze Notification Requirements")
             
             # Define nodes for the decision tree
@@ -3072,7 +3094,21 @@ class DataMap:
                 {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
                 {"id": "data_types", "label": "Data Types Affected", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "severity", "label": "Breach Severity", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Notification Requirements Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Notification Requirements Lookup", "color": "#2ecc71", "shape": "box", "size": 25,
+                 "title": {"html": """
+                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
+                        <h3>Breach Notification Lookup Process</h3>
+                        <p>This lookup process determines notification requirements by:</p>
+                        <ol>
+                            <li>Querying the <b>Law Incident Breach Notification</b> table for the applicable law</li>
+                            <li>Evaluating breach severity based on data types affected and number of individuals</li>
+                            <li>Determining authority notification requirements and deadlines</li>
+                            <li>Assessing individual notification thresholds and exemptions</li>
+                            <li>Calculating notification timeframes based on discovery date</li>
+                        </ol>
+                        <p>The algorithm considers risk level, containment status, and jurisdiction-specific requirements to provide comprehensive notification guidance.</p>
+                    </div>
+                """}},
                 {"id": "authority", "label": "Authority Notification", "color": "#3498db", "shape": "box", "size": 25},
                 {"id": "individual", "label": "Individual Notification", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "timeframe", "label": "Notification Timeframe", "color": "#9b59b6", "shape": "box", "size": 25}
@@ -3093,7 +3129,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Breach Notification Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Notification Requirements")
@@ -3392,7 +3428,21 @@ class DataMap:
                 {"id": "law", "label": "Applicable Law", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "data_categories", "label": "Data Categories", "color": "#2ecc71", "shape": "box", "size": 25},
                 {"id": "adequacy", "label": "Adequacy Decision", "color": "#1abc9c", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Transfer Mechanism Lookup", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Transfer Mechanism Lookup", "color": "#3498db", "shape": "box", "size": 25,
+                 "title": {"html": """
+                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #3498db;'>
+                        <h3>Transfer Mechanism Lookup Process</h3>
+                        <p>This lookup process determines appropriate transfer mechanisms by:</p>
+                        <ol>
+                            <li>Querying the <b>Law Transfer</b> table for the applicable law</li>
+                            <li>Checking for adequacy decisions between source and destination jurisdictions</li>
+                            <li>Evaluating data categories and their sensitivity levels</li>
+                            <li>Considering transfer volume and frequency</li>
+                            <li>Ranking mechanisms by appropriateness and legal compliance</li>
+                        </ol>
+                        <p>The algorithm prioritizes mechanisms based on the legal hierarchy established in each jurisdiction, with preference for adequacy decisions when available.</p>
+                    </div>
+                """}},
                 {"id": "sccs", "label": "Standard Contractual Clauses", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "bcrs", "label": "Binding Corporate Rules", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "consent", "label": "Explicit Consent", "color": "#9b59b6", "shape": "box", "size": 25},
@@ -3416,7 +3466,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Transfer Mechanism Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Transfer Mechanism Recommendations")
@@ -3659,7 +3709,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Data Subject Rights Inference Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Rights Response Guidance")
@@ -3788,12 +3838,19 @@ class DataMap:
         
         # Add nodes
         for node in nodes:
+            # Format title as HTML if it's a detailed description
+            node_title = node.get("title", node["label"])
+            if isinstance(node_title, dict) and "html" in node_title:
+                formatted_title = node_title["html"]
+            else:
+                formatted_title = node_title
+                
             net.add_node(
                 node["id"], 
                 label=node["label"], 
                 color=node.get("color", "#3498db"),
                 shape=node.get("shape", "box"),
-                title=node.get("title", node["label"]),
+                title=formatted_title,
                 size=node.get("size", 25),
                 font=node.get("font", {"size": 14, "color": "black", "face": "Arial"})
             )
@@ -3851,6 +3908,50 @@ class DataMap:
             net.save_graph(tmpfile.name)
             with open(tmpfile.name, "r", encoding="utf-8") as f:
                 html = f.read()
+            
+            # Fix HTML in tooltips by modifying the HTML directly
+            # This adds a script that properly renders HTML in tooltips
+            html = html.replace('</head>', '''
+            <style>
+                div.vis-tooltip {
+                    position: absolute;
+                    visibility: hidden;
+                    padding: 5px;
+                    white-space: normal !important;
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                    color: #000000;
+                    background-color: #ffffff;
+                    border-radius: 5px;
+                    border: 1px solid #d3d3d3;
+                    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+                    max-width: 400px;
+                    word-wrap: break-word;
+                    z-index: 9999;
+                    overflow: auto;
+                    max-height: 400px;
+                }
+            </style>
+            <script>
+                // Override the default tooltip rendering to support HTML
+                document.addEventListener("DOMContentLoaded", function() {
+                    setTimeout(function() {
+                        if (typeof network !== 'undefined') {
+                            network.on("hoverNode", function(params) {
+                                var nodeId = params.node;
+                                var node = network.body.nodes[nodeId];
+                                if (node && node.options && node.options.title) {
+                                    var tooltip = document.querySelector(".vis-tooltip");
+                                    if (tooltip) {
+                                        tooltip.innerHTML = node.options.title;
+                                    }
+                                }
+                            });
+                        }
+                    }, 1000);
+                });
+            </script>
+            </head>''')
         
         # Display the visualization with a title
         st.subheader(title)
@@ -3905,7 +4006,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Law Inference Decision Process", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
         with col2:
             st.subheader("Applicable Laws")
