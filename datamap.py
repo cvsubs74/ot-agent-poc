@@ -211,7 +211,7 @@ class DataMap:
         /* Table styling */
         .dataframe {
             border-collapse: collapse;
-            width: 100%;
+            width: 100% !important;
             border-radius: 5px;
             overflow: hidden;
         }
@@ -234,6 +234,20 @@ class DataMap:
         
         .dataframe tr:hover {
             background-color: #e6f7ff;
+        }
+        
+        /* Make sure Streamlit dataframes take full width */
+        [data-testid="stDataFrame"] > div {
+            width: 100% !important;
+        }
+        
+        [data-testid="stDataFrame"] > div > div {
+            width: 100% !important;
+        }
+        
+        .stDataFrame div[data-testid="stHorizontalBlock"] {
+            width: 100% !important;
+            max-width: 100% !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -716,8 +730,8 @@ class DataMap:
                         # Sort by Law and Jurisdiction
                         filtered_df = filtered_df.sort_values(by=["Law", "Jurisdiction"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -766,8 +780,8 @@ class DataMap:
                         # Sort by Law and Legal Basis
                         filtered_df = filtered_df.sort_values(by=["Law", "Legal Basis"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -820,8 +834,8 @@ class DataMap:
                         # Sort by Law
                         filtered_df = filtered_df.sort_values(by=["Law"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -872,8 +886,8 @@ class DataMap:
                         # Sort by Law
                         filtered_df = filtered_df.sort_values(by=["Law"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
                 elif tab_idx == 4:                        
@@ -927,8 +941,8 @@ class DataMap:
                         # Sort by Law and Right
                         filtered_df = filtered_df.sort_values(by=["Law", "Right"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -975,8 +989,8 @@ class DataMap:
                         # Sort by Data Category and Data Element
                         filtered_df = filtered_df.sort_values(by=["Data Category", "Data Element"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -1040,8 +1054,8 @@ class DataMap:
                         # Sort by Law, Data Subject Type, Data Element
                         filtered_df = filtered_df.sort_values(by=["Law", "Data Subject Type", "Data Element"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -1105,8 +1119,8 @@ class DataMap:
                         # Sort by Law, Data Subject Type, Data Category
                         filtered_df = filtered_df.sort_values(by=["Law", "Data Subject Type", "Data Category"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -1162,8 +1176,8 @@ class DataMap:
                         # Sort by Data Subject Type, Data Category
                         filtered_df = filtered_df.sort_values(by=["Data Subject Type", "Data Category"])
                 
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -1219,8 +1233,8 @@ class DataMap:
                         # Sort by Data Subject Type, Data Element
                         filtered_df = filtered_df.sort_values(by=["Data Subject Type", "Data Element"])
                 
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
             
@@ -1293,8 +1307,8 @@ class DataMap:
                         # Sort by Law, Context, Data Subject Type, Data Category
                         filtered_df = filtered_df.sort_values(by=["Law", "Context", "Data Subject Type", "Data Category"])
                 
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
         
@@ -1358,8 +1372,8 @@ class DataMap:
                         # Sort by Context, Data Subject Type, Data Category
                         filtered_df = filtered_df.sort_values(by=["Context", "Data Subject Type", "Data Category"])
                 
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No data available in the database.")
             
@@ -1413,8 +1427,8 @@ class DataMap:
                         # Sort by Law, Purpose Category, and Preference Order
                         filtered_df = filtered_df.sort_values(by=["Law", "Purpose Category", "Preference Order"])
                 
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No Law Purpose Category Legal Basis mappings available in the database.")
                 
@@ -1453,8 +1467,8 @@ class DataMap:
                         # Sort by Legal Basis
                         filtered_df = filtered_df.sort_values(by=["Legal Basis"])
                         
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
+                        # Display the filtered data with full width
+                        st.dataframe(filtered_df, use_container_width=True)
                     else:
                         st.warning("No Legal Basis Requirements available in the database.")
             
