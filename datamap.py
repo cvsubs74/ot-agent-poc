@@ -1,4 +1,6 @@
 import os
+import time
+
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "500"
@@ -934,7 +936,7 @@ class DataMap:
                 elif tab_idx == 5:                        
                     st.markdown("""
                     <div class="card">
-                        <h3>Data Category Data Element Mapping</h3>
+                        <h3>Data Category Data Element</h3>
                         <p>This section maps data categories to their constituent data elements, providing a hierarchical view of data classification.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1365,7 +1367,7 @@ class DataMap:
                 elif tab_idx == 12 :
                     st.markdown("""
                     <div class="card">
-                        <h3>Law Purpose Category Legal Basis Mapping</h3>
+                        <h3>Law Purpose Category Legal Basis</h3>
                         <p>This section maps data protection laws to purpose categories and their applicable legal bases, helping organizations 
                         determine the appropriate legal basis for different processing purposes under various laws.</p>
                     </div>
@@ -2058,6 +2060,14 @@ class DataMap:
             # Breach Notification menu item
             if st.button("⚠️ Breach Notification", key="breach_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Breach API'
+                
+            # Transfer Mechanism Inference menu item
+            if st.button("🔄 Transfer Mechanism Inference", key="transfer_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Transfer API'
+                
+            # Data Subject Rights Inference menu item
+            if st.button("👤 Data Subject Rights Inference", key="dsr_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'DSR API'
             
             # Third section: Modules
             st.markdown("<div class='sidebar-section-header'>Modules</div>", unsafe_allow_html=True)
@@ -2153,6 +2163,10 @@ class DataMap:
             self.legal_basis_inference_api()
         elif st.session_state['current_section'] == 'Breach API':
             self.breach_notification_api()
+        elif st.session_state['current_section'] == 'Transfer API':
+            self.transfer_mechanism_api()
+        elif st.session_state['current_section'] == 'DSR API':
+            self.data_subject_rights_api()
 
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.
@@ -3196,6 +3210,399 @@ class DataMap:
         
         # Return the first guidance for the law (typically there's only one per law)
         return guidances[0]
+
+
+    def transfer_mechanism_api(self):
+        """Implement a transfer mechanism inference API based on regulatory metadata.
+        This helps users determine appropriate safeguards for cross-border data transfers.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-exchange-alt'></i> &nbsp;Transfer Mechanism Inference</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
+            This API helps determine appropriate transfer mechanisms for cross-border data transfers based on regulatory metadata.<br><br>
+            <ul>
+                <li>Identifies suitable transfer mechanisms for specific jurisdictions</li>
+                <li>Evaluates adequacy decisions and existing agreements</li>
+                <li>Recommends appropriate safeguards (SCCs, BCRs, etc.)</li>
+                <li>Provides implementation guidance for each transfer mechanism</li>
+            </ul>
+            <strong>How the Algorithm Works:</strong><br><br>
+            <ul>
+                <li><strong>Jurisdictional Analysis:</strong> Evaluates source and destination jurisdictions</li>
+                <li><strong>Adequacy Assessment:</strong> Checks for adequacy decisions or existing agreements</li>
+                <li><strong>Risk Evaluation:</strong> Considers data types and transfer volumes</li>
+                <li><strong>Mechanism Ranking:</strong> Presents transfer mechanisms in order of preference</li>
+                <li><strong>Implementation Guidance:</strong> Provides specific requirements for each mechanism</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get laws for dropdown selection
+            laws = self.glossary_repository.get_laws()
+            if not laws:
+                st.warning("No laws available in the database.")
+                return
+                
+            law_options = [law["name"] for law in laws]
+            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="transfer_law")
+            
+            # Get jurisdictions for source and destination
+            jurisdictions = self.glossary_repository.get_jurisdictions()
+            if jurisdictions:
+                jurisdiction_options = [j["name"] for j in jurisdictions]
+                source_jurisdiction = st.selectbox("Select Source Jurisdiction", options=jurisdiction_options, key="transfer_source")
+                destination_jurisdiction = st.selectbox("Select Destination Jurisdiction", options=jurisdiction_options, key="transfer_destination")
+            else:
+                st.warning("No jurisdictions available.")
+                return
+            
+            # Get data categories
+            data_categories = self.glossary_repository.get_data_categories()
+            if data_categories:
+                dc_options = [dc["name"] for dc in data_categories]
+                selected_data_categories = st.multiselect("Select Data Categories to Transfer", options=dc_options, key="transfer_data_categories")
+            else:
+                selected_data_categories = []
+            
+            # Add transfer volume/frequency options
+            transfer_volume = st.select_slider(
+                "Transfer Volume",
+                options=["Low", "Medium", "High"],
+                value="Medium",
+                key="transfer_volume"
+            )
+            
+            transfer_frequency = st.select_slider(
+                "Transfer Frequency",
+                options=["One-time", "Occasional", "Regular", "Continuous"],
+                value="Regular",
+                key="transfer_frequency"
+            )
+            
+            # Add a button to trigger inference
+            analyze_button = st.button("Recommend Transfer Mechanisms")
+        
+        with col2:
+            st.subheader("Transfer Mechanism Recommendations")
+            
+            if analyze_button:
+                # Display a spinner while "processing"
+                with st.spinner("Analyzing transfer requirements..."):
+                    # Simulate processing time
+                    time.sleep(1)
+                    
+                    # Determine if this is an adequate jurisdiction
+                    is_adequate = False
+                    if destination_jurisdiction in ["United Kingdom", "Canada", "Switzerland", "Japan", "New Zealand"]:
+                        is_adequate = True
+                    
+                    # Get transfer mechanisms based on the selected parameters
+                    transfer_mechanisms = self._get_transfer_mechanisms(selected_law, source_jurisdiction, destination_jurisdiction, is_adequate)
+                
+                if transfer_mechanisms:
+                    # Display the recommended transfer mechanisms with appropriate styling
+                    st.markdown(f"""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                        <h3 style="color: #3498db;">Recommended Transfer Mechanisms</h3>
+                        <p>Based on the selected parameters, the following transfer mechanisms are recommended for transfers from <strong>{source_jurisdiction}</strong> to <strong>{destination_jurisdiction}</strong> under {selected_law}:</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display each transfer mechanism with its description and requirements
+                    for i, mechanism in enumerate(transfer_mechanisms):
+                        with st.expander(f"{i+1}. {mechanism['name']}"):
+                            st.markdown(f"""
+                            <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa;">
+                                <h4>{mechanism['name']}</h4>
+                                <p><strong>Description:</strong> {mechanism['description']}</p>
+                                <p><strong>Implementation Requirements:</strong></p>
+                                <ul>
+                                    {' '.join([f'<li>{req}</li>' for req in mechanism['requirements']])}
+                                </ul>
+                                <p><strong>Risk Level:</strong> <span style="color: {mechanism['risk_color']};">{mechanism['risk_level']}</span></p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    # Display a message if no transfer mechanisms are found
+                    st.markdown("""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                        <h3 style="color: #7F8C8D;">No Transfer Mechanisms Found</h3>
+                        <p>No suitable transfer mechanisms were found for the selected parameters. This may be due to:</p>
+                        <ul>
+                            <li>The destination jurisdiction may have an adequacy decision, making additional safeguards unnecessary</li>
+                            <li>The selected law may not have specific transfer mechanism requirements for these jurisdictions</li>
+                            <li>The combination of parameters may not match any defined transfer scenarios</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                # Display a placeholder message when no analysis has been performed
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Transfer mechanism recommendations will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    def _get_transfer_mechanisms(self, law, source_jurisdiction, destination_jurisdiction, is_adequate):
+        """Internal method to get appropriate transfer mechanisms based on regulatory metadata.
+        
+        Args:
+            law (str): The name of the selected law
+            source_jurisdiction (str): The source jurisdiction
+            destination_jurisdiction (str): The destination jurisdiction
+            is_adequate (bool): Whether the destination jurisdiction has an adequacy decision
+            
+        Returns:
+            list: A list of recommended transfer mechanisms or None if not found
+        """
+        # Sample transfer mechanisms based on adequacy status
+        if is_adequate:
+            return [
+                {
+                    "name": "Adequacy Decision",
+                    "description": "The European Commission has recognized that the destination country provides an adequate level of data protection. No additional safeguards are strictly necessary.",
+                    "requirements": [
+                        "Document the transfer in your records of processing activities",
+                        "Ensure compliance with general GDPR principles",
+                        "Monitor adequacy status for any changes"
+                    ],
+                    "risk_level": "Low",
+                    "risk_color": "#2ecc71"
+                }
+            ]
+        else:
+            return [
+                {
+                    "name": "Standard Contractual Clauses (SCCs)",
+                    "description": "Pre-approved contractual clauses adopted by the European Commission that provide appropriate safeguards for international data transfers.",
+                    "requirements": [
+                        "Implement the latest version of SCCs (adopted in 2021)",
+                        "Conduct and document a transfer impact assessment",
+                        "Implement supplementary measures if necessary",
+                        "Ensure SCCs are signed by both parties"
+                    ],
+                    "risk_level": "Medium",
+                    "risk_color": "#f39c12"
+                },
+                {
+                    "name": "Binding Corporate Rules (BCRs)",
+                    "description": "Internal rules for data transfers within a multinational group, approved by the relevant supervisory authority.",
+                    "requirements": [
+                        "Develop comprehensive internal data protection policies",
+                        "Obtain approval from the lead supervisory authority",
+                        "Implement training and compliance mechanisms",
+                        "Regular auditing and reporting"
+                    ],
+                    "risk_level": "Low",
+                    "risk_color": "#2ecc71"
+                },
+                {
+                    "name": "Derogations for Specific Situations",
+                    "description": "Exceptions that allow transfers in specific circumstances without requiring additional safeguards.",
+                    "requirements": [
+                        "Ensure the transfer falls under one of the specific derogations",
+                        "Document the justification for using the derogation",
+                        "Limit transfers to what is strictly necessary",
+                        "Consider implementing additional safeguards where possible"
+                    ],
+                    "risk_level": "High",
+                    "risk_color": "#e74c3c"
+                }
+            ]
+
+    def data_subject_rights_api(self):
+        """Implement a data subject rights inference API based on regulatory metadata.
+        This helps users determine appropriate responses to data subject rights requests.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-user-shield'></i> &nbsp;Data Subject Rights Inference</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
+            This API helps determine appropriate responses to data subject rights requests based on regulatory metadata.<br><br>
+            <ul>
+                <li>Identifies applicable rights under different regulations</li>
+                <li>Determines response timeframes and requirements</li>
+                <li>Provides guidance on verification and exemptions</li>
+                <li>Offers implementation steps for fulfilling requests</li>
+            </ul>
+            <strong>How the Algorithm Works:</strong><br><br>
+            <ul>
+                <li><strong>Jurisdictional Analysis:</strong> Determines applicable laws based on data subject location</li>
+                <li><strong>Right Identification:</strong> Maps request types to specific legal rights</li>
+                <li><strong>Exemption Evaluation:</strong> Checks for applicable exemptions or limitations</li>
+                <li><strong>Response Planning:</strong> Provides timeframes and implementation steps</li>
+                <li><strong>Documentation Guidance:</strong> Offers templates and record-keeping requirements</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get laws for dropdown selection
+            laws = self.glossary_repository.get_laws()
+            if not laws:
+                st.warning("No laws available in the database.")
+                return
+                
+            law_options = [law["name"] for law in laws]
+            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="dsr_law")
+            
+            # Get jurisdictions
+            jurisdictions = self.glossary_repository.get_jurisdictions()
+            if jurisdictions:
+                jurisdiction_options = [j["name"] for j in jurisdictions]
+                selected_jurisdiction = st.selectbox("Select Data Subject's Jurisdiction", options=jurisdiction_options, key="dsr_jurisdiction")
+            else:
+                selected_jurisdiction = None
+            
+            # Get data subject types
+            data_subject_types = self.glossary_repository.get_data_subject_types()
+            if data_subject_types:
+                dst_options = [dst["name"] for dst in data_subject_types]
+                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="dsr_subject_type")
+            else:
+                st.warning("No data subject types available.")
+                return
+            
+            # Add right type selection
+            right_types = [
+                "Access",
+                "Rectification",
+                "Erasure",
+                "Restriction of Processing",
+                "Data Portability",
+                "Objection",
+                "Automated Decision Making",
+                "Withdraw Consent"
+            ]
+            selected_right = st.selectbox("Select Requested Right", options=right_types, key="dsr_right_type")
+            
+            # Add request complexity
+            request_complexity = st.select_slider(
+                "Request Complexity",
+                options=["Simple", "Moderate", "Complex"],
+                value="Moderate",
+                key="dsr_complexity"
+            )
+            
+            # Add a button to trigger inference
+            analyze_button = st.button("Analyze Rights Request")
+        
+        with col2:
+            st.subheader("Rights Response Guidance")
+            
+            if analyze_button:
+                # Display a spinner while "processing"
+                with st.spinner("Analyzing rights requirements..."):
+                    # Simulate processing time
+                    time.sleep(1)
+                    
+                    # Get rights guidance based on the selected parameters
+                    rights_guidance = self._get_rights_guidance(selected_law, selected_right)
+                
+                if rights_guidance:
+                    # Display the rights guidance with appropriate styling
+                    st.markdown(f"""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                        <h3 style="color: #3498db;">Right to {selected_right} under {selected_law}</h3>
+                        <p>The following guidance applies to {selected_dst}s in {selected_jurisdiction} making a {selected_right} request:</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display the response timeframe
+                    st.markdown(f"""
+                    <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                        <h4>Response Timeframe</h4>
+                        <p><strong>Standard timeframe:</strong> {rights_guidance['timeframe']} days</p>
+                        <p><strong>Extension possible:</strong> {rights_guidance['extension_possible']}</p>
+                        {f'<p><strong>Extension conditions:</strong> {rights_guidance["extension_conditions"]}</p>' if rights_guidance['extension_possible'] == 'Yes' else ''}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display verification requirements
+                    st.markdown(f"""
+                    <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                        <h4>Verification Requirements</h4>
+                        <p>{rights_guidance['verification_requirements']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display implementation steps
+                    st.markdown("""
+                    <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                        <h4>Implementation Steps</h4>
+                        <ol>
+                    """, unsafe_allow_html=True)
+                    
+                    for step in rights_guidance['implementation_steps']:
+                        st.markdown(f"<li>{step}</li>", unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                        </ol>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display potential exemptions
+                    if rights_guidance['exemptions']:
+                        st.markdown("""
+                        <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                            <h4>Potential Exemptions</h4>
+                            <ul>
+                        """, unsafe_allow_html=True)
+                        
+                        for exemption in rights_guidance['exemptions']:
+                            st.markdown(f"<li>{exemption}</li>", unsafe_allow_html=True)
+                        
+                        st.markdown("""
+                            </ul>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    # Display a message if no rights guidance is found
+                    st.markdown("""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                        <h3 style="color: #7F8C8D;">No Rights Guidance Found</h3>
+                        <p>No specific guidance was found for the selected parameters. This may be due to:</p>
+                        <ul>
+                            <li>The selected right may not be explicitly recognized under the chosen law</li>
+                            <li>The combination of parameters may not match any defined rights scenarios</li>
+                            <li>The data subject type may have special considerations not covered in the database</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                # Display a placeholder message when no analysis has been performed
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Rights response guidance will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    def _get_rights_guidance(self, law, right_type):
+        """Internal method to get guidance for data subject rights based on regulatory metadata.
+        
+        Args:
+            law (str): The name of the selected law
+            right_type (str): The type of right requested
+            
+        Returns:
+            dict: A dictionary containing guidance for the requested right or None if not found
+        """
+        # Use the repository method to get guidance
+        return self.regulatory_metadata_repository.get_data_subject_right_guidance(law, right_type)
 
 
 if __name__ == "__main__":

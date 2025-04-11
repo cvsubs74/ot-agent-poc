@@ -2,6 +2,8 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS data_subject_right_exemptions;
+DROP TABLE IF EXISTS data_subject_right_implementation_steps;
 DROP TABLE IF EXISTS legal_basis_requirements;
 DROP TABLE IF EXISTS law_purpose_category_legal_basis;
 DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
@@ -292,6 +294,28 @@ CREATE TABLE IF NOT EXISTS `legal_basis_requirements` (
     `requirement` TEXT NOT NULL,
     FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE
 );
+
+-- Create Data Subject Right Implementation Steps table
+CREATE TABLE IF NOT EXISTS `data_subject_right_implementation_steps` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `right_type` VARCHAR(255) NOT NULL,
+    `step_order` INT NOT NULL,
+    `description` TEXT NOT NULL,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_law_right_step` (`law_id`, `right_type`, `step_order`)
+);
+
+-- Create Data Subject Right Exemptions table
+CREATE TABLE IF NOT EXISTS `data_subject_right_exemptions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `law_id` INT NOT NULL,
+    `right_type` VARCHAR(255) NOT NULL,
+    `exemption` TEXT NOT NULL,
+    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+);
+
+
 
 -- =============================================
 -- SEED GLOSSARY DATA
@@ -861,3 +885,84 @@ VALUES
 ((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Analytics and Improvement'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
 ((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Employment Management'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance'),
 ((SELECT id FROM law WHERE name = 'CCPA'), (SELECT id FROM purpose_category WHERE name = 'Healthcare Provision'), (SELECT id FROM legal_basis WHERE name = 'Consent'), 1, 'Opt-out consent required for CCPA compliance');
+
+-- =============================================
+-- SEED DATA SUBJECT RIGHTS IMPLEMENTATION STEPS
+-- =============================================
+
+-- Insert implementation steps for GDPR Access right
+INSERT INTO `data_subject_right_implementation_steps` (`law_id`, `right_type`, `step_order`, `description`) VALUES
+-- GDPR Access right steps
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 1, 'Confirm receipt of the request within 3 business days'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 2, 'Verify the identity of the requestor'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 3, 'Search all relevant systems and databases for personal data'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 4, 'Compile the information in a clear, accessible format'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 5, 'Include information about processing purposes, categories of data, recipients, retention periods, and other rights'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 6, 'Review for third-party data or exemptions before disclosure'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 7, 'Provide the response securely to the data subject'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 8, 'Document the fulfillment of the request'),
+
+-- GDPR Erasure right steps
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 1, 'Confirm receipt of the request within 3 business days'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 2, 'Verify the identity of the requestor'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 3, 'Determine if one of the grounds for erasure applies'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 4, 'Identify all systems and databases containing the data'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 5, 'Check for any legal basis to retain certain data'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 6, 'Implement technical erasure in all systems'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 7, 'Notify third parties of the erasure request where data has been shared'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 8, 'Provide confirmation of erasure to the data subject'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 9, 'Document the fulfillment of the request'),
+
+-- CCPA Access right steps
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 1, 'Confirm receipt of the request within 10 business days'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 2, 'Verify the identity of the requestor'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 3, 'Search all relevant systems for personal information collected in the past 12 months'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 4, 'Compile the information in a readily usable format'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 5, 'Include categories of sources, business purpose, and third parties shared with'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 6, 'Provide two or more designated methods for submitting requests'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 7, 'Deliver the information free of charge'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 8, 'Document the fulfillment of the request'),
+
+-- CCPA Deletion right steps
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 1, 'Confirm receipt of the request within 10 business days'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 2, 'Verify the identity of the requestor'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 3, 'Identify all systems and databases containing the consumer\'s personal information'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 4, 'Check for any exceptions that allow retention'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 5, 'Delete the personal information from your records'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 6, 'Direct service providers to delete the consumer\'s personal information'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 7, 'Notify the consumer that their request has been fulfilled'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 8, 'Document the deletion process and maintain records');
+
+-- =============================================
+-- SEED DATA SUBJECT RIGHTS EXEMPTIONS
+-- =============================================
+
+INSERT INTO `data_subject_right_exemptions` (`law_id`, `right_type`, `exemption`) VALUES
+-- GDPR Access right exemptions
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 'Information protected by legal professional privilege'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 'Confidential references'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 'Management forecasting or planning if disclosure would prejudice the business'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 'Negotiations with the data subject if disclosure would prejudice those negotiations'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Access', 'Third-party data where disclosure would breach confidentiality'),
+
+-- GDPR Erasure right exemptions
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 'Legal obligation to retain the data'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 'Public interest in public health'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 'Archiving purposes in the public interest'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 'Establishment, exercise, or defense of legal claims'),
+((SELECT id FROM law WHERE name = 'GDPR'), 'Erasure', 'Freedom of expression and information'),
+
+-- CCPA Access right exemptions
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 'Cannot provide specific pieces of information if disclosure creates substantial security risk'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 'Not required to provide access more than twice in a 12-month period'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 'Certain business-to-business communications'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Access', 'Certain employee data until January 1, 2023'),
+
+-- CCPA Deletion right exemptions
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Complete a transaction, provide a good or service requested by the consumer'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Detect security incidents or protect against malicious activities'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Debug to identify and repair errors'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Exercise free speech or ensure another consumer\'s right to exercise free speech'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Comply with legal obligations');
+
+

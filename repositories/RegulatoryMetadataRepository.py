@@ -23,6 +23,8 @@ class RegulatoryMetadataRepository:
         self.create_law_data_subject_access_request_notification_requirements_table()
         self.create_law_purpose_category_legal_basis_table()
         self.create_legal_basis_requirements_table()
+        self.create_data_subject_right_implementation_steps_table()
+        self.create_data_subject_right_exemptions_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""
@@ -274,6 +276,40 @@ class RegulatoryMetadataRepository:
             `legal_basis_id` INT NOT NULL,
             `requirement` TEXT NOT NULL,
             FOREIGN KEY (`legal_basis_id`) REFERENCES `legal_basis`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_data_subject_right_implementation_steps_table(self):
+        """Create the Data Subject Right Implementation Steps table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_subject_right_implementation_steps` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `law_id` INT NOT NULL,
+            `right_type` VARCHAR(255) NOT NULL,
+            `step_order` INT NOT NULL,
+            `description` TEXT NOT NULL,
+            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+            UNIQUE KEY `unique_law_right_step` (`law_id`, `right_type`, `step_order`)
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_data_subject_right_exemptions_table(self):
+        """Create the Data Subject Right Exemptions table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_subject_right_exemptions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `law_id` INT NOT NULL,
+            `right_type` VARCHAR(255) NOT NULL,
+            `exemption` TEXT NOT NULL,
+            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
         );
         """
         cursor.execute(create_table_query)
@@ -1368,6 +1404,8 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
     
+
+        
     def seed_all_data(self):
         """Seed all regulatory metadata tables with initial data."""
         self.seed_law_jurisdictions()
@@ -1376,6 +1414,8 @@ class RegulatoryMetadataRepository:
         self.seed_law_purpose_category_legal_bases()
         self.seed_law_transfers()
         self.seed_law_data_subject_access_request_notification_requirements()
+        self.seed_data_subject_right_implementation_steps()
+        self.seed_data_subject_right_exemptions()
         
     # Law Purpose Category Legal Basis methods
     def add_law_purpose_category_legal_basis(self, law_id, purpose_category_id, legal_basis_id, preference_order=1, description=None):
@@ -1722,5 +1762,503 @@ class RegulatoryMetadataRepository:
             return False
         finally:
             cursor.close()
+    
+    # Data Subject Right Implementation Steps methods
+    def create_data_subject_right_implementation_steps_table(self):
+        """Create the Data Subject Right Implementation Steps table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_subject_right_implementation_steps` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `law_id` INT NOT NULL,
+            `right_type` VARCHAR(255) NOT NULL,
+            `step_order` INT NOT NULL,
+            `description` TEXT NOT NULL,
+            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
+            UNIQUE KEY `unique_law_right_step` (`law_id`, `right_type`, `step_order`)
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    def add_data_subject_right_implementation_step(self, law_id, right_type, step_order, description):
+        """Add a new implementation step for a data subject right.
+        
+        Args:
+            law_id (int): The ID of the law
+            right_type (str): The type of right (e.g., "Access", "Erasure")
+            step_order (int): The order of the step in the implementation process
+            description (str): The description of the implementation step
             
+        Returns:
+            int: The ID of the newly created step, or None if there was an error
+        """
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO data_subject_right_implementation_steps 
+            (law_id, right_type, step_order, description) 
+            VALUES (%s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (law_id, right_type, step_order, description))
+            self.connection.commit()
+            step_id = cursor.lastrowid
+            return step_id
+        except Exception as e:
+            print(f"Error adding data subject right implementation step: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+    
+    def get_data_subject_right_implementation_steps(self, law_id=None, right_type=None):
+        """Get implementation steps for data subject rights, optionally filtered by law and right type.
+        
+        Args:
+            law_id (int, optional): The ID of the law to filter by
+            right_type (str, optional): The type of right to filter by
+            
+        Returns:
+            list: A list of dictionaries containing the implementation steps data
+        """
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            if law_id and right_type:
+                select_query = """
+                SELECT dsris.id, l.name as law_name, dsris.right_type, dsris.step_order, dsris.description
+                FROM data_subject_right_implementation_steps dsris
+                JOIN law l ON dsris.law_id = l.id
+                WHERE dsris.law_id = %s AND dsris.right_type = %s
+                ORDER BY dsris.step_order;
+                """
+                cursor.execute(select_query, (law_id, right_type))
+            elif law_id:
+                select_query = """
+                SELECT dsris.id, l.name as law_name, dsris.right_type, dsris.step_order, dsris.description
+                FROM data_subject_right_implementation_steps dsris
+                JOIN law l ON dsris.law_id = l.id
+                WHERE dsris.law_id = %s
+                ORDER BY dsris.right_type, dsris.step_order;
+                """
+                cursor.execute(select_query, (law_id,))
+            else:
+                select_query = """
+                SELECT dsris.id, l.name as law_name, dsris.right_type, dsris.step_order, dsris.description
+                FROM data_subject_right_implementation_steps dsris
+                JOIN law l ON dsris.law_id = l.id
+                ORDER BY l.name, dsris.right_type, dsris.step_order;
+                """
+                cursor.execute(select_query)
+                
+            steps = cursor.fetchall()
+            return steps
+        except Exception as e:
+            print(f"Error getting data subject right implementation steps: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def update_data_subject_right_implementation_step(self, step_id, right_type, step_order, description):
+        """Update an existing implementation step for a data subject right.
+        
+        Args:
+            step_id (int): The ID of the step to update
+            right_type (str): The type of right
+            step_order (int): The order of the step
+            description (str): The description of the step
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            update_query = """
+            UPDATE data_subject_right_implementation_steps
+            SET right_type = %s, step_order = %s, description = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_query, (right_type, step_order, description, step_id))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating data subject right implementation step: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+    
+    def delete_data_subject_right_implementation_step(self, step_id):
+        """Delete an implementation step for a data subject right.
+        
+        Args:
+            step_id (int): The ID of the step to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            delete_query = "DELETE FROM data_subject_right_implementation_steps WHERE id = %s;"
+            cursor.execute(delete_query, (step_id,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting data subject right implementation step: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+    
+    # Data Subject Right Exemptions methods
+    def create_data_subject_right_exemptions_table(self):
+        """Create the Data Subject Right Exemptions table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `data_subject_right_exemptions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `law_id` INT NOT NULL,
+            `right_type` VARCHAR(255) NOT NULL,
+            `exemption` TEXT NOT NULL,
+            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    def add_data_subject_right_exemption(self, law_id, right_type, exemption):
+        """Add a new exemption for a data subject right.
+        
+        Args:
+            law_id (int): The ID of the law
+            right_type (str): The type of right (e.g., "Access", "Erasure")
+            exemption (str): The description of the exemption
+            
+        Returns:
+            int: The ID of the newly created exemption, or None if there was an error
+        """
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO data_subject_right_exemptions 
+            (law_id, right_type, exemption) 
+            VALUES (%s, %s, %s);
+            """
+            cursor.execute(insert_query, (law_id, right_type, exemption))
+            self.connection.commit()
+            exemption_id = cursor.lastrowid
+            return exemption_id
+        except Exception as e:
+            print(f"Error adding data subject right exemption: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+    
+    def get_data_subject_right_exemptions(self, law_id=None, right_type=None):
+        """Get exemptions for data subject rights, optionally filtered by law and right type.
+        
+        Args:
+            law_id (int, optional): The ID of the law to filter by
+            right_type (str, optional): The type of right to filter by
+            
+        Returns:
+            list: A list of dictionaries containing the exemptions data
+        """
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            if law_id and right_type:
+                select_query = """
+                SELECT dsre.id, l.name as law_name, dsre.right_type, dsre.exemption
+                FROM data_subject_right_exemptions dsre
+                JOIN law l ON dsre.law_id = l.id
+                WHERE dsre.law_id = %s AND dsre.right_type = %s;
+                """
+                cursor.execute(select_query, (law_id, right_type))
+            elif law_id:
+                select_query = """
+                SELECT dsre.id, l.name as law_name, dsre.right_type, dsre.exemption
+                FROM data_subject_right_exemptions dsre
+                JOIN law l ON dsre.law_id = l.id
+                WHERE dsre.law_id = %s
+                ORDER BY dsre.right_type;
+                """
+                cursor.execute(select_query, (law_id,))
+            else:
+                select_query = """
+                SELECT dsre.id, l.name as law_name, dsre.right_type, dsre.exemption
+                FROM data_subject_right_exemptions dsre
+                JOIN law l ON dsre.law_id = l.id
+                ORDER BY l.name, dsre.right_type;
+                """
+                cursor.execute(select_query)
+                
+            exemptions = cursor.fetchall()
+            return exemptions
+        except Exception as e:
+            print(f"Error getting data subject right exemptions: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def update_data_subject_right_exemption(self, exemption_id, right_type, exemption):
+        """Update an existing exemption for a data subject right.
+        
+        Args:
+            exemption_id (int): The ID of the exemption to update
+            right_type (str): The type of right
+            exemption (str): The description of the exemption
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            update_query = """
+            UPDATE data_subject_right_exemptions
+            SET right_type = %s, exemption = %s
+            WHERE id = %s;
+            """
+            cursor.execute(update_query, (right_type, exemption, exemption_id))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating data subject right exemption: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+    
+    def delete_data_subject_right_exemption(self, exemption_id):
+        """Delete an exemption for a data subject right.
+        
+        Args:
+            exemption_id (int): The ID of the exemption to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            delete_query = "DELETE FROM data_subject_right_exemptions WHERE id = %s;"
+            cursor.execute(delete_query, (exemption_id,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting data subject right exemption: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+    
+    def seed_data_subject_right_implementation_steps(self):
+        """Seed the data subject right implementation steps table with initial data."""
+        # Check if data already exists
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute("SELECT COUNT(*) as count FROM data_subject_right_implementation_steps;")
+        result = cursor.fetchone()
+        cursor.close()
+        
+        if result and result['count'] > 0:
+            return  # Data already exists
+
+        # Get law IDs
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute("SELECT id, name FROM law;")
+        laws = cursor.fetchall()
+        cursor.close()
+        
+        law_map = {law['name']: law['id'] for law in laws}
+        
+        # Add implementation steps for GDPR Access right
+        if 'GDPR' in law_map:
+            gdpr_id = law_map['GDPR']
+            # Access right steps
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 1, "Confirm receipt of the request within 3 business days")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 2, "Verify the identity of the requestor")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 3, "Search all relevant systems and databases for personal data")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 4, "Compile the information in a clear, accessible format")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 5, "Include information about processing purposes, categories of data, recipients, retention periods, and other rights")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 6, "Review for third-party data or exemptions before disclosure")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 7, "Provide the response securely to the data subject")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Access", 8, "Document the fulfillment of the request")
+            
+            # Erasure right steps
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 1, "Confirm receipt of the request within 3 business days")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 2, "Verify the identity of the requestor")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 3, "Determine if one of the grounds for erasure applies")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 4, "Identify all systems and databases containing the data")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 5, "Check for any legal basis to retain certain data")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 6, "Implement technical erasure in all systems")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 7, "Notify third parties of the erasure request where data has been shared")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 8, "Provide confirmation of erasure to the data subject")
+            self.add_data_subject_right_implementation_step(gdpr_id, "Erasure", 9, "Document the fulfillment of the request")
+        
+        # Add implementation steps for CCPA/CPRA Access right
+        if 'CCPA' in law_map:
+            ccpa_id = law_map['CCPA']
+            # Access right steps
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 1, "Confirm receipt of the request within 10 business days")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 2, "Verify the identity of the requestor")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 3, "Search all relevant systems for personal information collected in the past 12 months")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 4, "Compile the information in a readily usable format")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 5, "Include categories of sources, business purpose, and third parties shared with")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 6, "Provide two or more designated methods for submitting requests")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 7, "Deliver the information free of charge")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Access", 8, "Document the fulfillment of the request")
+            
+            # Deletion right steps
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 1, "Confirm receipt of the request within 10 business days")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 2, "Verify the identity of the requestor")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 3, "Identify all systems and databases containing the consumer's personal information")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 4, "Check for any exceptions that allow retention")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 5, "Delete the personal information from your records")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 6, "Direct service providers to delete the consumer's personal information")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 7, "Notify the consumer that their request has been fulfilled")
+            self.add_data_subject_right_implementation_step(ccpa_id, "Erasure", 8, "Document the deletion process and maintain records")
+    
+    def seed_data_subject_right_exemptions(self):
+        """Seed the data subject right exemptions table with initial data."""
+        # Check if data already exists
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute("SELECT COUNT(*) as count FROM data_subject_right_exemptions;")
+        result = cursor.fetchone()
+        cursor.close()
+        
+        if result and result['count'] > 0:
+            return  # Data already exists
+
+        # Get law IDs
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute("SELECT id, name FROM law;")
+        laws = cursor.fetchall()
+        cursor.close()
+        
+        law_map = {law['name']: law['id'] for law in laws}
+        
+        # Add exemptions for GDPR rights
+        if 'GDPR' in law_map:
+            gdpr_id = law_map['GDPR']
+            # Access right exemptions
+            self.add_data_subject_right_exemption(gdpr_id, "Access", "Information protected by legal professional privilege")
+            self.add_data_subject_right_exemption(gdpr_id, "Access", "Confidential references")
+            self.add_data_subject_right_exemption(gdpr_id, "Access", "Management forecasting or planning if disclosure would prejudice the business")
+            self.add_data_subject_right_exemption(gdpr_id, "Access", "Negotiations with the data subject if disclosure would prejudice those negotiations")
+            self.add_data_subject_right_exemption(gdpr_id, "Access", "Third-party data where disclosure would breach confidentiality")
+            
+            # Erasure right exemptions
+            self.add_data_subject_right_exemption(gdpr_id, "Erasure", "Legal obligation to retain the data")
+            self.add_data_subject_right_exemption(gdpr_id, "Erasure", "Public interest in public health")
+            self.add_data_subject_right_exemption(gdpr_id, "Erasure", "Archiving purposes in the public interest")
+            self.add_data_subject_right_exemption(gdpr_id, "Erasure", "Establishment, exercise, or defense of legal claims")
+            self.add_data_subject_right_exemption(gdpr_id, "Erasure", "Freedom of expression and information")
+        
+        # Add exemptions for CCPA/CPRA rights
+        if 'CCPA' in law_map:
+            ccpa_id = law_map['CCPA']
+            # Access right exemptions
+            self.add_data_subject_right_exemption(ccpa_id, "Access", "Cannot provide specific pieces of information if disclosure creates substantial security risk")
+            self.add_data_subject_right_exemption(ccpa_id, "Access", "Not required to provide access more than twice in a 12-month period")
+            self.add_data_subject_right_exemption(ccpa_id, "Access", "Certain business-to-business communications")
+            self.add_data_subject_right_exemption(ccpa_id, "Access", "Certain employee data until January 1, 2023")
+            
+            # Deletion right exemptions
+            self.add_data_subject_right_exemption(ccpa_id, "Erasure", "Complete a transaction, provide a good or service requested by the consumer")
+            self.add_data_subject_right_exemption(ccpa_id, "Erasure", "Detect security incidents or protect against malicious activities")
+            self.add_data_subject_right_exemption(ccpa_id, "Erasure", "Debug to identify and repair errors")
+            self.add_data_subject_right_exemption(ccpa_id, "Erasure", "Exercise free speech or ensure another consumer's right to exercise free speech")
+            self.add_data_subject_right_exemption(ccpa_id, "Erasure", "Comply with legal obligations")
+    
+
+    
+    def get_data_subject_right_guidance(self, law_name, right_type):
+        """Get comprehensive guidance for a data subject right based on law and right type.
+        
+        Args:
+            law_name (str): The name of the law (e.g., "GDPR", "CCPA")
+            right_type (str): The type of right (e.g., "Access", "Erasure")
+            
+        Returns:
+            dict: A dictionary containing guidance information or None if not found
+        """
+        try:
+            # Get the law ID
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT id FROM law WHERE name = %s", (law_name,))
+            law_result = cursor.fetchone()
+            if not law_result:
+                return None
+                
+            law_id = law_result[0]
+            
+            # Get implementation steps
+            implementation_steps = []
+            cursor.execute("""
+                SELECT description 
+                FROM data_subject_right_implementation_steps 
+                WHERE law_id = %s AND right_type = %s 
+                ORDER BY step_order
+            """, (law_id, right_type))
+            steps_results = cursor.fetchall()
+            for step in steps_results:
+                implementation_steps.append(step[0])
+                
+            # Get exemptions
+            exemptions = []
+            cursor.execute("""
+                SELECT exemption 
+                FROM data_subject_right_exemptions 
+                WHERE law_id = %s AND right_type = %s
+            """, (law_id, right_type))
+            exemptions_results = cursor.fetchall()
+            for exemption in exemptions_results:
+                exemptions.append(exemption[0])
+                
+            # If no implementation steps were found, return None
+            if not implementation_steps:
+                return None
+                
+            # Get additional guidance details from the Data Subject Access Request table
+            # Map the right_type to the corresponding name in the notification requirements table
+            right_name_map = {
+                "Access": "Right of Access",
+                "Erasure": "Right to Erasure",
+                "Rectification": "Right to Rectification"
+            }
+            
+            right_name = right_name_map.get(right_type, right_type)
+            
+            cursor.execute("""
+                SELECT timeframe, conditions, exemptions
+                FROM law_data_subject_access_request_notification_requirements
+                WHERE law_id = %s AND name = %s;
+            """, (law_id, right_name))
+            guidance_details = cursor.fetchone()
+            
+            guidance = {
+                "implementation_steps": implementation_steps,
+                "exemptions": exemptions
+            }
+            
+            if guidance_details:
+                # Parse the timeframe to extract extension information
+                timeframe = guidance_details[0]
+                extension_possible = "Yes" if "can be extended" in timeframe.lower() else "No"
+                extension_conditions = guidance_details[1] if guidance_details[1] else ""
+                
+                guidance.update({
+                    "timeframe": timeframe.split("(")[0].strip() if "(" in timeframe else timeframe,
+                    "extension_possible": extension_possible,
+                    "extension_conditions": extension_conditions,
+                    "verification_requirements": guidance_details[1] if guidance_details[1] else ""
+                })
+            
+            return guidance
+        except Exception as e:
+            print(f"Error retrieving data subject right guidance: {e}")
+            return None
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
 
