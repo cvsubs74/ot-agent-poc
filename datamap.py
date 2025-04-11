@@ -557,6 +557,7 @@ class DataMap:
         # Define which tabs are used by each inference API
         inference_api_mappings = {
             "All": list(range(len(all_tab_names))),  # All tabs
+            "Law Inference": [0],  # Law Jurisdiction tab
             "Legal Basis Inference": [1, 12, 13],  # Law Legal Basis tab, Law Purpose Category Legal Basis, Legal Basis Requirements
             "Breach Notification Inference": [2],  # Law Incident Breach Notification tab
             "Transfer Mechanism Inference": [3],  # Law Transfer tab
@@ -2049,6 +2050,10 @@ class DataMap:
             # Second section: Inference APIs
             st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
             
+            # Law Inference menu item
+            if st.button("📜 Law Inference", key="law_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Law API'
+            
             # Sensitivity Inference menu item
             if st.button("🛡️ Sensitivity Inference", key="sensitivity_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Sensitivity API'
@@ -2157,6 +2162,8 @@ class DataMap:
             self.decision_tree_section()
         elif st.session_state['current_section'] == 'Inventory':
             self.inventory_section()
+        elif st.session_state['current_section'] == 'Law API':
+            self.law_inference_api()
         elif st.session_state['current_section'] == 'Sensitivity API':
             self.sensitivity_inference_api()
         elif st.session_state['current_section'] == 'Legal Basis API':
@@ -3603,6 +3610,92 @@ class DataMap:
         """
         # Use the repository method to get guidance
         return self.regulatory_metadata_repository.get_data_subject_right_guidance(law, right_type)
+    
+    def law_inference_api(self):
+        """Implement a law inference API based on regulatory metadata.
+        This helps users determine which laws apply to a specific jurisdiction.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-gavel'></i> &nbsp;Law Inference</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
+            <h3 style="margin-top: 0;">Law Inference API</h3>
+            <p>This API helps determine which data protection laws apply to specific jurisdictions based on regulatory metadata.</p>
+            <p>The Law Inference API uses the Law Jurisdiction mapping table to identify applicable laws for a given jurisdiction, helping organizations understand their compliance obligations.</p>
+        </div>''', unsafe_allow_html=True)
+        
+        # Create a two-column layout
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get all jurisdictions from the repository
+            law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
+            jurisdictions = sorted(list(set([lj["jurisdiction_name"] for lj in law_jurisdictions])))
+            
+            # Jurisdiction selection
+            selected_jurisdiction = st.selectbox(
+                "Select Jurisdiction",
+                jurisdictions,
+                index=0 if jurisdictions else None
+            )
+            
+            # Add a button to trigger analysis
+            analyze_button = st.button("Determine Applicable Laws")
+        
+        with col2:
+            st.subheader("Applicable Laws")
+            
+            if analyze_button and selected_jurisdiction:
+                # Get all laws that apply to the selected jurisdiction
+                applicable_laws = []
+                for lj in law_jurisdictions:
+                    if lj["jurisdiction_name"] == selected_jurisdiction:
+                        applicable_laws.append(lj["law_name"])
+                
+                if applicable_laws:
+                    # Display the applicable laws with appropriate styling
+                    st.markdown(f"""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                        <h3 style="color: #3498db;">Laws Applicable to {selected_jurisdiction}</h3>
+                        <p>The following laws apply to activities in this jurisdiction:</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display each applicable law with its description
+                    for i, law_name in enumerate(applicable_laws):
+                        # Get law details from the glossary repository
+                        laws = self.glossary_repository.get_laws()
+                        law_details = next((law for law in laws if law["name"] == law_name), None)
+                        
+                        if law_details:
+                            with st.expander(f"{i+1}. {law_name}", expanded=True):
+                                st.markdown(f"**Full Name:** {law_details.get('full_name', 'Not available')}")
+                                st.markdown(f"**Description:** {law_details.get('description', 'No description available')}")
+                                st.markdown(f"**Effective Date:** {law_details.get('effective_date', 'Not specified')}")
+                else:
+                    # Display a message if no laws apply to the selected jurisdiction
+                    st.markdown("""
+                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                        <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
+                        <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
+                        <p>This may be due to:</p>
+                        <ul>
+                            <li>The jurisdiction may not have comprehensive data protection legislation</li>
+                            <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
+                            <li>The database may need to be updated with the latest regulatory information</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                # Display a placeholder message when no analysis has been performed
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Applicable laws will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
