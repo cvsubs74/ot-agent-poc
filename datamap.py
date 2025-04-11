@@ -2453,6 +2453,34 @@ class DataMap:
             
             # Add a button to trigger inference
             infer_button = st.button("Infer Sensitivity")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "data", "label": "Data Element/Category", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "dst", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "context", "label": "Context (Optional)", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "high", "label": "High Sensitivity", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "medium", "label": "Medium Sensitivity", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "low", "label": "Low Sensitivity", "color": "#2ecc71", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "data", "target": "law", "label": "Regulated by"},
+                {"source": "data", "target": "dst", "label": "Relates to"},
+                {"source": "data", "target": "context", "label": "Used in"},
+                {"source": "law", "target": "lookup", "label": ""},
+                {"source": "dst", "target": "lookup", "label": ""},
+                {"source": "context", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "high", "label": "If sensitive PII"},
+                {"source": "lookup", "target": "medium", "label": "If general PII"},
+                {"source": "lookup", "target": "low", "label": "If non-PII"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Sensitivity Inference Decision Process", 700)
         
         with col2:
             st.subheader("Sensitivity Results")
@@ -2677,6 +2705,36 @@ class DataMap:
             
             # Add a button to trigger inference
             infer_button = st.button("Recommend Legal Basis")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "processing", "label": "Processing Activity", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "purpose", "label": "Purpose Category", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "sensitivity", "label": "Data Sensitivity", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Legal Basis Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "consent", "label": "Consent", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "contract", "label": "Contract", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "legitimate", "label": "Legitimate Interest", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "legal", "label": "Legal Obligation", "color": "#3498db", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "processing", "target": "law", "label": "Governed by"},
+                {"source": "processing", "target": "purpose", "label": "Has purpose"},
+                {"source": "processing", "target": "sensitivity", "label": "Involves data"},
+                {"source": "law", "target": "lookup", "label": ""},
+                {"source": "purpose", "target": "lookup", "label": ""},
+                {"source": "sensitivity", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "consent", "label": "High sensitivity"},
+                {"source": "lookup", "target": "contract", "label": "Low sensitivity"},
+                {"source": "lookup", "target": "legitimate", "label": "Medium sensitivity"},
+                {"source": "lookup", "target": "legal", "label": "Compliance"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Legal Basis Inference Decision Process", 700)
         
         with col2:
             st.subheader("Legal Basis Recommendations")
@@ -3006,6 +3064,36 @@ class DataMap:
             
             # Add a button to trigger analysis
             analyze_button = st.button("Analyze Notification Requirements")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "breach", "label": "Data Breach", "color": "#e74c3c", "shape": "ellipse", "size": 30},
+                {"id": "jurisdiction", "label": "Affected Jurisdiction", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "data_types", "label": "Data Types Affected", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "severity", "label": "Breach Severity", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Notification Requirements Lookup", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "authority", "label": "Authority Notification", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "individual", "label": "Individual Notification", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "timeframe", "label": "Notification Timeframe", "color": "#9b59b6", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "breach", "target": "jurisdiction", "label": "Occurs in"},
+                {"source": "jurisdiction", "target": "law", "label": "Governed by"},
+                {"source": "breach", "target": "data_types", "label": "Involves"},
+                {"source": "breach", "target": "severity", "label": "Has"},
+                {"source": "law", "target": "lookup", "label": ""},
+                {"source": "data_types", "target": "lookup", "label": ""},
+                {"source": "severity", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "authority", "label": "Requires"},
+                {"source": "lookup", "target": "individual", "label": "May require"},
+                {"source": "lookup", "target": "timeframe", "label": "Specifies"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Breach Notification Decision Process", 700)
         
         with col2:
             st.subheader("Notification Requirements")
@@ -3295,6 +3383,40 @@ class DataMap:
             
             # Add a button to trigger inference
             analyze_button = st.button("Recommend Transfer Mechanisms")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "transfer", "label": "Data Transfer", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "source", "label": "Source Jurisdiction", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "destination", "label": "Destination Jurisdiction", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "law", "label": "Applicable Law", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "data_categories", "label": "Data Categories", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "adequacy", "label": "Adequacy Decision", "color": "#1abc9c", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Transfer Mechanism Lookup", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "sccs", "label": "Standard Contractual Clauses", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "bcrs", "label": "Binding Corporate Rules", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "consent", "label": "Explicit Consent", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "derogations", "label": "Derogations", "color": "#2ecc71", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "transfer", "target": "source", "label": "From"},
+                {"source": "transfer", "target": "destination", "label": "To"},
+                {"source": "transfer", "target": "data_categories", "label": "Involves"},
+                {"source": "source", "target": "law", "label": "Governed by"},
+                {"source": "destination", "target": "adequacy", "label": "Has/lacks"},
+                {"source": "law", "target": "lookup", "label": ""},
+                {"source": "data_categories", "target": "lookup", "label": ""},
+                {"source": "adequacy", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "sccs", "label": "May recommend"},
+                {"source": "lookup", "target": "bcrs", "label": "May recommend"},
+                {"source": "lookup", "target": "consent", "label": "May recommend"},
+                {"source": "lookup", "target": "derogations", "label": "May allow"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Transfer Mechanism Decision Process", 700)
         
         with col2:
             st.subheader("Transfer Mechanism Recommendations")
@@ -3506,6 +3628,38 @@ class DataMap:
             
             # Add a button to trigger inference
             analyze_button = st.button("Analyze Rights Request")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "request", "label": "DSR Request", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "jurisdiction", "label": "Jurisdiction", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "subject_type", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "right_type", "label": "Right Type", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Rights Requirements Lookup", "color": "#1abc9c", "shape": "box", "size": 25},
+                {"id": "timeframe", "label": "Response Timeframe", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "steps", "label": "Implementation Steps", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "exemptions", "label": "Potential Exemptions", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "verification", "label": "Verification Requirements", "color": "#9b59b6", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "request", "target": "jurisdiction", "label": "From"},
+                {"source": "jurisdiction", "target": "law", "label": "Governed by"},
+                {"source": "request", "target": "subject_type", "label": "Made by"},
+                {"source": "request", "target": "right_type", "label": "Requests"},
+                {"source": "law", "target": "lookup", "label": ""},
+                {"source": "subject_type", "target": "lookup", "label": ""},
+                {"source": "right_type", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "timeframe", "label": "Determines"},
+                {"source": "lookup", "target": "steps", "label": "Provides"},
+                {"source": "lookup", "target": "exemptions", "label": "Identifies"},
+                {"source": "lookup", "target": "verification", "label": "Requires"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Data Subject Rights Inference Decision Process", 700)
         
         with col2:
             st.subheader("Rights Response Guidance")
@@ -3611,6 +3765,97 @@ class DataMap:
         # Use the repository method to get guidance
         return self.regulatory_metadata_repository.get_data_subject_right_guidance(law, right_type)
     
+    def _render_decision_tree(self, nodes, edges, title="Decision Tree", height=700):
+        """Helper method to render a decision tree visualization using PyVis.
+        
+        Args:
+            nodes (list): List of node dictionaries with id, label, color, etc.
+            edges (list): List of edge dictionaries with source, target, label, etc.
+            title (str): Title for the decision tree
+            height (int): Height of the visualization in pixels
+            
+        Returns:
+            None: Renders the decision tree directly in the Streamlit app
+        """
+        import tempfile
+        from pyvis.network import Network
+        import streamlit.components.v1 as components
+        
+        # Create a network with larger dimensions
+        net = Network(height=f"{height}px", width="100%", directed=True, notebook=True)
+        net.toggle_hide_edges_on_drag(False)
+        net.barnes_hut()
+        
+        # Add nodes
+        for node in nodes:
+            net.add_node(
+                node["id"], 
+                label=node["label"], 
+                color=node.get("color", "#3498db"),
+                shape=node.get("shape", "box"),
+                title=node.get("title", node["label"]),
+                size=node.get("size", 25),
+                font=node.get("font", {"size": 14, "color": "black", "face": "Arial"})
+            )
+        
+        # Add edges
+        for edge in edges:
+            net.add_edge(
+                edge["source"], 
+                edge["target"], 
+                title=edge.get("label", ""),
+                label=edge.get("label", ""),
+                color=edge.get("color", "#7F8C8D"),
+                width=edge.get("width", 2),
+                arrows=edge.get("arrows", "to")
+            )
+        
+        # Configure physics for hierarchical layout
+        net.set_options("""
+        {
+          "physics": {
+            "hierarchicalRepulsion": {
+              "centralGravity": 0.0,
+              "springLength": 100,
+              "springConstant": 0.01,
+              "nodeDistance": 120,
+              "damping": 0.09
+            },
+            "solver": "hierarchicalRepulsion",
+            "stabilization": {
+              "iterations": 100
+            }
+          },
+          "layout": {
+            "hierarchical": {
+              "enabled": true,
+              "levelSeparation": 150,
+              "nodeSpacing": 100,
+              "treeSpacing": 200,
+              "blockShifting": true,
+              "edgeMinimization": true,
+              "parentCentralization": true,
+              "direction": "UD",
+              "sortMethod": "directed"
+            }
+          },
+          "interaction": {
+            "navigationButtons": true,
+            "keyboard": true
+          }
+        }
+        """)
+        
+        # Generate the visualization
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmpfile:
+            net.save_graph(tmpfile.name)
+            with open(tmpfile.name, "r", encoding="utf-8") as f:
+                html = f.read()
+        
+        # Display the visualization with a title
+        st.subheader(title)
+        components.html(html, height=height)
+    
     def law_inference_api(self):
         """Implement a law inference API based on regulatory metadata.
         This helps users determine which laws apply to a specific jurisdiction.
@@ -3643,6 +3888,24 @@ class DataMap:
             
             # Add a button to trigger analysis
             analyze_button = st.button("Determine Applicable Laws")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "jurisdiction", "label": "Jurisdiction Selection", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "mapping", "label": "Law Jurisdiction Mapping", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "laws", "label": "Applicable Laws", "color": "#27ae60", "shape": "box", "size": 25},
+                {"id": "details", "label": "Law Details", "color": "#9b59b6", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "jurisdiction", "target": "mapping", "label": "Lookup"},
+                {"source": "mapping", "target": "laws", "label": "Identify"},
+                {"source": "laws", "target": "details", "label": "Retrieve"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Law Inference Decision Process", 700)
         
         with col2:
             st.subheader("Applicable Laws")
