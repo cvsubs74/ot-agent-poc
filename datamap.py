@@ -564,9 +564,13 @@ class DataMap:
         
         # Create a filter for inference APIs
         st.markdown("<h3>Filter by Inference API</h3>", unsafe_allow_html=True)
+        
+        # Add explanation about the inference API filter
+        st.caption("Filter to view only the mapping tables used by each specific inference API. Each inference API uses different tables to make regulatory determinations.")
+        
         inference_api_options = list(inference_api_mappings.keys())
         selected_inference_api = st.selectbox(
-            "Select an Inference API to see relevant mapping tables",
+            "Select an Inference API",
             inference_api_options,
             key="inference_api_filter"
         )
@@ -579,6 +583,86 @@ class DataMap:
         
         # Create tabs with filtered names
         tabs = st.tabs(visible_tab_names)
+        
+        # Add explanation about how the selected inference API uses the mapping tables
+        if selected_inference_api == "Legal Basis Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Legal Basis Inference Works</h4>
+                <p>The Legal Basis Inference API uses these mapping tables to determine the appropriate legal basis for processing personal data:</p>
+                <ol>
+                    <li><strong>Law Legal Basis</strong>: Maps laws to their supported legal bases, establishing which legal bases are valid under each regulation.</li>
+                    <li><strong>Law Purpose Category Legal Basis</strong>: Provides recommended legal bases for specific processing purposes under each law, with preference ordering.</li>
+                    <li><strong>Legal Basis Requirements</strong>: Details the compliance requirements for each legal basis, helping organizations implement the necessary safeguards.</li>
+                </ol>
+                <p>When making a legal basis determination, the system considers:</p>
+                <ul>
+                    <li>The applicable law (e.g., GDPR, CCPA)</li>
+                    <li>The processing purpose (e.g., Marketing, Security)</li>
+                    <li>Data sensitivity level</li>
+                    <li>Specific context of processing</li>
+                </ul>
+                <p>The system then recommends appropriate legal bases in order of preference, along with their compliance requirements.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Breach Notification Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Breach Notification Inference Works</h4>
+                <p>The Breach Notification Inference API uses the Law Incident Breach Notification mapping table to determine notification requirements when a data breach occurs:</p>
+                <ul>
+                    <li>Analyzes breach severity, scope, and data types involved</li>
+                    <li>Identifies applicable laws based on affected jurisdictions</li>
+                    <li>Determines notification thresholds and timeframes</li>
+                    <li>Provides guidance on notification content and recipients</li>
+                </ul>
+                <p>The system helps organizations comply with varying breach notification requirements across different jurisdictions, ensuring timely and appropriate responses to data incidents.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Transfer Mechanism Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Transfer Mechanism Inference Works</h4>
+                <p>The Transfer Mechanism Inference API uses the Law Transfer mapping table to determine appropriate safeguards for cross-border data transfers:</p>
+                <ul>
+                    <li>Identifies source and destination jurisdictions</li>
+                    <li>Determines applicable data protection laws</li>
+                    <li>Evaluates adequacy decisions and existing agreements</li>
+                    <li>Recommends appropriate transfer mechanisms (e.g., SCCs, BCRs)</li>
+                    <li>Highlights additional requirements for specific transfers</li>
+                </ul>
+                <p>The system helps organizations implement compliant data transfer frameworks while navigating complex international data protection requirements.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Data Subject Rights Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Data Subject Rights Inference Works</h4>
+                <p>The Data Subject Rights Inference API uses the Data Subject Access Request mapping table to determine rights and response requirements:</p>
+                <ul>
+                    <li>Identifies applicable laws based on data subject location</li>
+                    <li>Determines available rights (access, deletion, portability, etc.)</li>
+                    <li>Calculates response timeframes</li>
+                    <li>Identifies valid exemptions and conditions</li>
+                    <li>Provides guidance on verification requirements</li>
+                </ul>
+                <p>The system helps organizations respond appropriately to data subject requests while maintaining compliance with various privacy regulations.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Data Sensitivity Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Data Sensitivity Inference Works</h4>
+                <p>The Data Sensitivity Inference API uses multiple sensitivity mapping tables to determine the sensitivity level of data elements in different contexts:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories, establishing hierarchical relationships.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements under different laws and for different data subject types.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Provides higher-level sensitivity determinations for data categories.</li>
+                    <li><strong>Context Sensitivity</strong>: Adjusts sensitivity based on processing context (e.g., healthcare vs. marketing).</li>
+                </ul>
+                <p>The system considers multiple factors to determine data sensitivity, which then influences other decisions like legal basis selection, security requirements, and risk assessments.</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         # Create a mapping from filtered tab index to original tab index
         tab_index_mapping = {i: visible_tab_indices[i] for i in range(len(visible_tab_indices))}
@@ -2510,7 +2594,7 @@ class DataMap:
         st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Legal Basis Inference</div>", unsafe_allow_html=True)
         
         st.markdown('''
-        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
             This API helps determine the appropriate legal basis for processing personal data based on regulatory metadata.<br><br>
             <ul>
                 <li>Recommends suitable legal bases according to applicable regulations</li>
