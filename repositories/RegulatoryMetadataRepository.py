@@ -17,14 +17,15 @@ class RegulatoryMetadataRepository:
         self.create_law_data_subject_type_data_category_sensitivity_table()
         self.create_data_subject_type_data_category_sensitivity_table()
         self.create_data_subject_type_data_element_sensitivity_table()
-        self.create_law_context_data_subject_type_data_category_sensitivity_table()
-        self.create_context_data_subject_type_data_category_sensitivity_table()
         self.create_law_transfer_table()
         self.create_law_data_subject_access_request_notification_requirements_table()
         self.create_law_purpose_category_legal_basis_table()
         self.create_legal_basis_requirements_table()
         self.create_data_subject_right_implementation_steps_table()
         self.create_data_subject_right_exemptions_table()
+        self.create_policy_purpose_table()
+        self.create_policy_purpose_data_element_table()
+        self.create_policy_purpose_data_usage_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""
@@ -168,47 +169,7 @@ class RegulatoryMetadataRepository:
         self.connection.commit()
         cursor.close()
         
-    def create_law_context_data_subject_type_data_category_sensitivity_table(self):
-        """Create the Law Context Data Subject Type Data Category Sensitivity table."""
-        cursor = self.connection.cursor()
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS `law_context_data_subject_type_data_category_sensitivity` (
-            `law_id` INT NOT NULL,
-            `context_id` INT NOT NULL,
-            `data_subject_type_id` INT NOT NULL,
-            `data_category_id` INT NOT NULL,
-            `sensitivity_id` INT NOT NULL,
-            PRIMARY KEY (`law_id`, `context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
-            FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
-        );
-        """
-        cursor.execute(create_table_query)
-        self.connection.commit()
-        cursor.close()
-        
-    def create_context_data_subject_type_data_category_sensitivity_table(self):
-        """Create the Context Data Subject Type Data Category Sensitivity table."""
-        cursor = self.connection.cursor()
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS `context_data_subject_type_data_category_sensitivity` (
-            `context_id` INT NOT NULL,
-            `data_subject_type_id` INT NOT NULL,
-            `data_category_id` INT NOT NULL,
-            `sensitivity_id` INT NOT NULL,
-            PRIMARY KEY (`context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
-            FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
-        );
-        """
-        cursor.execute(create_table_query)
-        self.connection.commit()
-        cursor.close()
+
         
     def create_law_transfer_table(self):
         """Create the Law Transfer table."""
@@ -1280,132 +1241,7 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
     
-    # Law Context Data Subject Type Data Category Sensitivity methods
-    def add_law_context_data_subject_type_data_category_sensitivity(self, law_id, context_id, data_subject_type_id, data_category_id, sensitivity_id):
-        """Add a new law context data subject type data category sensitivity relationship to the database."""
-        cursor = self.connection.cursor()
-        try:
-            insert_query = """
-            INSERT INTO law_context_data_subject_type_data_category_sensitivity 
-            (law_id, context_id, data_subject_type_id, data_category_id, sensitivity_id)
-            VALUES (%s, %s, %s, %s, %s);
-            """
-            cursor.execute(insert_query, (law_id, context_id, data_subject_type_id, data_category_id, sensitivity_id))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Error adding law context data subject type data category sensitivity relationship: {e}")
-            return False
-        finally:
-            cursor.close()
-    
-    def get_law_context_data_subject_type_data_category_sensitivities(self):
-        """Get all law context data subject type data category sensitivity relationships from the database."""
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        try:
-            query = """
-            SELECT lcdstdcs.law_id, l.name as law_name,
-                   lcdstdcs.context_id, c.name as context_name,
-                   lcdstdcs.data_subject_type_id, dst.name as data_subject_type_name,
-                   lcdstdcs.data_category_id, dc.name as data_category_name,
-                   lcdstdcs.sensitivity_id, s.name as sensitivity_name
-            FROM law_context_data_subject_type_data_category_sensitivity lcdstdcs
-            JOIN law l ON lcdstdcs.law_id = l.id
-            JOIN context c ON lcdstdcs.context_id = c.id
-            JOIN data_subject_type dst ON lcdstdcs.data_subject_type_id = dst.id
-            JOIN data_category dc ON lcdstdcs.data_category_id = dc.id
-            JOIN sensitivity s ON lcdstdcs.sensitivity_id = s.id;
-            """
-            cursor.execute(query)
-            return cursor.fetchall()
-        except Exception as e:
-            print(f"Error retrieving law context data subject type data category sensitivity relationships: {e}")
-            return []
-        finally:
-            cursor.close()
-    
-    def delete_law_context_data_subject_type_data_category_sensitivity(self, law_id, context_id, data_subject_type_id, data_category_id, sensitivity_id):
-        """Delete a law context data subject type data category sensitivity relationship from the database."""
-        cursor = self.connection.cursor()
-        try:
-            delete_query = """
-            DELETE FROM law_context_data_subject_type_data_category_sensitivity 
-            WHERE law_id = %s AND context_id = %s AND data_subject_type_id = %s AND data_category_id = %s AND sensitivity_id = %s;
-            """
-            cursor.execute(delete_query, (law_id, context_id, data_subject_type_id, data_category_id, sensitivity_id))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Error deleting law context data subject type data category sensitivity relationship: {e}")
-            return False
-        finally:
-            cursor.close()
-    
-    # Context Data Subject Type Data Category Sensitivity methods
-    def add_context_data_subject_type_data_category_sensitivity(self, context_id, data_subject_type_id, data_category_id, sensitivity_id):
-        """Add a new context data subject type data category sensitivity relationship to the database."""
-        cursor = self.connection.cursor()
-        try:
-            insert_query = """
-            INSERT INTO context_data_subject_type_data_category_sensitivity 
-            (context_id, data_subject_type_id, data_category_id, sensitivity_id)
-            VALUES (%s, %s, %s, %s);
-            """
-            cursor.execute(insert_query, (context_id, data_subject_type_id, data_category_id, sensitivity_id))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Error adding context data subject type data category sensitivity relationship: {e}")
-            return False
-        finally:
-            cursor.close()
-    
-    def get_context_data_subject_type_data_category_sensitivities(self):
-        """Get all context data subject type data category sensitivity relationships from the database."""
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        try:
-            query = """
-            SELECT cdstdcs.context_id, c.name as context_name,
-                   cdstdcs.data_subject_type_id, dst.name as data_subject_type_name,
-                   cdstdcs.data_category_id, dc.name as data_category_name,
-                   cdstdcs.sensitivity_id, s.name as sensitivity_name
-            FROM context_data_subject_type_data_category_sensitivity cdstdcs
-            JOIN context c ON cdstdcs.context_id = c.id
-            JOIN data_subject_type dst ON cdstdcs.data_subject_type_id = dst.id
-            JOIN data_category dc ON cdstdcs.data_category_id = dc.id
-            JOIN sensitivity s ON cdstdcs.sensitivity_id = s.id;
-            """
-            cursor.execute(query)
-            return cursor.fetchall()
-        except Exception as e:
-            print(f"Error retrieving context data subject type data category sensitivity relationships: {e}")
-            return []
-        finally:
-            cursor.close()
-    
-    def delete_context_data_subject_type_data_category_sensitivity(self, context_id, data_subject_type_id, data_category_id, sensitivity_id):
-        """Delete a context data subject type data category sensitivity relationship from the database."""
-        cursor = self.connection.cursor()
-        try:
-            delete_query = """
-            DELETE FROM context_data_subject_type_data_category_sensitivity 
-            WHERE context_id = %s AND data_subject_type_id = %s AND data_category_id = %s AND sensitivity_id = %s;
-            """
-            cursor.execute(delete_query, (context_id, data_subject_type_id, data_category_id, sensitivity_id))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Error deleting context data subject type data category sensitivity relationship: {e}")
-            return False
-        finally:
-            cursor.close()
-    
 
-        
     def seed_all_data(self):
         """Seed all regulatory metadata tables with initial data."""
         self.seed_law_jurisdictions()
@@ -2261,4 +2097,346 @@ class RegulatoryMetadataRepository:
         finally:
             if 'cursor' in locals():
                 cursor.close()
+                
+    # Policy Purpose methods
+    def create_policy_purpose_table(self):
+        """Create the Policy Purpose table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_purpose` (
+            `policy_id` INT NOT NULL,
+            `purpose_id` INT NOT NULL,
+            PRIMARY KEY (`policy_id`, `purpose_id`),
+            FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_policy_purpose_data_element_table(self):
+        """Create the Policy Purpose Data Element table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
+            `policy_id` INT NOT NULL,
+            `purpose_id` INT NOT NULL,
+            `data_element_id` INT NOT NULL,
+            `access_allowed` BOOLEAN NOT NULL DEFAULT TRUE,
+            PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+            FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_policy_purpose_data_usage_table(self):
+        """Create the Policy Purpose Data Usage table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
+            `policy_id` INT NOT NULL,
+            `purpose_id` INT NOT NULL,
+            `data_element_id` INT NOT NULL,
+            `operation` VARCHAR(50) NOT NULL,
+            `allowed` BOOLEAN NOT NULL DEFAULT FALSE,
+            `restrictions` TEXT,
+            PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`, `operation`),
+            FOREIGN KEY (`policy_id`, `purpose_id`, `data_element_id`) 
+                REFERENCES `policy_purpose_data_element`(`policy_id`, `purpose_id`, `data_element_id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def add_policy_purpose(self, policy_id, purpose_id):
+        """Add a new policy-purpose relationship to the database.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO policy_purpose (policy_id, purpose_id) VALUES (%s, %s);",
+                (policy_id, purpose_id)
+            )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy-purpose relationship: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def add_policy_purpose_data_element(self, policy_id, purpose_id, data_element_id, access_allowed=True):
+        """Add a new policy-purpose-data element relationship to the database.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            access_allowed (bool, optional): Whether access is allowed. Defaults to True.
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES (%s, %s, %s, %s);",
+                (policy_id, purpose_id, data_element_id, access_allowed)
+            )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy-purpose-data element relationship: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def add_policy_purpose_data_usage(self, policy_id, purpose_id, data_element_id, operation, allowed=False, restrictions=None):
+        """Add a new policy-purpose-data element usage rule to the database.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            operation (str): The operation (e.g., 'read', 'write', 'share')
+            allowed (bool, optional): Whether the operation is allowed. Defaults to False.
+            restrictions (str, optional): Any restrictions on the operation. Defaults to None.
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, operation, allowed, restrictions) VALUES (%s, %s, %s, %s, %s, %s);",
+                (policy_id, purpose_id, data_element_id, operation, allowed, restrictions)
+            )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy-purpose-data usage rule: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def get_policy_purposes(self, policy_id=None):
+        """Get all policy-purpose relationships from the database.
+        
+        Args:
+            policy_id (int, optional): The ID of the policy to filter by. Defaults to None.
+            
+        Returns:
+            list: A list of dictionaries containing policy-purpose relationship information
+        """
+        cursor = self.connection.cursor()
+        try:
+            if policy_id:
+                cursor.execute("""
+                    SELECT pp.policy_id, p.name as policy_name, pp.purpose_id, pu.name as purpose_name
+                    FROM policy_purpose pp
+                    JOIN policy p ON pp.policy_id = p.id
+                    JOIN purpose pu ON pp.purpose_id = pu.id
+                    WHERE pp.policy_id = %s;
+                """, (policy_id,))
+            else:
+                cursor.execute("""
+                    SELECT pp.policy_id, p.name as policy_name, pp.purpose_id, pu.name as purpose_name
+                    FROM policy_purpose pp
+                    JOIN policy p ON pp.policy_id = p.id
+                    JOIN purpose pu ON pp.purpose_id = pu.id;
+                """)
+            
+            relationships = []
+            for row in cursor.fetchall():
+                relationships.append({
+                    "policy_id": row[0],
+                    "policy_name": row[1],
+                    "purpose_id": row[2],
+                    "purpose_name": row[3]
+                })
+            return relationships
+        except Exception as e:
+            print(f"Error getting policy-purpose relationships: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def get_policy_purpose_data_elements(self, policy_id=None, purpose_id=None):
+        """Get all policy-purpose-data element relationships from the database.
+        
+        Args:
+            policy_id (int, optional): The ID of the policy to filter by. Defaults to None.
+            purpose_id (int, optional): The ID of the purpose to filter by. Defaults to None.
+            
+        Returns:
+            list: A list of dictionaries containing policy-purpose-data element relationship information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT ppde.policy_id, p.name as policy_name, ppde.purpose_id, pu.name as purpose_name,
+                       ppde.data_element_id, de.name as data_element_name, ppde.access_allowed
+                FROM policy_purpose_data_element ppde
+                JOIN policy p ON ppde.policy_id = p.id
+                JOIN purpose pu ON ppde.purpose_id = pu.id
+                JOIN data_element de ON ppde.data_element_id = de.id
+            """
+            
+            params = []
+            where_clauses = []
+            
+            if policy_id:
+                where_clauses.append("ppde.policy_id = %s")
+                params.append(policy_id)
+            
+            if purpose_id:
+                where_clauses.append("ppde.purpose_id = %s")
+                params.append(purpose_id)
+            
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            cursor.execute(query, params)
+            
+            relationships = []
+            for row in cursor.fetchall():
+                relationships.append({
+                    "policy_id": row[0],
+                    "policy_name": row[1],
+                    "purpose_id": row[2],
+                    "purpose_name": row[3],
+                    "data_element_id": row[4],
+                    "data_element_name": row[5],
+                    "access_allowed": row[6]
+                })
+            return relationships
+        except Exception as e:
+            print(f"Error getting policy-purpose-data element relationships: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def get_policy_purpose_data_usages(self, policy_id=None, purpose_id=None, data_element_id=None):
+        """Get all policy-purpose-data element usage rules from the database.
+        
+        Args:
+            policy_id (int, optional): The ID of the policy to filter by. Defaults to None.
+            purpose_id (int, optional): The ID of the purpose to filter by. Defaults to None.
+            data_element_id (int, optional): The ID of the data element to filter by. Defaults to None.
+            
+        Returns:
+            list: A list of dictionaries containing policy-purpose-data element usage rule information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT ppdu.policy_id, p.name as policy_name, ppdu.purpose_id, pu.name as purpose_name,
+                       ppdu.data_element_id, de.name as data_element_name, ppdu.operation, ppdu.allowed, ppdu.restrictions
+                FROM policy_purpose_data_usage ppdu
+                JOIN policy p ON ppdu.policy_id = p.id
+                JOIN purpose pu ON ppdu.purpose_id = pu.id
+                JOIN data_element de ON ppdu.data_element_id = de.id
+            """
+            
+            params = []
+            where_clauses = []
+            
+            if policy_id:
+                where_clauses.append("ppdu.policy_id = %s")
+                params.append(policy_id)
+            
+            if purpose_id:
+                where_clauses.append("ppdu.purpose_id = %s")
+                params.append(purpose_id)
+            
+            if data_element_id:
+                where_clauses.append("ppdu.data_element_id = %s")
+                params.append(data_element_id)
+            
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            cursor.execute(query, params)
+            
+            rules = []
+            for row in cursor.fetchall():
+                rules.append({
+                    "policy_id": row[0],
+                    "policy_name": row[1],
+                    "purpose_id": row[2],
+                    "purpose_name": row[3],
+                    "data_element_id": row[4],
+                    "data_element_name": row[5],
+                    "operation": row[6],
+                    "allowed": row[7],
+                    "restrictions": row[8]
+                })
+            return rules
+        except Exception as e:
+            print(f"Error getting policy-purpose-data element usage rules: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def seed_policy_purposes(self):
+        """Seed the database with initial policy-purpose data."""
+        # Get policy and purpose IDs
+        cursor = self.connection.cursor()
+        try:
+            # Get policies
+            cursor.execute("SELECT id, name FROM policy;")
+            policies = {row[1]: row[0] for row in cursor.fetchall()}
+            
+            # Get purposes
+            cursor.execute("SELECT id, name FROM purpose;")
+            purposes = {row[1]: row[0] for row in cursor.fetchall()}
+            
+            # Define policy-purpose relationships
+            relationships = [
+                ("Data Access Control Policy", "Customer Support"),
+                ("Data Access Control Policy", "Fraud Detection"),
+                ("Data Access Control Policy", "Marketing Campaigns"),
+                ("Data Access Control Policy", "Product Analytics"),
+                ("Data Access Control Policy", "User Authentication"),
+                ("Data Access Control Policy", "Regulatory Compliance"),
+                ("Data Access Control Policy", "Payment Processing"),
+                ("Data Access Control Policy", "Service Delivery"),
+                ("Data Access Control Policy", "Research and Development"),
+                ("Data Access Control Policy", "Employee Management")
+            ]
+            
+            for policy_name, purpose_name in relationships:
+                policy_id = policies.get(policy_name)
+                purpose_id = purposes.get(purpose_name)
+                
+                if policy_id and purpose_id:
+                    cursor.execute("SELECT 1 FROM policy_purpose WHERE policy_id = %s AND purpose_id = %s;", (policy_id, purpose_id))
+                    if not cursor.fetchone():
+                        cursor.execute(
+                            "INSERT INTO policy_purpose (policy_id, purpose_id) VALUES (%s, %s);",
+                            (policy_id, purpose_id)
+                        )
+            
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding policy-purpose relationships: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
 

@@ -2,14 +2,18 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS policy_purpose_data_usage;
+DROP TABLE IF EXISTS policy_purpose_data_element;
+DROP TABLE IF EXISTS policy_purpose;
+DROP TABLE IF EXISTS policy_purpose_data_element;
+DROP TABLE IF EXISTS policy_purpose_data_usage;
 DROP TABLE IF EXISTS data_subject_right_exemptions;
 DROP TABLE IF EXISTS data_subject_right_implementation_steps;
 DROP TABLE IF EXISTS legal_basis_requirements;
 DROP TABLE IF EXISTS law_purpose_category_legal_basis;
 DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
 DROP TABLE IF EXISTS law_transfer;
-DROP TABLE IF EXISTS law_context_data_subject_type_data_category_sensitivity;
-DROP TABLE IF EXISTS context_data_subject_type_data_category_sensitivity;
+
 DROP TABLE IF EXISTS data_subject_type_data_element_sensitivity;
 DROP TABLE IF EXISTS data_subject_type_data_category_sensitivity;
 DROP TABLE IF EXISTS law_data_subject_type_data_category_sensitivity;
@@ -18,13 +22,9 @@ DROP TABLE IF EXISTS data_category_data_element;
 DROP TABLE IF EXISTS law_incident_breach_guidance;
 DROP TABLE IF EXISTS law_legal_basis;
 DROP TABLE IF EXISTS law_jurisdiction;
-DROP TABLE IF EXISTS policy_data_domain;
-DROP TABLE IF EXISTS policy_dataset;
-DROP TABLE IF EXISTS dataset;
 DROP TABLE IF EXISTS policy;
-DROP TABLE IF EXISTS data_domain;
 DROP TABLE IF EXISTS asset;
-DROP TABLE IF EXISTS context;
+
 DROP TABLE IF EXISTS sensitivity;
 DROP TABLE IF EXISTS data_category;
 DROP TABLE IF EXISTS data_subject_type;
@@ -112,13 +112,7 @@ CREATE TABLE IF NOT EXISTS `breach_type` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Context table
-CREATE TABLE IF NOT EXISTS `context` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+
 
 -- =============================================
 -- REGULATORY METADATA TABLES
@@ -218,35 +212,9 @@ CREATE TABLE IF NOT EXISTS `data_subject_type_data_element_sensitivity` (
     FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
 );
 
--- Create Law Context Data Subject Type Data Category Sensitivity table
-CREATE TABLE IF NOT EXISTS `law_context_data_subject_type_data_category_sensitivity` (
-    `law_id` INT NOT NULL,
-    `context_id` INT NOT NULL,
-    `data_subject_type_id` INT NOT NULL,
-    `data_category_id` INT NOT NULL,
-    `sensitivity_id` INT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`law_id`, `context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
-    FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
-);
 
--- Create Context Data Subject Type Data Category Sensitivity table
-CREATE TABLE IF NOT EXISTS `context_data_subject_type_data_category_sensitivity` (
-    `context_id` INT NOT NULL,
-    `data_subject_type_id` INT NOT NULL,
-    `data_category_id` INT NOT NULL,
-    `sensitivity_id` INT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`),
-    FOREIGN KEY (`context_id`) REFERENCES `context`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_subject_type_id`) REFERENCES `data_subject_type`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_category_id`) REFERENCES `data_category`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
-);
+
+
 
 -- Create Law Transfer table
 CREATE TABLE IF NOT EXISTS `law_transfer` (
@@ -389,6 +357,7 @@ INSERT INTO `legal_basis_requirements` (`legal_basis_id`, `requirement`) VALUES
 
 -- Seed Data Element data
 INSERT INTO `data_element` (`name`, `description`) VALUES
+('Full Name', 'An individual\'s complete name including first, middle, and last name.'),
 ('Name', 'An individual\'s first name, last name, or full name.'),
 ('Email Address', 'An individual\'s email address used for electronic communication.'),
 ('Phone Number', 'An individual\'s telephone number used for voice communication.'),
@@ -398,7 +367,10 @@ INSERT INTO `data_element` (`name`, `description`) VALUES
 ('Social Security Number', 'A unique identifier assigned to an individual for tax and identification purposes in the United States.'),
 ('Credit Card Number', 'A unique number assigned to a credit card for payment processing.'),
 ('Date of Birth', 'An individual\'s date of birth.'),
-('Biometric Data', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.');
+('Biometric Data', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
+('Customer ID', 'A unique identifier assigned to a customer within an organization\'s systems.'),
+('Purchase History', 'Records of past purchases made by a customer.'),
+('Bank Account Number', 'A unique identifier for a customer\'s bank account.');
 
 -- Seed Data Subject Type data
 INSERT INTO `data_subject_type` (`name`, `description`) VALUES
@@ -477,15 +449,7 @@ INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
 ('Software Supply Chain Attack', 'Compromising software updates or components to distribute malware to target organizations, as seen in the SolarWinds attack.', 'Supply Chain Breach'),
 ('Hardware Supply Chain Attack', 'Tampering with hardware components during manufacturing or distribution to introduce vulnerabilities or backdoors.', 'Supply Chain Breach');
 
--- Seed Context data
-INSERT INTO `context` (`name`, `description`) VALUES
-('Marketing', 'Processing personal data for marketing purposes, such as sending promotional emails or targeted advertising.'),
-('Customer Service', 'Processing personal data to provide customer service, such as responding to inquiries or resolving complaints.'),
-('Human Resources', 'Processing personal data for human resources purposes, such as payroll, benefits administration, or performance management.'),
-('Finance', 'Processing personal data for financial purposes, such as billing, accounting, or tax compliance.'),
-('Legal', 'Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance.'),
-('IT Security', 'Processing personal data for IT security purposes, such as access control, threat detection, or incident response.'),
-('Research', 'Processing personal data for research purposes, such as market research, scientific research, or product development.');
+
 
 -- =============================================
 -- INVENTORY TABLES
@@ -499,56 +463,6 @@ CREATE TABLE IF NOT EXISTS `asset` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Data Domain table
-CREATE TABLE IF NOT EXISTS `data_domain` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Policy table
-CREATE TABLE IF NOT EXISTS `policy` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `policy_type` VARCHAR(100),
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Dataset table
-CREATE TABLE IF NOT EXISTS `dataset` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `asset_id` INT NOT NULL,
-    `source_system` VARCHAR(255),
-    `data_domain_id` INT,
-    `description` TEXT,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_domain_id`) REFERENCES `data_domain`(`id`) ON DELETE SET NULL
-);
-
--- Create Policy-Dataset relationship table
-CREATE TABLE IF NOT EXISTS `policy_dataset` (
-    `policy_id` INT NOT NULL,
-    `dataset_id` INT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`policy_id`, `dataset_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`dataset_id`) REFERENCES `dataset`(`id`) ON DELETE CASCADE
-);
-
--- Create Policy-Data Domain relationship table
-CREATE TABLE IF NOT EXISTS `policy_data_domain` (
-    `policy_id` INT NOT NULL,
-    `data_domain_id` INT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`policy_id`, `data_domain_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_domain_id`) REFERENCES `data_domain`(`id`) ON DELETE CASCADE
-);
-
 -- Seed Asset data
 INSERT INTO `asset` (`name`, `description`) VALUES
 ('CRM System', 'Customer Relationship Management system containing customer data and interactions'),
@@ -556,69 +470,6 @@ INSERT INTO `asset` (`name`, `description`) VALUES
 ('HR Portal', 'Human Resources portal for employee data management'),
 ('Marketing Platform', 'Platform for managing marketing campaigns and customer engagement'),
 ('Financial Database', 'Database containing financial records and transactions');
-
--- Seed Data Domain data
-INSERT INTO `data_domain` (`name`, `description`) VALUES
-('Customer Data', 'Data related to customers and their interactions'),
-('Employee Data', 'Data related to employees and HR processes'),
-('Financial Data', 'Data related to financial transactions and records'),
-('Marketing Data', 'Data related to marketing campaigns and analytics'),
-('Operational Data', 'Data related to business operations and processes');
-
--- Seed Policy data
-INSERT INTO `policy` (`name`, `description`, `policy_type`) VALUES
-('Data Retention', 'Policy governing how long data should be retained', 'Retention'),
-('Data Access Control', 'Policy governing who can access specific data', 'Access Control'),
-('Data Encryption', 'Policy governing encryption requirements for data', 'Security'),
-('Data Backup', 'Policy governing backup requirements for data', 'Backup'),
-('Data Quality', 'Policy governing data quality standards', 'Quality'),
-('Data Classification', 'Policy governing classification of data sensitivity', 'Classification'),
-('Data Sharing', 'Policy governing how data can be shared with third parties', 'Sharing');
-
--- Seed Dataset data
-INSERT INTO `dataset` (`name`, `asset_id`, `source_system`, `data_domain_id`, `description`) VALUES
-('Customer Profiles', 1, 'Salesforce', 1, 'Core customer profile information'),
-('Customer Interactions', 1, 'Salesforce', 1, 'Records of customer interactions and support tickets'),
-('Employee Records', 3, 'Workday', 2, 'Core employee records and personal information'),
-('Payroll Data', 3, 'Workday', 3, 'Employee payroll and compensation data'),
-('Financial Transactions', 5, 'Oracle', 3, 'Records of financial transactions'),
-('Marketing Campaigns', 4, 'HubSpot', 4, 'Marketing campaign data and metrics'),
-('Customer Segmentation', 4, 'HubSpot', 4, 'Customer segmentation data for targeted marketing'),
-('Inventory Data', 2, 'SAP', 5, 'Inventory and supply chain data'),
-('Sales Data', 2, 'SAP', 3, 'Sales records and revenue data'),
-('Customer Analytics', 4, 'Tableau', 1, 'Customer behavior analytics and insights');
-
--- Seed Policy-Dataset relationships
-INSERT INTO `policy_dataset` (`policy_id`, `dataset_id`) VALUES
-(1, 1), -- Data Retention -> Customer Profiles
-(2, 1), -- Data Access Control -> Customer Profiles
-(3, 1), -- Data Encryption -> Customer Profiles
-(1, 3), -- Data Retention -> Employee Records
-(2, 3), -- Data Access Control -> Employee Records
-(3, 3), -- Data Encryption -> Employee Records
-(1, 5), -- Data Retention -> Financial Transactions
-(4, 5), -- Data Backup -> Financial Transactions
-(6, 5), -- Data Classification -> Financial Transactions
-(5, 6), -- Data Quality -> Marketing Campaigns
-(7, 6), -- Data Sharing -> Marketing Campaigns
-(4, 8), -- Data Backup -> Inventory Data
-(5, 8); -- Data Quality -> Inventory Data
-
--- Seed Policy-Data Domain relationships
-INSERT INTO `policy_data_domain` (`policy_id`, `data_domain_id`) VALUES
-(1, 1), -- Data Retention -> Customer Data
-(2, 1), -- Data Access Control -> Customer Data
-(7, 1), -- Data Sharing -> Customer Data
-(1, 2), -- Data Retention -> Employee Data
-(2, 2), -- Data Access Control -> Employee Data
-(3, 2), -- Data Encryption -> Employee Data
-(1, 3), -- Data Retention -> Financial Data
-(4, 3), -- Data Backup -> Financial Data
-(6, 3), -- Data Classification -> Financial Data
-(5, 4), -- Data Quality -> Marketing Data
-(7, 4), -- Data Sharing -> Marketing Data
-(4, 5), -- Data Backup -> Operational Data
-(5, 5); -- Data Quality -> Operational Data
 
 -- =============================================
 -- SEED REGULATORY METADATA
@@ -756,30 +607,7 @@ WHERE
     (dst.name = 'Patient' AND de.name = 'Biometric Data' AND s.name = 'Special Category') OR
     (dst.name = 'Website Visitor' AND de.name = 'IP Address' AND s.name = 'Internal');
 
--- Seed Law Context Data Subject Type Data Category Sensitivity relationships
-INSERT INTO `law_context_data_subject_type_data_category_sensitivity` (`law_id`, `context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`)
-SELECT l.id, c.id, dst.id, dc.id, s.id
-FROM `law` l, `context` c, `data_subject_type` dst, `data_category` dc, `sensitivity` s
-WHERE 
-    (l.name = 'GDPR' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (l.name = 'GDPR' AND c.name = 'Customer Service' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (l.name = 'GDPR' AND c.name = 'Human Resources' AND dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
-    (l.name = 'GDPR' AND c.name = 'Finance' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
-    (l.name = 'CCPA' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (l.name = 'LGPD' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (l.name = 'PIPEDA' AND c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal');
 
--- Seed Context Data Subject Type Data Category Sensitivity relationships
-INSERT INTO `context_data_subject_type_data_category_sensitivity` (`context_id`, `data_subject_type_id`, `data_category_id`, `sensitivity_id`)
-SELECT c.id, dst.id, dc.id, s.id
-FROM `context` c, `data_subject_type` dst, `data_category` dc, `sensitivity` s
-WHERE 
-    (c.name = 'Marketing' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (c.name = 'Customer Service' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (c.name = 'Human Resources' AND dst.name = 'Employee' AND dc.name = 'Employment Information' AND s.name = 'Confidential') OR
-    (c.name = 'Finance' AND dst.name = 'Customer' AND dc.name = 'Financial Information' AND s.name = 'Restricted') OR
-    (c.name = 'IT Security' AND dst.name = 'Employee' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal') OR
-    (c.name = 'Research' AND dst.name = 'Customer' AND dc.name = 'Personal Identifiers' AND s.name = 'Internal');
 
 -- Seed Law Transfer data
 INSERT INTO `law_transfer` (`law_id`, `adequacy_countries`, `transfer_mechanisms`, `additional_requirements`)
@@ -965,4 +793,165 @@ INSERT INTO `data_subject_right_exemptions` (`law_id`, `right_type`, `exemption`
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Exercise free speech or ensure another consumer\'s right to exercise free speech'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Comply with legal obligations');
 
+-- =============================================
+-- POLICY INFERENCE API TABLES
+-- =============================================
 
+-- Create Policy table
+CREATE TABLE IF NOT EXISTS `policy` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `policy_type` VARCHAR(100),
+    `status` VARCHAR(50),
+    `effective_date` DATE,
+    `expiration_date` DATE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Purpose table
+CREATE TABLE IF NOT EXISTS `purpose` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `purpose_category_id` INT,
+    `risk_level` VARCHAR(50),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
+);
+
+-- Create Policy Purpose table
+CREATE TABLE IF NOT EXISTS `policy_purpose` (
+    `policy_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    PRIMARY KEY (`policy_id`, `purpose_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
+);
+
+-- Create Policy Purpose Data Element table
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
+    `policy_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `access_allowed` BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
+-- Create Policy Purpose Data Usage table
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
+    `policy_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `operation` VARCHAR(50) NOT NULL,
+    `allowed` BOOLEAN NOT NULL DEFAULT FALSE,
+    `restrictions` TEXT,
+    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`, `operation`),
+    FOREIGN KEY (`policy_id`, `purpose_id`, `data_element_id`) 
+        REFERENCES `policy_purpose_data_element`(`policy_id`, `purpose_id`, `data_element_id`) ON DELETE CASCADE
+);
+
+-- Insert policies
+INSERT INTO policy (name, description, policy_type, status, effective_date) VALUES
+('Data Access Control Policy', 'Defines rules for accessing data based on purpose limitation principles', 'Access Control', 'Active', '2025-01-01'),
+('Data Retention Policy', 'Defines how long data should be retained based on purpose and legal requirements', 'Retention', 'Active', '2025-01-01'),
+('Data Sharing Policy', 'Defines rules for sharing data with third parties', 'Sharing', 'Active', '2025-01-01'),
+('Data Minimization Policy', 'Ensures only necessary data is collected and processed', 'Collection', 'Active', '2025-01-01'),
+('Data Security Policy', 'Defines security controls for protecting data', 'Security', 'Active', '2025-01-01');
+
+-- Insert purposes (after purpose categories are created)
+INSERT INTO purpose (name, description, purpose_category_id, risk_level) VALUES
+('Customer Support', 'Providing assistance and support to customers', (SELECT id FROM purpose_category WHERE name = 'Customer Service'), 'Low'),
+('Fraud Detection', 'Identifying and preventing fraudulent activities', (SELECT id FROM purpose_category WHERE name = 'Security'), 'Medium'),
+('Marketing Campaigns', 'Promoting products and services to customers', (SELECT id FROM purpose_category WHERE name = 'Marketing'), 'Medium'),
+('Product Analytics', 'Analyzing product usage for improvement', (SELECT id FROM purpose_category WHERE name = 'Analytics'), 'Medium'),
+('User Authentication', 'Verifying user identity for access control', (SELECT id FROM purpose_category WHERE name = 'Security'), 'High'),
+('Regulatory Compliance', 'Meeting legal and regulatory requirements', (SELECT id FROM purpose_category WHERE name = 'Legal'), 'High'),
+('Payment Processing', 'Processing financial transactions', (SELECT id FROM purpose_category WHERE name = 'Financial'), 'High'),
+('Service Delivery', 'Providing core services to users', (SELECT id FROM purpose_category WHERE name = 'Operations'), 'Medium'),
+('Research and Development', 'Developing new products and features', (SELECT id FROM purpose_category WHERE name = 'Product Development'), 'Medium'),
+('Employee Management', 'Managing employee data and performance', (SELECT id FROM purpose_category WHERE name = 'HR'), 'Medium');
+
+-- Insert policy-purpose relationships
+INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Regulatory Compliance')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'));
+
+-- Insert policy-purpose-data element relationships (examples for Customer Support purpose)
+INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), FALSE);
+
+-- Insert policy-purpose-data usage rules (examples for Customer Support purpose)
+INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, operation, allowed, restrictions) VALUES
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Limited to last 12 months of purchases'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for updating customer contact information'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), 'write', TRUE, 'Only for updating customer contact information'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'share', FALSE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), 'share', FALSE, NULL);

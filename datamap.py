@@ -304,7 +304,7 @@ class DataMap:
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
-            "Data Subject Types", "Data Categories", "Context", "Sensitivity", "Purpose Categories", "Breach Types"
+            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types"
         ])
         
         # Law tab
@@ -454,33 +454,10 @@ class DataMap:
             else:
                 st.warning("No data available in the database.")
         
-        # Context tab
-        with tabs[6]:
-            st.subheader("Context")
-            st.markdown("""
-            <div class="card">
-                <p>Context refers to the specific circumstances or purposes for which personal data is collected and processed. 
-                Under most data protection laws, organizations must clearly state the context in which they process personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get context data from repository
-            contexts = self.glossary_repository.get_contexts()
-            if contexts:
-                context_data = {
-                    "Context": [],
-                    "Description": []
-                }
-                for ctx in contexts:
-                    context_data["Context"].append(ctx["name"])
-                    context_data["Description"].append(ctx["description"])
-                
-                st.dataframe(pd.DataFrame(context_data))
-            else:
-                st.warning("No data available in the database.")
+
         
         # Sensitivity tab
-        with tabs[7]:
+        with tabs[6]:
             st.subheader("Sensitivity")
             st.markdown("""
             <div class="card">
@@ -505,7 +482,7 @@ class DataMap:
                 st.warning("No data available in the database.")
         
         # Purpose Categories tab
-        with tabs[8]:
+        with tabs[7]:
             st.subheader("Purpose Categories")
             st.markdown("""
             <div class="card">
@@ -530,7 +507,7 @@ class DataMap:
                 st.warning("No data available in the database.")
         
         # Breach Types tab
-        with tabs[9]:
+        with tabs[8]:
             st.subheader("Breach Types")
             st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
                 <p>This section provides information about different types of data breaches that can affect organizations.</p>
@@ -568,6 +545,10 @@ class DataMap:
                     st.dataframe(pd.DataFrame(breach_type_data))
             else:
                 st.warning("No data available in the database.")
+                
+
+        
+
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
@@ -597,21 +578,23 @@ class DataMap:
             "Law Data Subject Type Data Category Sensitivity",
             "Data Subject Type Data Category Sensitivity",
             "Data Subject Type Data Element Sensitivity",
-            "Law Context Data Subject Type Data Category Sensitivity",
-            "Context Data Subject Type Data Category Sensitivity",
             "Law Purpose Category Legal Basis",
-            "Legal Basis Requirements"
+            "Legal Basis Requirements",
+            "Policy Purpose",
+            "Policy Purpose Data Element",
+            "Policy Purpose Data Usage"
         ]
         
         # Define which tabs are used by each inference API
         inference_api_mappings = {
             "All": list(range(len(all_tab_names))),  # All tabs
             "Law Inference": [0],  # Law Jurisdiction tab
-            "Legal Basis Inference": [1, 12, 13],  # Law Legal Basis tab, Law Purpose Category Legal Basis, Legal Basis Requirements
+            "Legal Basis Inference": [1, 10, 11],  # Law Legal Basis tab, Law Purpose Category Legal Basis, Legal Basis Requirements
             "Breach Notification Inference": [2],  # Law Incident Breach Notification tab
             "Transfer Mechanism Inference": [3],  # Law Transfer tab
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
-            "Data Sensitivity Inference": [5, 6, 7, 8, 9, 10, 11]  # Various sensitivity-related tabs
+            "Data Sensitivity Inference": [5, 6, 7, 8, 9],  # Various sensitivity-related tabs
+            "Policy Inference": [12, 13, 14]  # Policy Purpose, Policy Purpose Data Element, Policy Purpose Data Usage
         }
         
         # Create a filter for inference APIs
@@ -727,6 +710,27 @@ class DataMap:
                     <li><strong>Context Sensitivity</strong>: Adjusts sensitivity based on processing context (e.g., healthcare vs. marketing).</li>
                 </ul>
                 <p>The system considers multiple factors to determine data sensitivity, which then influences other decisions like legal basis selection, security requirements, and risk assessments.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Policy Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Policy Inference Works</h4>
+                <p>The Policy Inference API uses purpose limitation principles to determine whether access to data is permitted based on organizational policies:</p>
+                <ul>
+                    <li><strong>Policy Purpose</strong>: Maps policies to business purposes, establishing which purposes are governed by which policies.</li>
+                    <li><strong>Policy Purpose Data Element</strong>: Determines which data elements can be accessed for specific purpose-policy combinations.</li>
+                    <li><strong>Policy Purpose Data Usage</strong>: Defines how data can be used (read, write, share) for each purpose, with specific restrictions.</li>
+                </ul>
+                <p>When making an access governance determination, the system considers:</p>
+                <ul>
+                    <li>The business purpose for data access</li>
+                    <li>The specific data elements being requested</li>
+                    <li>The type of operation (read, write, share)</li>
+                    <li>Any context-specific restrictions</li>
+                    <li>Data sensitivity levels</li>
+                </ul>
+                <p>The system helps organizations enforce purpose-based access control and ensures data is only used for approved purposes in compliance with privacy regulations and internal policies.</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -1288,147 +1292,10 @@ class DataMap:
                     else:
                         st.warning("No data available in the database.")
             
-                # Law Context Data Subject Type Data Category Sensitivity tab
-                elif tab_idx == 10:
-                    st.markdown("""
-                    <div class="card">
-                        <h3>Law Context Data Subject Type Data Category Sensitivity</h3>
-                        <p>This section maps laws, processing contexts, data subject types, data categories, and their sensitivity levels, providing a comprehensive view of contextual data protection requirements.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-                    # Get mappings from repository
-                    mappings = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Law": [],
-                            "Context": [],
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Law"].append(mapping["law_name"])
-                            mapping_data["Context"].append(mapping["context_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                
-                        # Create a DataFrame
-                        df = pd.DataFrame(mapping_data)
-                
-                        # Add filters
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            laws = sorted(df["Law"].unique())
-                            selected_law = st.selectbox("Filter by Law", ["All"] + list(laws), key="law_ctx_dst_dc_sens_law_filter")
-                
-                        with col2:
-                            contexts = sorted(df["Context"].unique())
-                            selected_context = st.selectbox("Filter by Context", ["All"] + list(contexts), key="law_ctx_dst_dc_sens_context_filter")
-                
-                        col3, col4 = st.columns(2)
-                        with col3:
-                            subject_types = sorted(df["Data Subject Type"].unique())
-                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="law_ctx_dst_dc_sens_dst_filter")
-                
-                        with col4:
-                            categories = sorted(df["Data Category"].unique())
-                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="law_ctx_dst_dc_sens_category_filter")
-                
-                        col5, _ = st.columns(2)
-                        with col5:
-                            sensitivities = sorted(df["Sensitivity"].unique())
-                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="law_ctx_dst_dc_sens_sensitivity_filter")
-                
-                        # Apply filters
-                        filtered_df = df.copy()
-                        if selected_law != "All":
-                            filtered_df = filtered_df[filtered_df["Law"] == selected_law]
-                        if selected_context != "All":
-                            filtered_df = filtered_df[filtered_df["Context"] == selected_context]
-                        if selected_subject_type != "All":
-                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
-                        if selected_category != "All":
-                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
-                        if selected_sensitivity != "All":
-                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
-                
-                        # Sort by Law, Context, Data Subject Type, Data Category
-                        filtered_df = filtered_df.sort_values(by=["Law", "Context", "Data Subject Type", "Data Category"])
-                
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
-                    else:
-                        st.warning("No data available in the database.")
-        
-                # Context Data Subject Type Data Category Sensitivity tab
-                elif tab_idx == 11:
-                    st.markdown("""
-                    <div class="card">
-                        <h3>Context Data Subject Type Data Category Sensitivity</h3>
-                        <p>This section maps processing contexts, data subject types, data categories, and their sensitivity levels, independent of specific laws.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-                    # Get mappings from repository
-                    mappings = self.regulatory_metadata_repository.get_context_data_subject_type_data_category_sensitivities()
-                    if mappings:
-                        mapping_data = {
-                            "Context": [],
-                            "Data Subject Type": [],
-                            "Data Category": [],
-                            "Sensitivity": []
-                        }
-                        for mapping in mappings:
-                            mapping_data["Context"].append(mapping["context_name"])
-                            mapping_data["Data Subject Type"].append(mapping["data_subject_type_name"])
-                            mapping_data["Data Category"].append(mapping["data_category_name"])
-                            mapping_data["Sensitivity"].append(mapping["sensitivity_name"])
-                
-                        # Create a DataFrame
-                        df = pd.DataFrame(mapping_data)
-                
-                        # Add filters
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            contexts = sorted(df["Context"].unique())
-                            selected_context = st.selectbox("Filter by Context", ["All"] + list(contexts), key="ctx_dst_dc_sens_context_filter")
-                
-                        with col2:
-                            subject_types = sorted(df["Data Subject Type"].unique())
-                            selected_subject_type = st.selectbox("Filter by Data Subject Type", ["All"] + list(subject_types), key="ctx_dst_dc_sens_dst_filter")
-                
-                        col3, col4 = st.columns(2)
-                        with col3:
-                            categories = sorted(df["Data Category"].unique())
-                            selected_category = st.selectbox("Filter by Data Category", ["All"] + list(categories), key="ctx_dst_dc_sens_category_filter")
-                
-                        with col4:
-                            sensitivities = sorted(df["Sensitivity"].unique())
-                            selected_sensitivity = st.selectbox("Filter by Sensitivity", ["All"] + list(sensitivities), key="ctx_dst_dc_sens_sensitivity_filter")
-                
-                        # Apply filters
-                        filtered_df = df.copy()
-                        if selected_context != "All":
-                            filtered_df = filtered_df[filtered_df["Context"] == selected_context]
-                        if selected_subject_type != "All":
-                            filtered_df = filtered_df[filtered_df["Data Subject Type"] == selected_subject_type]
-                        if selected_category != "All":
-                            filtered_df = filtered_df[filtered_df["Data Category"] == selected_category]
-                        if selected_sensitivity != "All":
-                            filtered_df = filtered_df[filtered_df["Sensitivity"] == selected_sensitivity]
-                
-                        # Sort by Context, Data Subject Type, Data Category
-                        filtered_df = filtered_df.sort_values(by=["Context", "Data Subject Type", "Data Category"])
-                
-                        # Display the filtered data
-                        st.dataframe(filtered_df)
-                    else:
-                        st.warning("No data available in the database.")
+
             
                 # Law Purpose Category Legal Basis tab
-                elif tab_idx == 12 :
+                elif tab_idx == 10 :
                     st.markdown("""
                     <div class="card">
                         <h3>Law Purpose Category Legal Basis</h3>
@@ -1483,7 +1350,7 @@ class DataMap:
                         st.warning("No Law Purpose Category Legal Basis mappings available in the database.")
                 
                 # Legal Basis Requirements tab
-                elif tab_idx == 13:
+                elif tab_idx == 11:
                     st.markdown("""
                     <div class="card">
                         <h3>Legal Basis Requirements</h3>
@@ -1521,18 +1388,193 @@ class DataMap:
                         st.dataframe(filtered_df)
                     else:
                         st.warning("No Legal Basis Requirements available in the database.")
+                
+                # Policy Purpose tab
+                elif tab_idx == 12:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Policy to Purpose Mapping</h3>
+                        <p>This section maps organizational policies to business purposes, establishing which purposes are governed by which policies.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get policy purpose data from repository
+                    policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
+                    if policy_purposes:
+                        policy_purpose_data = {
+                            "Policy": [],
+                            "Purpose": []
+                        }
+                        for pp in policy_purposes:
+                            policy_purpose_data["Policy"].append(pp["policy_name"])
+                            policy_purpose_data["Purpose"].append(pp["purpose_name"])
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(policy_purpose_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            policies = sorted(df["Policy"].unique())
+                            selected_policy = st.selectbox("Filter by Policy", ["All"] + list(policies), key="policy_purpose_policy_filter")
+                        
+                        with col2:
+                            purposes = sorted(df["Purpose"].unique())
+                            selected_purpose = st.selectbox("Filter by Purpose", ["All"] + list(purposes), key="policy_purpose_purpose_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_policy != "All":
+                            filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                        if selected_purpose != "All":
+                            filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                        
+                        # Sort by Policy and Purpose
+                        filtered_df = filtered_df.sort_values(by=["Policy", "Purpose"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No Policy Purpose mappings available in the database.")
+                
+                # Policy Purpose Data Element tab
+                elif tab_idx == 13:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Policy Purpose Data Element Mapping</h3>
+                        <p>This section defines which data elements can be accessed for specific policy-purpose combinations, a key component of purpose-based access control.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get policy purpose data element data from repository
+                    policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements()
+                    if policy_purpose_data_elements:
+                        ppde_data = {
+                            "Policy": [],
+                            "Purpose": [],
+                            "Data Element": [],
+                            "Access Allowed": []
+                        }
+                        for ppde in policy_purpose_data_elements:
+                            ppde_data["Policy"].append(ppde["policy_name"])
+                            ppde_data["Purpose"].append(ppde["purpose_name"])
+                            ppde_data["Data Element"].append(ppde["data_element_name"])
+                            ppde_data["Access Allowed"].append("Yes" if ppde["access_allowed"] else "No")
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(ppde_data)
+                        
+                        # Add filters
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            policies = sorted(df["Policy"].unique())
+                            selected_policy = st.selectbox("Filter by Policy", ["All"] + list(policies), key="ppde_policy_filter")
+                        
+                        with col2:
+                            purposes = sorted(df["Purpose"].unique())
+                            selected_purpose = st.selectbox("Filter by Purpose", ["All"] + list(purposes), key="ppde_purpose_filter")
+                            
+                        with col3:
+                            data_elements = sorted(df["Data Element"].unique())
+                            selected_data_element = st.selectbox("Filter by Data Element", ["All"] + list(data_elements), key="ppde_data_element_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_policy != "All":
+                            filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                        if selected_purpose != "All":
+                            filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                        if selected_data_element != "All":
+                            filtered_df = filtered_df[filtered_df["Data Element"] == selected_data_element]
+                        
+                        # Sort by Policy, Purpose, and Data Element
+                        filtered_df = filtered_df.sort_values(by=["Policy", "Purpose", "Data Element"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No Policy Purpose Data Element mappings available in the database.")
+                
+                # Policy Purpose Data Usage tab
+                elif tab_idx == 14:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Policy Purpose Data Usage Mapping</h3>
+                        <p>This section defines how data can be used (read, write, share) for each purpose-policy-data element combination, with specific restrictions.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get policy purpose data usage data from repository
+                    policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages()
+                    if policy_purpose_data_usages:
+                        ppdu_data = {
+                            "Policy": [],
+                            "Purpose": [],
+                            "Data Element": [],
+                            "Operation": [],
+                            "Allowed": [],
+                            "Restrictions": []
+                        }
+                        for ppdu in policy_purpose_data_usages:
+                            ppdu_data["Policy"].append(ppdu["policy_name"])
+                            ppdu_data["Purpose"].append(ppdu["purpose_name"])
+                            ppdu_data["Data Element"].append(ppdu["data_element_name"])
+                            ppdu_data["Operation"].append(ppdu["operation"])
+                            ppdu_data["Allowed"].append("Yes" if ppdu["allowed"] else "No")
+                            ppdu_data["Restrictions"].append(ppdu["restrictions"] if ppdu["restrictions"] else "")
+                        
+                        # Create a DataFrame
+                        df = pd.DataFrame(ppdu_data)
+                        
+                        # Add filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            policies = sorted(df["Policy"].unique())
+                            selected_policy = st.selectbox("Filter by Policy", ["All"] + list(policies), key="ppdu_policy_filter")
+                        
+                        with col2:
+                            purposes = sorted(df["Purpose"].unique())
+                            selected_purpose = st.selectbox("Filter by Purpose", ["All"] + list(purposes), key="ppdu_purpose_filter")
+                        
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            data_elements = sorted(df["Data Element"].unique())
+                            selected_data_element = st.selectbox("Filter by Data Element", ["All"] + list(data_elements), key="ppdu_data_element_filter")
+                            
+                        with col4:
+                            operations = sorted(df["Operation"].unique())
+                            selected_operation = st.selectbox("Filter by Operation", ["All"] + list(operations), key="ppdu_operation_filter")
+                        
+                        # Apply filters
+                        filtered_df = df.copy()
+                        if selected_policy != "All":
+                            filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                        if selected_purpose != "All":
+                            filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                        if selected_data_element != "All":
+                            filtered_df = filtered_df[filtered_df["Data Element"] == selected_data_element]
+                        if selected_operation != "All":
+                            filtered_df = filtered_df[filtered_df["Operation"] == selected_operation]
+                        
+                        # Sort by Policy, Purpose, Data Element, and Operation
+                        filtered_df = filtered_df.sort_values(by=["Policy", "Purpose", "Data Element", "Operation"])
+                        
+                        # Display the filtered data
+                        st.dataframe(filtered_df)
+                    else:
+                        st.warning("No Policy Purpose Data Usage mappings available in the database.")
             
     def inventory_section(self):
         """Handle the Inventory section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Inventory</div>", unsafe_allow_html=True)
         
         tabs = st.tabs([
-            "Assets", "Datasets", "Data Domains", "Policies", "Visualization"
+            "Assets"
         ])
         
-        # Assets tab
+        # Assets tab        
         with tabs[0]:
-            st.subheader("Assets Inventory")
+            st.subheader("Assets")
             st.markdown('''
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
                 <p>This section provides an inventory of data assets within the organization, including systems and applications that store or process data.</p>
@@ -1555,529 +1597,307 @@ class DataMap:
                     assets_data["Description"].append(asset["description"])
                 
                 st.dataframe(pd.DataFrame(assets_data))
-                
-                # Add expandable sections for each asset to show its datasets
-                st.markdown("### Asset Details")
-                for asset in assets:
-                    with st.expander(f"{asset['name']}"):
-                        datasets = self.inventory_repository.get_datasets_by_asset_id(asset["id"])
-                        if datasets:
-                            datasets_data = {
-                                "Dataset": [],
-                                "Source System": [],
-                                "Data Domain": [],
-                                "Description": []
-                            }
-                            for dataset in datasets:
-                                datasets_data["Dataset"].append(dataset["name"])
-                                datasets_data["Source System"].append(dataset["source_system"])
-                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
-                                datasets_data["Description"].append(dataset["description"])
-                            
-                            st.dataframe(pd.DataFrame(datasets_data))
-                        else:
-                            st.info("No datasets available for this asset.")
             else:
                 st.warning("No data available in the database.")
         
-        # Datasets tab
-        with tabs[1]:
-            st.subheader("Datasets Inventory")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an inventory of datasets within the organization, organized by the assets they belong to and the data domains they are part of.</p>
-                <ul>
-                    <li>Datasets from various source systems</li>
-                    <li>Relationships between datasets, assets, and data domains</li>
-                    <li>Policies applied to each dataset</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get datasets data from repository
-            datasets = self.inventory_repository.get_datasets()
-            if datasets:
-                datasets_data = {
-                    "Dataset": [],
-                    "Asset": [],
-                    "Source System": [],
-                    "Data Domain": [],
-                    "Description": []
-                }
-                for dataset in datasets:
-                    datasets_data["Dataset"].append(dataset["name"])
-                    datasets_data["Asset"].append(dataset["asset_name"])
-                    datasets_data["Source System"].append(dataset["source_system"])
-                    datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
-                    datasets_data["Description"].append(dataset["description"])
-                
-                st.dataframe(pd.DataFrame(datasets_data))
-                
-                # Add expandable sections for each dataset to show its policies
-                st.markdown("### Dataset Policies")
-                for dataset in datasets:
-                    with st.expander(f"{dataset['name']} ({dataset['asset_name']})"):
-                        policies = self.inventory_repository.get_policies_for_dataset(dataset["id"])
-                        if policies:
-                            policies_data = {
-                                "Policy": [],
-                                "Type": [],
-                                "Description": []
-                            }
-                            for policy in policies:
-                                policies_data["Policy"].append(policy["name"])
-                                policies_data["Type"].append(policy["policy_type"])
-                                policies_data["Description"].append(policy["description"])
-                            
-                            st.dataframe(pd.DataFrame(policies_data))
-                        else:
-                            st.info("No policies applied to this dataset.")
-            else:
-                st.warning("No data available in the database.")
+
+
+    def purposes_page(self):
+        """Display the Purposes page with all purposes from the repository."""
+        st.markdown("<div class='page-header'><i class='fas fa-bullseye'></i> &nbsp;Purposes</div>", unsafe_allow_html=True)
         
-        # Data Domains tab
-        with tabs[2]:
-            st.subheader("Data Domains")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an overview of data domains, which are logical groupings of related datasets.</p>
-                <ul>
-                    <li>Organizational structure of data</li>
-                    <li>Logical groupings of related datasets</li>
-                    <li>Policies applied at the domain level</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This section provides an overview of business purposes for data processing activities.</p>
+            <ul>
+                <li>Business purposes define why data is collected and processed</li>
+                <li>Each purpose has an associated risk level</li>
+                <li>Purposes are used in policy compliance analysis</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
+        
+        # Get purposes from repository
+        purposes = self.glossary_repository.get_purposes()
+        
+        if purposes:
+            # Create a DataFrame for display
+            purposes_data = {
+                "Purpose": [],
+                "Category": [],
+                "Risk Level": [],
+                "Description": []
+            }
             
-            # Get data domains from repository
-            data_domains = self.inventory_repository.get_data_domains()
-            if data_domains:
-                data_domain_data = {
-                    "Data Domain": [],
-                    "Description": []
-                }
-                for domain in data_domains:
-                    data_domain_data["Data Domain"].append(domain["name"])
-                    data_domain_data["Description"].append(domain["description"])
-                
-                st.dataframe(pd.DataFrame(data_domain_data))
-                
-                # Add expandable sections for each data domain
-                st.markdown("### Data Domain Details")
-                for domain in data_domains:
-                    with st.expander(f"{domain['name']}"):
-                        # Show datasets in this domain
-                        datasets = self.inventory_repository.get_datasets_by_data_domain_id(domain["id"])
-                        if datasets:
-                            st.markdown("#### Datasets in this Domain")
-                            datasets_data = {
-                                "Dataset": [],
-                                "Asset": [],
-                                "Source System": [],
-                                "Description": []
-                            }
-                            for dataset in datasets:
-                                datasets_data["Dataset"].append(dataset["name"])
-                                datasets_data["Asset"].append(dataset["asset_name"])
-                                datasets_data["Source System"].append(dataset["source_system"])
-                                datasets_data["Description"].append(dataset["description"])
-                            
-                            st.dataframe(pd.DataFrame(datasets_data))
-                        else:
-                            st.info("No datasets in this domain.")
-                        
-                        # Show policies for this domain
-                        policies = self.inventory_repository.get_policies_for_data_domain(domain["id"])
-                        if policies:
-                            st.markdown("#### Policies Applied to this Domain")
-                            policies_data = {
-                                "Policy": [],
-                                "Type": [],
-                                "Description": []
-                            }
-                            for policy in policies:
-                                policies_data["Policy"].append(policy["name"])
-                                policies_data["Type"].append(policy["policy_type"])
-                                policies_data["Description"].append(policy["description"])
-                            
-                            st.dataframe(pd.DataFrame(policies_data))
-                        else:
-                            st.info("No policies applied to this domain.")
-            else:
-                st.warning("No data available in the database.")
+            for purpose in purposes:
+                purposes_data["Purpose"].append(purpose["name"])
+                purposes_data["Category"].append(purpose["category_name"] if purpose.get("category_name") else "N/A")
+                purposes_data["Risk Level"].append(purpose["risk_level"] if purpose.get("risk_level") else "N/A")
+                purposes_data["Description"].append(purpose["description"] if purpose.get("description") else "")
+            
+            st.dataframe(pd.DataFrame(purposes_data))
+        else:
+            st.warning("No purposes available in the database.")
+    
+    def policies_page(self):
+        """Display the Policies page with tabs for Policy Purpose, Policy Purpose Data Usage, and Policy Purpose Data Element."""
+        st.markdown("<div class='page-header'><i class='fas fa-clipboard-list'></i> &nbsp;Policies</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This section provides an overview of data policies that govern how data is managed, protected, and used within the organization.</p>
+            <ul>
+                <li>Policies define rules for data access and usage</li>
+                <li>Policy-purpose relationships establish what purposes are allowed for each policy</li>
+                <li>Data element rules specify what data can be accessed for each purpose</li>
+                <li>Usage rules define permitted operations (read, write, share) for each data element</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
+        
+        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage"])
         
         # Policies tab
-        with tabs[3]:
+        with tabs[0]:
             st.subheader("Policies")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an overview of data policies that govern how data is managed, protected, and used within the organization.</p>
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about organizational policies that govern data usage and access.</p>
                 <ul>
-                    <li>Data governance policies</li>
-                    <li>Data protection and security policies</li>
-                    <li>Data quality and retention policies</li>
-                    <li>Application of policies to datasets and domains</li>
+                    <li>Defines rules for accessing data based on purpose limitation principles</li>
+                    <li>Establishes guidelines for data protection and privacy</li>
+                    <li>Supports compliance with regulatory requirements</li>
                 </ul>
             </div>''', unsafe_allow_html=True)
             
-            # Get policies from repository
-            policies = self.inventory_repository.get_policies()
+            # Get policies data from repository
+            policies = self.glossary_repository.get_policies()
             if policies:
-                policies_data = {
+                policy_data = {
                     "Policy": [],
                     "Type": [],
+                    "Status": [],
                     "Description": []
                 }
                 for policy in policies:
-                    policies_data["Policy"].append(policy["name"])
-                    policies_data["Type"].append(policy["policy_type"])
-                    policies_data["Description"].append(policy["description"])
+                    policy_data["Policy"].append(policy["name"])
+                    policy_data["Type"].append(policy["policy_type"] if policy.get("policy_type") else "")
+                    policy_data["Status"].append(policy["status"] if policy.get("status") else "")
+                    policy_data["Description"].append(policy["description"] if policy.get("description") else "")
                 
-                st.dataframe(pd.DataFrame(policies_data))
-                
-                # Add expandable sections for each policy
-                st.markdown("### Policy Application")
-                for policy in policies:
-                    with st.expander(f"{policy['name']} ({policy['policy_type']})"):
-                        # Show datasets with this policy
-                        datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
-                        if datasets:
-                            st.markdown("#### Applied to Datasets")
-                            datasets_data = {
-                                "Dataset": [],
-                                "Asset": [],
-                                "Data Domain": []
-                            }
-                            for dataset in datasets:
-                                datasets_data["Dataset"].append(dataset["name"])
-                                datasets_data["Asset"].append(dataset["asset_name"])
-                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
-                            
-                            st.dataframe(pd.DataFrame(datasets_data))
-                        else:
-                            st.info("Not applied to any datasets.")
-                        
-                        # Show data domains with this policy
-                        domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
-                        if domains:
-                            st.markdown("#### Applied to Data Domains")
-                            domains_data = {
-                                "Data Domain": [],
-                                "Description": []
-                            }
-                            for domain in domains:
-                                domains_data["Data Domain"].append(domain["name"])
-                                domains_data["Description"].append(domain["description"])
-                            
-                            st.dataframe(pd.DataFrame(domains_data))
-                        else:
-                            st.info("Not applied to any data domains.")
+                st.dataframe(pd.DataFrame(policy_data))
             else:
                 st.warning("No data available in the database.")
         
-        # Visualization tab
-        with tabs[4]:
-            st.subheader("Data Inventory Visualization")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides a visual representation of the relationships between assets, datasets, data domains, and policies.</p>
-                <ul>
-                    <li>Interactive network graph showing data relationships</li>
-                    <li>Visual mapping of policies to datasets and domains</li>
-                    <li>Hierarchical view of data organization</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Create network visualization
-            assets = self.inventory_repository.get_assets()
-            datasets = self.inventory_repository.get_datasets()
-            data_domains = self.inventory_repository.get_data_domains()
-            policies = self.inventory_repository.get_policies()
-            
-            if assets and datasets and data_domains and policies:
-                # Create a network graph
-                net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="#000000")
-                
-                # First, add all nodes to the network
-                # Add nodes for assets (blue)
-                for asset in assets:
-                    net.add_node(f"asset_{asset['id']}", label=asset["name"], title=asset["description"], color="#3498db", shape="dot", size=25)
-                
-                # Add nodes for datasets (green)
-                for dataset in datasets:
-                    net.add_node(f"dataset_{dataset['id']}", label=dataset["name"], title=dataset["description"], color="#2ecc71", shape="dot", size=20)
-                
-                # Add nodes for data domains (orange)
-                for domain in data_domains:
-                    net.add_node(f"domain_{domain['id']}", label=domain["name"], title=domain["description"], color="#e67e22", shape="dot", size=25)
-                
-                # Add nodes for policies (red)
-                for policy in policies:
-                    net.add_node(f"policy_{policy['id']}", label=policy["name"], title=policy["description"], color="#e74c3c", shape="dot", size=15)
-                
-                # Now add all edges after all nodes have been created
-                # Connect datasets to assets
-                for dataset in datasets:
-                    net.add_edge(f"dataset_{dataset['id']}", f"asset_{dataset['asset_id']}", title="belongs to")
-                    # Connect dataset to its data domain if it has one
-                    if dataset["data_domain_id"]:
-                        # Make sure the domain exists in our data domains list
-                        domain_exists = any(domain["id"] == dataset["data_domain_id"] for domain in data_domains)
-                        if domain_exists:
-                            net.add_edge(f"dataset_{dataset['id']}", f"domain_{dataset['data_domain_id']}", title="part of domain")
-                
-                # Connect policies to datasets
-                for policy in policies:
-                    policy_datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
-                    for dataset in policy_datasets:
-                        # Make sure the dataset exists in our datasets list
-                        if any(d["id"] == dataset["id"] for d in datasets):
-                            net.add_edge(f"policy_{policy['id']}", f"dataset_{dataset['id']}", title="applies to")
-                    
-                    # Connect policies to data domains
-                    policy_domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
-                    for domain in policy_domains:
-                        # Make sure the domain exists in our data domains list
-                        if any(d["id"] == domain["id"] for d in data_domains):
-                            net.add_edge(f"policy_{policy['id']}", f"domain_{domain['id']}", title="applies to")
-                
-                # Set physics layout
-                net.barnes_hut(gravity=-80000, central_gravity=0.3, spring_length=200, spring_strength=0.05, damping=0.09)
-                
-                # Generate the HTML file
-                html_path = "network_graph.html"
-                net.save_graph(html_path)
-                
-                # Display the HTML file
-                with open(html_path, 'r') as f:
-                    html_string = f.read()
-                components.html(html_string, height=600)
-                
-                # Add legend
-                st.markdown('''
-                <div style="display: flex; justify-content: center; margin-top: 20px;">
-                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #3498db; border-radius: 50%; margin-right: 5px;"></span> Assets</div>
-                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #2ecc71; border-radius: 50%; margin-right: 5px;"></span> Datasets</div>
-                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #e67e22; border-radius: 50%; margin-right: 5px;"></span> Data Domains</div>
-                    <div style="margin: 0 15px;"><span style="display: inline-block; width: 15px; height: 15px; background-color: #e74c3c; border-radius: 50%; margin-right: 5px;"></span> Policies</div>
-                </div>
-                ''', unsafe_allow_html=True)
-                
-                # Instructions for using the visualization
-                st.markdown('''
-                <div style="margin-top: 20px; background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                    <h4>How to use this visualization:</h4>
-                    <ul>
-                        <li>Click and drag nodes to reposition them</li>
-                        <li>Scroll to zoom in and out</li>
-                        <li>Hover over nodes to see details</li>
-                        <li>Click on a node to focus on its connections</li>
-                    </ul>
-                </div>
-                ''', unsafe_allow_html=True)
-            else:
-                st.warning("Insufficient data to create visualization. Please ensure there are assets, datasets, data domains, and policies in the database.")
-            
-            # No form for adding new assets as per requirement
-        
-        # Datasets tab
+        # Policy Purpose tab
         with tabs[1]:
-            st.subheader("Datasets Inventory")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an inventory of datasets within the organization, organized by the assets they belong to and the data domains they are part of.</p>
-                <ul>
-                    <li>Datasets from various source systems</li>
-                    <li>Relationships between datasets, assets, and data domains</li>
-                    <li>Policies applied to each dataset</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
+            st.subheader("Policy Purpose Relationships")
+            st.markdown("This tab shows which business purposes are allowed under each policy.")
             
-            # Get datasets data from repository
-            datasets = self.inventory_repository.get_datasets()
-            if datasets:
-                datasets_data = {
-                    "Dataset": [],
-                    "Asset": [],
-                    "Source System": [],
-                    "Data Domain": [],
-                    "Description": []
-                }
-                for dataset in datasets:
-                    datasets_data["Dataset"].append(dataset["name"])
-                    datasets_data["Asset"].append(dataset["asset_name"])
-                    datasets_data["Source System"].append(dataset["source_system"])
-                    datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
-                    datasets_data["Description"].append(dataset["description"])
-                
-                st.dataframe(pd.DataFrame(datasets_data))
-                
-                # Add expandable sections for each dataset to show its policies
-                st.markdown("### Dataset Policies")
-                for dataset in datasets:
-                    with st.expander(f"{dataset['name']} ({dataset['asset_name']})"):
-                        policies = self.inventory_repository.get_policies_for_dataset(dataset["id"])
-                        if policies:
-                            policies_data = {
-                                "Policy": [],
-                                "Type": [],
-                                "Description": []
-                            }
-                            for policy in policies:
-                                policies_data["Policy"].append(policy["name"])
-                                policies_data["Type"].append(policy["policy_type"])
-                                policies_data["Description"].append(policy["description"])
-                            
-                            st.dataframe(pd.DataFrame(policies_data))
-                        else:
-                            st.info("No policies applied to this dataset.")
-            else:
-                st.warning("No datasets available in the database.")
+            # Get policy purposes from repository
+            policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
             
-            # No form for adding new datasets as per requirement
-        
-        # Data Domains tab
-        with tabs[2]:
-            st.subheader("Data Domains")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an overview of data domains, which are logical groupings of related datasets.</p>
-                <ul>
-                    <li>Organizational structure of data</li>
-                    <li>Logical groupings of related datasets</li>
-                    <li>Policies applied at the domain level</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get data domains from repository
-            data_domains = self.inventory_repository.get_data_domains()
-            if data_domains:
-                data_domain_data = {
-                    "Data Domain": [],
-                    "Description": []
-                }
-                for domain in data_domains:
-                    data_domain_data["Data Domain"].append(domain["name"])
-                    data_domain_data["Description"].append(domain["description"])
-                
-                st.dataframe(pd.DataFrame(data_domain_data))
-            
-            # Add expandable sections for each data domain
-            if data_domains:
-                st.markdown("### Data Domain Details")
-                for domain in data_domains:
-                    with st.expander(f"{domain['name']}"):
-                        # Show datasets in this domain
-                        datasets = self.inventory_repository.get_datasets_by_data_domain_id(domain["id"])
-                        if datasets:
-                            st.markdown("#### Datasets in this Domain")
-                            datasets_data = {
-                                "Dataset": [],
-                                "Asset": [],
-                                "Source System": [],
-                                "Description": []
-                            }
-                            for dataset in datasets:
-                                datasets_data["Dataset"].append(dataset["name"])
-                                datasets_data["Asset"].append(dataset["asset_name"])
-                                datasets_data["Source System"].append(dataset["source_system"])
-                                datasets_data["Description"].append(dataset["description"])
-                            
-                            st.dataframe(pd.DataFrame(datasets_data))
-                        else:
-                            st.info("No datasets in this domain.")
-                        
-                        # Show policies for this domain
-                        policies = self.inventory_repository.get_policies_for_data_domain(domain["id"])
-                        if policies:
-                            st.markdown("#### Policies Applied to this Domain")
-                            policies_data = {
-                                "Policy": [],
-                                "Type": [],
-                                "Description": []
-                            }
-                            for policy in policies:
-                                policies_data["Policy"].append(policy["name"])
-                                policies_data["Type"].append(policy["policy_type"])
-                                policies_data["Description"].append(policy["description"])
-                            
-                            st.dataframe(pd.DataFrame(policies_data))
-                        else:
-                            st.info("No policies applied to this domain.")
-            else:
-                st.warning("No data domains available in the database.")
-            
-            # No form for adding new data domains as per requirement
-        
-        # Policies tab
-        with tabs[3]:
-            st.subheader("Policies")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an overview of data policies that govern how data is managed, protected, and used within the organization.</p>
-                <ul>
-                    <li>Data governance policies</li>
-                    <li>Data protection and security policies</li>
-                    <li>Data quality and retention policies</li>
-                    <li>Application of policies to datasets and domains</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get policies from repository
-            policies = self.inventory_repository.get_policies()
-            if policies:
-                policies_data = {
+            if policy_purposes:
+                # Create a DataFrame for display
+                policy_purpose_data = {
                     "Policy": [],
-                    "Type": [],
-                    "Description": []
+                    "Purpose": []
                 }
-                for policy in policies:
-                    policies_data["Policy"].append(policy["name"])
-                    policies_data["Type"].append(policy["policy_type"])
-                    policies_data["Description"].append(policy["description"])
                 
-                st.dataframe(pd.DataFrame(policies_data))
-            
-            # Add expandable sections for each policy
-            if policies:
-                st.markdown("### Policy Application")
-                for policy in policies:
-                    with st.expander(f"{policy['name']} ({policy['policy_type']})"):
-                        # Show datasets with this policy
-                        datasets = self.inventory_repository.get_datasets_for_policy(policy["id"])
-                        if datasets:
-                            st.markdown("#### Applied to Datasets")
-                            datasets_data = {
-                                "Dataset": [],
-                                "Asset": [],
-                                "Data Domain": []
-                            }
-                            for dataset in datasets:
-                                datasets_data["Dataset"].append(dataset["name"])
-                                datasets_data["Asset"].append(dataset["asset_name"])
-                                datasets_data["Data Domain"].append(dataset["data_domain_name"] if dataset["data_domain_name"] else "N/A")
-                            
-                            st.dataframe(pd.DataFrame(datasets_data))
-                        else:
-                            st.info("Not applied to any datasets.")
-                        
-                        # Show data domains with this policy
-                        domains = self.inventory_repository.get_data_domains_for_policy(policy["id"])
-                        if domains:
-                            st.markdown("#### Applied to Data Domains")
-                            domains_data = {
-                                "Data Domain": [],
-                                "Description": []
-                            }
-                            for domain in domains:
-                                domains_data["Data Domain"].append(domain["name"])
-                                domains_data["Description"].append(domain["description"])
-                            
-                            st.dataframe(pd.DataFrame(domains_data))
-                        else:
-                            st.info("Not applied to any data domains.")
+                for relation in policy_purposes:
+                    policy_purpose_data["Policy"].append(relation["policy_name"])
+                    policy_purpose_data["Purpose"].append(relation["purpose_name"])
+                
+                st.dataframe(pd.DataFrame(policy_purpose_data))
             else:
-                st.warning("No policies available in the database.")
+                st.warning("No policy-purpose relationships available in the database.")
+        
+        # Policy Purpose Data Element tab
+        with tabs[2]:
+            st.subheader("Policy Purpose Data Element Relationships")
+            st.markdown("This tab shows which data elements are allowed for each policy-purpose combination.")
             
-            # No form for adding new policies as per requirement
+            # Get policy purpose data elements from repository
+            policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements()
+            
+            if policy_purpose_data_elements:
+                # Create a DataFrame for display
+                ppde_data = {
+                    "Policy": [],
+                    "Purpose": [],
+                    "Data Element": [],
+                    "Access Allowed": []
+                }
+                
+                for relation in policy_purpose_data_elements:
+                    ppde_data["Policy"].append(relation["policy_name"])
+                    ppde_data["Purpose"].append(relation["purpose_name"])
+                    ppde_data["Data Element"].append(relation["data_element_name"])
+                    ppde_data["Access Allowed"].append("Yes" if relation["access_allowed"] else "No")
+                
+                st.dataframe(pd.DataFrame(ppde_data))
+            else:
+                st.warning("No policy-purpose-data element relationships available in the database.")
+        
+        # Policy Purpose Data Usage tab
+        with tabs[3]:
+            st.subheader("Policy Purpose Data Usage Rules")
+            st.markdown("This tab shows the specific usage rules (read, write, share) for each policy-purpose-data element combination.")
+            
+            # Get policy purpose data usages from repository
+            policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages()
+            
+            if policy_purpose_data_usages:
+                # Create a DataFrame for display
+                ppdu_data = {
+                    "Policy": [],
+                    "Purpose": [],
+                    "Data Element": [],
+                    "Operation": [],
+                    "Allowed": [],
+                    "Restrictions": []
+                }
+                
+                for rule in policy_purpose_data_usages:
+                    ppdu_data["Policy"].append(rule["policy_name"])
+                    ppdu_data["Purpose"].append(rule["purpose_name"])
+                    ppdu_data["Data Element"].append(rule["data_element_name"])
+                    ppdu_data["Operation"].append(rule["operation"])
+                    ppdu_data["Allowed"].append("Yes" if rule["allowed"] else "No")
+                    ppdu_data["Restrictions"].append(rule["restrictions"] if rule["restrictions"] else "None")
+                
+                st.dataframe(pd.DataFrame(ppdu_data))
+            else:
+                st.warning("No policy-purpose-data usage rules available in the database.")
+    
+    def governance_page(self):
+        """Display the Governance page with the policy compliance analysis tool."""
+        st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Governance</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p><strong>Policy Compliance Analysis</strong> determines whether access to data is permitted based on purpose limitation principles and organizational policies.</p>
+            <p>This tool helps enforce purpose-based access control and ensures data is only used for approved purposes in compliance with privacy regulations.</p>
+            <br>
+            <ul>
+                <li>Enforces purpose limitation principles</li>
+                <li>Determines data access permissions based on business purpose</li>
+                <li>Applies policy-based restrictions on data usage</li>
+                <li>Provides clear decision rationale</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get purposes for dropdown selection
+            try:
+                purposes = self.glossary_repository.get_purposes()
+                purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+            except Exception as e:
+                st.warning(f"Error loading purposes: {e}")
+                purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+                
+            selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
+            
+            # Get data elements for multiselect
+            try:
+                data_elements = self.glossary_repository.get_data_elements()
+                data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+            except Exception as e:
+                st.warning(f"Error loading data elements: {e}")
+                data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+                
+            selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
+            
+            # Operation selection
+            operations = ["read", "write", "share"]
+            selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
+            
+            # Add a button to trigger inference with custom styling
+            st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button#policy_analysis_btn {
+                background-color: #3498db;
+                color: white;
+                border: 2px solid #3498db;
+                padding: 0.5rem 1rem;
+                font-weight: 600;
+                border-radius: 4px;
+                text-align: center;
+                margin: 1rem 0;
+                display: block;
+                width: 100%;
+            }
+            div[data-testid="stButton"] > button#policy_analysis_btn:hover {
+                background-color: #2980b9;
+                border-color: #2980b9;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "request", "label": "Access Request", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "purpose", "label": "Business Purpose", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "policy", "label": "Applicable Policy", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "data_elements", "label": "Data Elements", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "operation", "label": "Operation Type", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Policy Lookup", "color": "#1abc9c", "shape": "box", "size": 25,
+                 "title": {"html": """
+                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #1abc9c;'>
+                        <h3>Policy Compliance Lookup Process</h3>
+                        <p>This lookup process determines data access permissions by:</p>
+                        <ol>
+                            <li>Identifying the applicable <b>Access Control Policy</b></li>
+                            <li>Checking if the purpose is allowed under the policy</li>
+                            <li>Verifying if each data element is accessible for the purpose</li>
+                            <li>Confirming if the requested operation is permitted</li>
+                            <li>Applying any restrictions or conditions</li>
+                        </ol>
+                        <p>The algorithm uses the policy_purpose_data_usage table to determine specific access rules.</p>
+                    </div>
+                """}},
+                {"id": "decision", "label": "Access Decision", "color": "#e67e22", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "request", "target": "purpose", "label": "For"},
+                {"source": "request", "target": "data_elements", "label": "Requests"},
+                {"source": "request", "target": "operation", "label": "With"},
+                {"source": "purpose", "target": "policy", "label": "Governed by"},
+                {"source": "policy", "target": "lookup", "label": ""},
+                {"source": "data_elements", "target": "lookup", "label": ""},
+                {"source": "operation", "target": "lookup", "label": ""},
+                {"source": "lookup", "target": "decision", "label": "Results in"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Policy Compliance Decision Process", height=500)
+        
+        with col2:
+            st.subheader("Policy Compliance Analysis")
+            
+            if analyze_button:
+                if not selected_purpose or not selected_data_elements:
+                    st.warning("Please select both Purpose and at least one Data Element")
+                else:
+                    self._analyze_policy_compliance(
+                        selected_purpose, 
+                        selected_data_elements,
+                        selected_operation
+                    )
+            else:
+                st.markdown("""
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Policy compliance analysis will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
 
     def run(self):
         """Main function to run the Streamlit app."""
@@ -2133,13 +1953,30 @@ class DataMap:
             # Data Subject Rights Inference menu item
             if st.button("👤 Data Subject Rights Inference", key="dsr_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'DSR API'
+                
+
             
-            # Third section: Modules
-            st.markdown("<div class='sidebar-section-header'>Modules</div>", unsafe_allow_html=True)
+            # Third section: Data Use Governance
+            st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
+            
+            # Purposes menu item
+            if st.button("🎯 Purposes", key="purposes_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Purposes'
+            
+            # Policies menu item
+            if st.button("📋 Policies", key="policies_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policies'
+            
+            # Governance menu item
+            if st.button("⚖️ Governance", key="governance_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Governance'
+            
+            # Fourth section: Inventory
+            st.markdown("<div class='sidebar-section-header'>Inventory</div>", unsafe_allow_html=True)
             
             # Inventory menu item
-            if st.button("📊 Inventory", key="inventory_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Inventory'
+            if st.button("📊 Assets", key="inventory_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Assets'
 
             
             
@@ -2155,7 +1992,7 @@ class DataMap:
             self.regulatory_metadata_section()
         elif st.session_state['current_section'] == 'Decision Tree':
             self.decision_tree_section()
-        elif st.session_state['current_section'] == 'Inventory':
+        elif st.session_state['current_section'] == 'Assets':
             self.inventory_section()
         elif st.session_state['current_section'] == 'Law API':
             self.law_inference_api()
@@ -2169,6 +2006,12 @@ class DataMap:
             self.transfer_mechanism_api()
         elif st.session_state['current_section'] == 'DSR API':
             self.data_subject_rights_api()
+        elif st.session_state['current_section'] == 'Purposes':
+            self.purposes_page()
+        elif st.session_state['current_section'] == 'Policies':
+            self.policies_page()
+        elif st.session_state['current_section'] == 'Governance':
+            self.governance_page()
 
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.
@@ -2208,7 +2051,7 @@ class DataMap:
         with col2:
             show_data_elements = st.checkbox("Show Data Elements", value=True)
             show_data_categories = st.checkbox("Show Data Categories", value=True)
-            show_contexts = st.checkbox("Show Contexts", value=True)
+
 
         if not selected_law:
             return
@@ -2218,13 +2061,13 @@ class DataMap:
         law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
         law_dst_de_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
         law_dst_dc_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
-        law_context_dst_dc_sensitivities = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
+
 
         filtered_law_jurisdictions = [item for item in law_jurisdictions if item["law_name"] == selected_law]
         filtered_law_legal_bases = [item for item in law_legal_bases if item["law_name"] == selected_law]
         filtered_law_dst_de_sensitivities = [item for item in law_dst_de_sensitivities if item["law_name"] == selected_law]
         filtered_law_dst_dc_sensitivities = [item for item in law_dst_dc_sensitivities if item["law_name"] == selected_law]
-        filtered_law_context_dst_dc_sensitivities = [item for item in law_context_dst_dc_sensitivities if item["law_name"] == selected_law]
+
 
         # Create a PyVis network instance with physics enabled
         net = Network(height="800px", width="100%", directed=True)
@@ -2301,24 +2144,7 @@ class DataMap:
                 net.add_edge(dst, dc)
                 net.add_edge(dc, sensitivity)
 
-        # Add Contexts, Data Subject Types, Data Categories, and Sensitivity levels
-        if show_contexts and show_data_subject_types and show_data_categories:
-            for item in filtered_law_context_dst_dc_sensitivities:
-                context = f"Context: {item['context_name']}"
-                dst = f"DST: {item['data_subject_type_name']}"
-                dc = f"DC: {item['data_category_name']}"
-                sensitivity = f"Sensitivity: {item['sensitivity_name']}"
-                net.add_node(context, label=context, size=15, color="#34495e")
-                if dst not in net.get_nodes():
-                    net.add_node(dst, label=dst, size=15, color="#f39c12")
-                if dc not in net.get_nodes():
-                    net.add_node(dc, label=dc, size=15, color="#1abc9c")
-                if sensitivity not in net.get_nodes():
-                    net.add_node(sensitivity, label=sensitivity, size=15, color="#e67e22")
-                net.add_edge(selected_law, context)
-                net.add_edge(context, dst)
-                net.add_edge(dst, dc)
-                net.add_edge(dc, sensitivity)
+
 
         # Save the network to a temporary HTML file and display it in Streamlit
         tmp_dir = tempfile.gettempdir()
@@ -2385,7 +2211,7 @@ class DataMap:
                 </ul>
                 <strong>How the Algorithm Works:</strong><br><br>
                 <ul>
-                    <li><strong>Context-Aware Lookup:</strong> Checks for sensitivity classifications matching all parameters</li>
+                    <li><strong>Parameter-Based Lookup:</strong> Checks for sensitivity classifications matching all input parameters</li>
                     <li><strong>Fallback Mechanism:</strong> Uses more general classifications if no specific match is found</li>
                     <li><strong>Hierarchical Classification:</strong> Understands relationships between data elements and categories</li>
                     <li><strong>Regulatory Alignment:</strong> Derives classifications from regulatory mappings</li>
@@ -2418,13 +2244,7 @@ class DataMap:
                 st.warning("No data subject types available.")
                 return
             
-            # Get contexts/purposes
-            contexts = self.glossary_repository.get_contexts()
-            if contexts:
-                context_options = [context["name"] for context in contexts]
-                selected_context = st.selectbox("Select Processing Context/Purpose", options=context_options)
-            else:
-                selected_context = None
+
             
             # Option to select either data element or data category
             data_type = st.radio("Select Data Type", ["Data Element", "Data Category"])
@@ -2454,7 +2274,7 @@ class DataMap:
                 {"id": "data", "label": "Data Element/Category", "color": "#3498db", "shape": "ellipse", "size": 30},
                 {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
                 {"id": "dst", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "context", "label": "Context (Optional)", "color": "#9b59b6", "shape": "box", "size": 25},
+
                 {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25, 
                  "title": {"html": """
                     <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
@@ -2463,7 +2283,7 @@ class DataMap:
                         <ol>
                             <li>Checking the <b>Law Data Subject Type Data Element Sensitivity</b> table for exact matches</li>
                             <li>If no match, checking the <b>Law Data Subject Type Data Category Sensitivity</b> table</li>
-                            <li>Considering context factors if provided</li>
+
                             <li>Applying law-specific sensitivity rules and thresholds</li>
                             <li>Returning the appropriate sensitivity level with confidence score</li>
                         </ol>
@@ -2479,10 +2299,10 @@ class DataMap:
             edges = [
                 {"source": "data", "target": "law", "label": "Regulated by"},
                 {"source": "data", "target": "dst", "label": "Relates to"},
-                {"source": "data", "target": "context", "label": "Used in"},
+
                 {"source": "law", "target": "lookup", "label": ""},
                 {"source": "dst", "target": "lookup", "label": ""},
-                {"source": "context", "target": "lookup", "label": ""},
+
                 {"source": "lookup", "target": "high", "label": "If sensitive PII"},
                 {"source": "lookup", "target": "medium", "label": "If general PII"},
                 {"source": "lookup", "target": "low", "label": "If non-PII"}
@@ -2501,7 +2321,6 @@ class DataMap:
                     sensitivity = self._infer_sensitivity(
                         selected_law, 
                         selected_dst, 
-                        selected_context, 
                         selected_data, 
                         data_type
                     )
@@ -2529,7 +2348,6 @@ class DataMap:
                         - **Law**: {selected_law}
                         - **Data Subject Type**: {selected_dst}
                         - **Data Element**: {selected_data}
-                        {f"- **Context**: {selected_context}" if selected_context else ""}
                         
                         According to the regulatory metadata, when processing the data element '{selected_data}' 
                         for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
@@ -2540,7 +2358,6 @@ class DataMap:
                         - **Law**: {selected_law}
                         - **Data Subject Type**: {selected_dst}
                         - **Data Category**: {selected_data}
-                        {f"- **Context**: {selected_context}" if selected_context else ""}
                         
                         According to the regulatory metadata, when processing data from the '{selected_data}' category 
                         for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
@@ -2600,31 +2417,20 @@ class DataMap:
                 </div>
                 """, unsafe_allow_html=True)
     
-    def _infer_sensitivity(self, law, data_subject_type, context, data_value, data_type):
+    def _infer_sensitivity(self, law, data_subject_type, data_value, data_type):
         """Internal method to infer sensitivity based on regulatory metadata.
         
         Args:
             law (str): The name of the selected law
             data_subject_type (str): The name of the data subject type
-            context (str): The name of the context/purpose (can be None)
             data_value (str): The name of the data element or category
             data_type (str): Either "Data Element" or "Data Category"
             
         Returns:
             str: The inferred sensitivity level or None if not found
         """
-        # First try with context if provided
-        if context and data_type == "Data Category":
-            # Check law_context_dst_dc_sensitivity table
-            context_sensitivities = self.regulatory_metadata_repository.get_law_context_data_subject_type_data_category_sensitivities()
-            for item in context_sensitivities:
-                if (item["law_name"] == law and 
-                    item["context_name"] == context and 
-                    item["data_subject_type_name"] == data_subject_type and 
-                    item["data_category_name"] == data_value):
-                    return item["sensitivity_name"]
         
-        # If no result with context or context not provided, try without context
+        # Check data element sensitivity
         if data_type == "Data Element":
             # Check law_dst_de_sensitivity table
             de_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
@@ -3801,6 +3607,309 @@ class DataMap:
                     <p>Rights response guidance will appear here after analysis...</p>
                 </div>
                 """, unsafe_allow_html=True)
+                
+    def policy_inference_api(self):
+        """Implement the Policy Inference API for access governance.
+        This helps determine whether access to data is permitted based on purpose limitation principles.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Policy Inference API</div>", unsafe_allow_html=True)
+        
+        # Description
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p><strong>Policy Inference API</strong> determines whether access to data is permitted based on purpose limitation principles and organizational policies.</p>
+            <p>This API helps enforce purpose-based access control and ensures data is only used for approved purposes in compliance with privacy regulations.</p>
+            <br>
+            <ul>
+                <li>Enforces purpose limitation principles</li>
+                <li>Determines data access permissions based on business purpose</li>
+                <li>Applies policy-based restrictions on data usage</li>
+                <li>Provides clear decision rationale</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get purposes for dropdown selection
+            try:
+                purposes = self.glossary_repository.get_purposes()
+                purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+            except Exception as e:
+                st.warning(f"Error loading purposes: {e}")
+                purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+                
+            selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
+            
+            # Get data elements for multiselect
+            try:
+                data_elements = self.glossary_repository.get_data_elements()
+                data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+            except Exception as e:
+                st.warning(f"Error loading data elements: {e}")
+                data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+                
+            selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
+            
+            # Operation selection
+            operations = ["read", "write", "share"]
+            selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
+            
+            try:
+                jurisdictions = self.glossary_repository.get_jurisdictions()
+                jurisdiction_options = ["Any"] + [j["name"] for j in jurisdictions] if jurisdictions else ["Any", "California", "European Union", "United Kingdom", "Canada"]
+            except Exception as e:
+                jurisdiction_options = ["Any", "California", "European Union", "United Kingdom", "Canada"]
+                
+            selected_jurisdiction = st.selectbox("Select Jurisdiction (Optional)", options=jurisdiction_options, key="policy_jurisdiction")
+            
+            # Add a button to trigger inference with custom styling
+            st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button#policy_analysis_btn {
+                background-color: #3498db;
+                color: white;
+                border: 2px solid #3498db;
+                padding: 0.5rem 1rem;
+                font-weight: 600;
+                border-radius: 4px;
+                text-align: center;
+                margin: 1rem 0;
+                display: block;
+                width: 100%;
+            }
+            div[data-testid="stButton"] > button#policy_analysis_btn:hover {
+                background-color: #2980b9;
+                border-color: #2980b9;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
+            
+            # Define nodes for the decision tree
+            nodes = [
+                {"id": "request", "label": "Access Request", "color": "#3498db", "shape": "ellipse", "size": 30},
+                {"id": "purpose", "label": "Business Purpose", "color": "#e74c3c", "shape": "box", "size": 25},
+                {"id": "policy", "label": "Applicable Policy", "color": "#9b59b6", "shape": "box", "size": 25},
+                {"id": "data_elements", "label": "Data Elements", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "operation", "label": "Operation Type", "color": "#2ecc71", "shape": "box", "size": 25},
+                {"id": "lookup", "label": "Policy Compliance Check", "color": "#1abc9c", "shape": "box", "size": 25},
+                {"id": "allowed", "label": "Access Decision", "color": "#3498db", "shape": "box", "size": 25},
+                {"id": "restrictions", "label": "Usage Restrictions", "color": "#f39c12", "shape": "box", "size": 25},
+                {"id": "rationale", "label": "Decision Rationale", "color": "#e74c3c", "shape": "box", "size": 25}
+            ]
+            
+            # Define edges for the decision tree
+            edges = [
+                {"source": "request", "target": "purpose", "arrows": "to", "label": "has"},
+                {"source": "purpose", "target": "policy", "arrows": "to", "label": "governed by"},
+                {"source": "request", "target": "data_elements", "arrows": "to", "label": "requests"},
+                {"source": "request", "target": "operation", "arrows": "to", "label": "performs"},
+                {"source": "purpose", "target": "lookup", "arrows": "to"},
+                {"source": "data_elements", "target": "lookup", "arrows": "to"},
+                {"source": "operation", "target": "lookup", "arrows": "to"},
+                {"source": "policy", "target": "lookup", "arrows": "to"},
+                {"source": "lookup", "target": "allowed", "arrows": "to"},
+                {"source": "lookup", "target": "restrictions", "arrows": "to"},
+                {"source": "lookup", "target": "rationale", "arrows": "to"}
+            ]
+            
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, title="Policy Decision Tree")
+        
+        with col2:
+            st.subheader("Policy Compliance Analysis")
+            
+            if analyze_button:
+                if not selected_purpose or not selected_data_elements:
+                    st.warning("Please select both Purpose and at least one Data Element")
+                else:
+                    self._analyze_policy_compliance(
+                        selected_purpose, 
+                        selected_data_elements,
+                        selected_operation,
+                        selected_jurisdiction if selected_jurisdiction != "Any" else None
+                    )
+            else:
+                st.markdown("""
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Policy compliance analysis will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    def _analyze_policy_compliance(self, purpose, data_elements, operation):
+        """Analyze policy compliance based on purpose, data elements, and operation.
+        
+        Args:
+            purpose (str): The business purpose for data access
+            data_elements (list): List of data elements being accessed
+            operation (str): The operation type (read, write, share)
+            jurisdiction (str, optional): The applicable jurisdiction. Defaults to None.
+        """
+        # Get policies from the database
+        policies = self.glossary_repository.get_policies()
+        
+        # Find the access control policy
+        access_control_policy = None
+        for policy in policies:
+            if policy["policy_type"] == "Access Control":
+                access_control_policy = policy
+                break
+        
+        if not access_control_policy:
+            st.error("No Access Control Policy found in the database.")
+            return
+        
+        # Get purpose ID
+        purpose_id = None
+        purposes = self.glossary_repository.get_purposes()
+        for p in purposes:
+            if p["name"] == purpose:
+                purpose_id = p["id"]
+                break
+        
+        if not purpose_id:
+            st.error(f"Purpose '{purpose}' not found in the database.")
+            return
+        
+        # Get data element IDs
+        data_element_ids = {}
+        all_data_elements = self.glossary_repository.get_data_elements()
+        for data_element in data_elements:
+            for de in all_data_elements:
+                if de["name"] == data_element:
+                    data_element_ids[data_element] = de["id"]
+                    break
+                
+        # Display applicable policy
+        st.markdown(f"""
+        <div style="margin-bottom: 15px;">
+            <h4 style="color: #3498db;">Applicable Policy</h4>
+            <p><strong>Policy:</strong> {access_control_policy['name']}</p>
+            <p><strong>Type:</strong> {access_control_policy['policy_type']}</p>
+            <p><strong>Status:</strong> {access_control_policy['status']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Get policy purpose data elements
+        policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+            policy_id=access_control_policy['id'], 
+            purpose_id=purpose_id
+        )
+        
+        # Get policy purpose data usages
+        policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages(
+            policy_id=access_control_policy['id'], 
+            purpose_id=purpose_id
+        )
+        
+        # Simulate policy evaluation for each data element
+        st.markdown("""
+        <h4 style="color: #3498db;">Data Access Decisions</h4>
+        <table style="width:100%; table-layout: fixed; border-collapse: collapse;">
+            <tr style="background-color: #eaf2f8;">
+                <th style="width: 25%; padding: 8px; text-align: left; border: 1px solid #ddd;">Data Element</th>
+                <th style="width: 15%; padding: 8px; text-align: left; border: 1px solid #ddd;">Operation</th>
+                <th style="width: 20%; padding: 8px; text-align: left; border: 1px solid #ddd;">Decision</th>
+                <th style="width: 40%; padding: 8px; text-align: left; border: 1px solid #ddd;">Restrictions</th>
+            </tr>
+        """, unsafe_allow_html=True)
+        
+        # Process each data element using the policy data from the repository
+        denied_operations = False
+        for data_element in data_elements:
+            data_element_id = data_element_ids.get(data_element)
+            
+            # Default values if no specific rules found
+            decision = "Denied"
+            restrictions = "No explicit permission in policy"
+            decision_color = "#e74c3c"
+            
+            # Check if there's a usage rule for this data element, purpose, and operation
+            for usage in policy_purpose_data_usages:
+                if (usage["data_element_name"] == data_element and 
+                    usage["operation"] == operation):
+                    
+                    if usage["allowed"]:
+                        if usage["restrictions"]:
+                            decision = "Allowed with Restrictions"
+                            restrictions = usage["restrictions"]
+                            decision_color = "#f39c12"
+                        else:
+                            decision = "Allowed"
+                            restrictions = "None"
+                            decision_color = "#2ecc71"
+                    else:
+                        decision = "Denied"
+                        restrictions = usage["restrictions"] if usage["restrictions"] else "Operation not allowed for this purpose"
+                        decision_color = "#e74c3c"
+                        denied_operations = True
+                    break
+            
+            # If no specific usage rule found, check if the data element is allowed for this purpose
+            if decision == "Denied" and restrictions == "No explicit permission in policy":
+                for element in policy_purpose_data_elements:
+                    if element["data_element_name"] == data_element:
+                        if element["access_allowed"]:
+                            # Default to allowed for read operations if no specific rule exists
+                            if operation == "read":
+                                decision = "Allowed"
+                                restrictions = "None"
+                                decision_color = "#2ecc71"
+                            else:
+                                # For write/share, still require explicit permission
+                                denied_operations = True
+                        else:
+                            denied_operations = True
+                        break
+            
+            st.markdown(f"""
+            <tr>
+                <td style="width: 25%; padding: 8px; text-align: left; border: 1px solid #ddd;">{data_element}</td>
+                <td style="width: 15%; padding: 8px; text-align: left; border: 1px solid #ddd;">{operation}</td>
+                <td style="width: 20%; padding: 8px; text-align: left; border: 1px solid #ddd; color: {decision_color};"><strong>{decision}</strong></td>
+                <td style="width: 40%; padding: 8px; text-align: left; border: 1px solid #ddd;">{restrictions}</td>
+            </tr>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("</table>", unsafe_allow_html=True)
+        
+        # Add decision rationale
+        st.markdown("""
+        <div style="margin-top: 20px;">
+            <h4 style="color: #3498db;">Decision Rationale</h4>
+            <p>The policy compliance decision is based on:</p>
+            <ul>
+                <li>Purpose limitation principles defined in the Data Access Control Policy</li>
+                <li>Data element sensitivity classification</li>
+                <li>Operation type and associated risks</li>
+                <li>Purpose-specific data access rules</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Add compliance recommendations if there are denied operations
+        if denied_operations:
+            st.markdown("""
+            <div style="margin-top: 20px; background-color: #fef9e7; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12;">
+                <h4 style="color: #f39c12; margin-top: 0;">Compliance Recommendations</h4>
+                <p>To ensure policy compliance:</p>
+                <ul>
+                    <li>Limit data access to only what is necessary for the stated purpose</li>
+                    <li>Use anonymized or pseudonymized data when possible</li>
+                    <li>Document the business justification for accessing sensitive data</li>
+                    <li>Implement additional security controls for sensitive data</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
     def _get_rights_guidance(self, law, right_type):
         """Internal method to get guidance for data subject rights based on regulatory metadata.

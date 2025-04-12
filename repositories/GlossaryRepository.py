@@ -16,9 +16,10 @@ class GlossaryRepository:
         self.create_data_subject_type_table()
         self.create_data_category_table()
         self.create_sensitivity_table()
-        self.create_context_table()
         self.create_purpose_category_table()
         self.create_breach_type_table()
+        self.create_policy_table()
+        self.create_purpose_table()
         
     def create_law_table(self):
         """Create the Law table."""
@@ -125,20 +126,7 @@ class GlossaryRepository:
         self.connection.commit()
         cursor.close()
         
-    def create_context_table(self):
-        """Create the Context table."""
-        cursor = self.connection.cursor()
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS `context` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `name` VARCHAR(255) NOT NULL,
-            `description` TEXT,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-        cursor.execute(create_table_query)
-        self.connection.commit()
-        cursor.close()
+
         
     def create_purpose_category_table(self):
         """Create the Purpose Category table."""
@@ -165,6 +153,43 @@ class GlossaryRepository:
             `description` TEXT,
             `category` VARCHAR(100),
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_policy_table(self):
+        """Create the Policy table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `policy_type` VARCHAR(100),
+            `status` VARCHAR(50),
+            `effective_date` DATE,
+            `expiration_date` DATE,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_purpose_table(self):
+        """Create the Purpose table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `purpose` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `purpose_category_id` INT,
+            `risk_level` VARCHAR(50),
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
         );
         """
         cursor.execute(create_table_query)
@@ -506,49 +531,7 @@ class GlossaryRepository:
         finally:
             cursor.close()
     
-    # Context methods
-    def add_context(self, name, description):
-        """Add a new context to the database."""
-        cursor = self.connection.cursor()
-        try:
-            insert_query = """
-            INSERT INTO context (name, description)
-            VALUES (%s, %s);
-            """
-            cursor.execute(insert_query, (name, description))
-            self.connection.commit()
-            return cursor.lastrowid
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Error adding context: {e}")
-            return None
-        finally:
-            cursor.close()
-    
-    def get_contexts(self):
-        """Get all contexts from the database."""
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        try:
-            cursor.execute("SELECT id, name, description FROM context;")
-            return cursor.fetchall()
-        except Exception as e:
-            print(f"Error retrieving contexts: {e}")
-            return []
-        finally:
-            cursor.close()
-    
-    def get_context_by_id(self, context_id):
-        """Get a context by its ID."""
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
-        try:
-            cursor.execute("SELECT id, name, description FROM context WHERE id = %s;", (context_id,))
-            return cursor.fetchone()
-        except Exception as e:
-            print(f"Error retrieving context by ID {context_id}: {e}")
-            return None
-        finally:
-            cursor.close()
-            
+
     # Purpose Category methods
     def add_purpose_category(self, name, description):
         """Add a new purpose category to the database."""
@@ -654,7 +637,7 @@ class GlossaryRepository:
         self.seed_data_subject_types()
         self.seed_data_categories()
         self.seed_sensitivities()
-        self.seed_contexts()
+
         self.seed_purpose_categories()
     
     def seed_laws(self):
@@ -896,46 +879,7 @@ class GlossaryRepository:
         for sensitivity in sensitivities:
             self.add_sensitivity(sensitivity["name"], sensitivity["description"])
     
-    def seed_contexts(self):
-        """Seed the database with initial context data."""
-        contexts = [
-            {
-                "name": "Marketing",
-                "description": "Processing personal data for marketing purposes, such as sending promotional emails or targeted advertising."
-            },
-            {
-                "name": "Customer Service",
-                "description": "Processing personal data to provide customer service, such as responding to inquiries or resolving complaints."
-            },
-            {
-                "name": "Human Resources",
-                "description": "Processing personal data for human resources purposes, such as payroll, benefits administration, or performance management."
-            },
-            {
-                "name": "Finance",
-                "description": "Processing personal data for financial purposes, such as billing, accounting, or tax compliance."
-            },
-            {
-                "name": "Legal",
-                "description": "Processing personal data for legal purposes, such as contract enforcement, litigation, or regulatory compliance."
-            },
-            {
-                "name": "IT Security",
-                "description": "Processing personal data for IT security purposes, such as access control, threat detection, or incident response."
-            },
-            {
-                "name": "Research",
-                "description": "Processing personal data for research purposes, such as market research, scientific research, or product development."
-            },
-            {
-                "name": "Healthcare",
-                "description": "Processing personal data for healthcare purposes, such as diagnosis, treatment, or care management."
-            }
-        ]
-        
-        for context in contexts:
-            self.add_context(context["name"], context["description"])
-    
+
     def seed_purpose_categories(self):
         """Seed the database with initial purpose category data."""
         purpose_categories = [
@@ -1048,6 +992,253 @@ class GlossaryRepository:
         finally:
             cursor.close()
             
+    # Policy methods
+    def add_policy(self, name, description, policy_type=None, status=None, effective_date=None, expiration_date=None):
+        """Add a new policy to the database.
+        
+        Args:
+            name (str): The name of the policy
+            description (str): A description of the policy
+            policy_type (str, optional): The type of policy (e.g., 'Access Control', 'Retention')
+            status (str, optional): The status of the policy (e.g., 'Active', 'Draft')
+            effective_date (str, optional): The effective date of the policy (YYYY-MM-DD)
+            expiration_date (str, optional): The expiration date of the policy (YYYY-MM-DD)
+            
+        Returns:
+            int: The ID of the newly created policy or None if there was an error
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO policy (name, description, policy_type, status, effective_date, expiration_date) VALUES (%s, %s, %s, %s, %s, %s);",
+                (name, description, policy_type, status, effective_date, expiration_date)
+            )
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding policy: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+    
+    def get_policies(self):
+        """Get all policies from the database.
+        
+        Returns:
+            list: A list of dictionaries containing policy information
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description, policy_type, status, effective_date, expiration_date FROM policy;")
+            policies = []
+            for row in cursor.fetchall():
+                policies.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "policy_type": row[3],
+                    "status": row[4],
+                    "effective_date": row[5],
+                    "expiration_date": row[6]
+                })
+            return policies
+        except Exception as e:
+            print(f"Error getting policies: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_policy_by_id(self, policy_id):
+        """Get a policy by its ID.
+        
+        Args:
+            policy_id (int): The ID of the policy to retrieve
+            
+        Returns:
+            dict: A dictionary containing policy information or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT id, name, description, policy_type, status, effective_date, expiration_date FROM policy WHERE id = %s;",
+                (policy_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "policy_type": row[3],
+                    "status": row[4],
+                    "effective_date": row[5],
+                    "expiration_date": row[6]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting policy by ID: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    # Purpose methods
+    def add_purpose(self, name, description, purpose_category_id=None, risk_level=None):
+        """Add a new purpose to the database.
+        
+        Args:
+            name (str): The name of the purpose
+            description (str): A description of the purpose
+            purpose_category_id (int, optional): The ID of the purpose category
+            risk_level (str, optional): The risk level of the purpose (e.g., 'Low', 'Medium', 'High')
+            
+        Returns:
+            int: The ID of the newly created purpose or None if there was an error
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO purpose (name, description, purpose_category_id, risk_level) VALUES (%s, %s, %s, %s);",
+                (name, description, purpose_category_id, risk_level)
+            )
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding purpose: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+    
+    def get_purposes(self):
+        """Get all purposes from the database.
+        
+        Returns:
+            list: A list of dictionaries containing purpose information
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                SELECT p.id, p.name, p.description, p.purpose_category_id, pc.name as category_name, p.risk_level 
+                FROM purpose p
+                LEFT JOIN purpose_category pc ON p.purpose_category_id = pc.id;
+            """)
+            purposes = []
+            for row in cursor.fetchall():
+                purposes.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "purpose_category_id": row[3],
+                    "category_name": row[4],
+                    "risk_level": row[5]
+                })
+            return purposes
+        except Exception as e:
+            print(f"Error getting purposes: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_purpose_by_id(self, purpose_id):
+        """Get a purpose by its ID.
+        
+        Args:
+            purpose_id (int): The ID of the purpose to retrieve
+            
+        Returns:
+            dict: A dictionary containing purpose information or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                SELECT p.id, p.name, p.description, p.purpose_category_id, pc.name as category_name, p.risk_level 
+                FROM purpose p
+                LEFT JOIN purpose_category pc ON p.purpose_category_id = pc.id
+                WHERE p.id = %s;
+            """, (purpose_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "purpose_category_id": row[3],
+                    "category_name": row[4],
+                    "risk_level": row[5]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting purpose by ID: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def seed_policies(self):
+        """Seed the database with initial policy data."""
+        policies = [
+            ("Data Access Control Policy", "Defines rules for accessing data based on purpose limitation principles", "Access Control", "Active", "2025-01-01", None),
+            ("Data Retention Policy", "Defines how long data should be retained based on purpose and legal requirements", "Retention", "Active", "2025-01-01", None),
+            ("Data Sharing Policy", "Defines rules for sharing data with third parties", "Sharing", "Active", "2025-01-01", None),
+            ("Data Minimization Policy", "Ensures only necessary data is collected and processed", "Collection", "Active", "2025-01-01", None),
+            ("Data Security Policy", "Defines security controls for protecting data", "Security", "Active", "2025-01-01", None)
+        ]
+        
+        cursor = self.connection.cursor()
+        try:
+            for name, description, policy_type, status, effective_date, expiration_date in policies:
+                cursor.execute("SELECT id FROM policy WHERE name = %s;", (name,))
+                if not cursor.fetchone():
+                    cursor.execute(
+                        "INSERT INTO policy (name, description, policy_type, status, effective_date, expiration_date) VALUES (%s, %s, %s, %s, %s, %s);",
+                        (name, description, policy_type, status, effective_date, expiration_date)
+                    )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding policies: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+    
+    def seed_purposes(self):
+        """Seed the database with initial purpose data."""
+        # First, get purpose category IDs
+        cursor = self.connection.cursor()
+        purpose_category_ids = {}
+        try:
+            cursor.execute("SELECT id, name FROM purpose_category;")
+            for row in cursor.fetchall():
+                purpose_category_ids[row[1]] = row[0]
+            
+            # Define purposes with their categories
+            purposes = [
+                ("Customer Support", "Providing assistance and support to customers", "Customer Service", "Low"),
+                ("Fraud Detection", "Identifying and preventing fraudulent activities", "Security", "Medium"),
+                ("Marketing Campaigns", "Promoting products and services to customers", "Marketing", "Medium"),
+                ("Product Analytics", "Analyzing product usage for improvement", "Analytics", "Medium"),
+                ("User Authentication", "Verifying user identity for access control", "Security", "High"),
+                ("Regulatory Compliance", "Meeting legal and regulatory requirements", "Legal", "High"),
+                ("Payment Processing", "Processing financial transactions", "Financial", "High"),
+                ("Service Delivery", "Providing core services to users", "Operations", "Medium"),
+                ("Research and Development", "Developing new products and features", "Product Development", "Medium"),
+                ("Employee Management", "Managing employee data and performance", "HR", "Medium")
+            ]
+            
+            for name, description, category, risk_level in purposes:
+                cursor.execute("SELECT id FROM purpose WHERE name = %s;", (name,))
+                if not cursor.fetchone():
+                    category_id = purpose_category_ids.get(category)
+                    cursor.execute(
+                        "INSERT INTO purpose (name, description, purpose_category_id, risk_level) VALUES (%s, %s, %s, %s);",
+                        (name, description, category_id, risk_level)
+                    )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding purposes: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+    
     def seed_all_data(self):
         """Seed all glossary tables with initial data."""
         self.seed_laws()
@@ -1057,6 +1248,7 @@ class GlossaryRepository:
         self.seed_data_subject_types()
         self.seed_data_categories()
         self.seed_sensitivities()
-        self.seed_contexts()
         self.seed_purpose_categories()
         self.seed_breach_types()
+        self.seed_policies()
+        self.seed_purposes()
