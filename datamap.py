@@ -1629,9 +1629,6 @@ class DataMap:
             
             filtered_assets = [asset for asset in assets if asset['id'] in filtered_asset_ids]
         
-        # Display assets in a table view
-        st.subheader("Asset Inventory")
-        
         # Create a DataFrame for all assets
         asset_data = {
             "Asset": [],
