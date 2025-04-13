@@ -992,8 +992,9 @@ INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development')),
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'));
 
--- Insert policy-purpose-data element relationships (examples for Customer Support purpose)
+-- Insert policy-purpose-data element relationships for all purposes
 INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES
+-- Customer Support purpose
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
  (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
@@ -1020,10 +1021,248 @@ INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id,
 
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Credit Card Number'), FALSE);
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), FALSE),
 
--- Insert policy-purpose-data usage rules (examples for Customer Support purpose)
+-- Marketing Campaigns purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), FALSE),
+
+-- Payment Processing purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+-- Product Analytics purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), FALSE),
+
+-- Employee Management purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), TRUE),
+
+-- Fraud Detection purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+-- User Authentication purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+-- Regulatory Compliance purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), TRUE),
+
+-- Service Delivery purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE),
+
+-- Research and Development purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), FALSE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE);
+
+-- Insert policy-purpose-data usage rules for all purposes
 INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, operation, allowed, restrictions) VALUES
+-- Customer Support purpose
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
  (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
@@ -1058,4 +1297,225 @@ INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, o
 
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), 'share', FALSE, NULL);
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), 'share', FALSE, NULL),
+
+-- Marketing Campaigns purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Limited to product categories only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for campaign tracking'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'share', TRUE, 'Only with approved marketing partners'),
+
+-- Payment Processing purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'write', TRUE, 'Only during transaction processing'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'share', TRUE, 'Only with payment processors'),
+
+-- Product Analytics purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, 'Anonymized where possible'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Aggregated data only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, 'Truncated for anonymization'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, 'Hashed for anonymization'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'write', TRUE, 'For analytics tracking only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'share', FALSE, NULL),
+
+-- Employee Management purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'read', TRUE, 'HR department only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'write', TRUE, 'HR department only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'HR department only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'share', TRUE, 'Only for tax and legal compliance'),
+
+-- Fraud Detection purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'write', TRUE, 'For fraud detection logs only'),
+
+-- User Authentication purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for authentication logs'),
+
+-- Regulatory Compliance purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'read', TRUE, 'Only for required regulatory reporting'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'share', TRUE, 'Only with authorized regulatory bodies'),
+
+-- Service Delivery purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Address'), 'read', TRUE, NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for service-related communications'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Address'), 'share', TRUE, 'Only with delivery partners'),
+
+-- Research and Development purpose
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Anonymized data only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, 'Anonymized data only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, 'Anonymized data only'),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, 'Anonymized data only');

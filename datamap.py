@@ -2033,7 +2033,35 @@ class DataMap:
                 purposes_data["Risk Level"].append(purpose["risk_level"] if purpose.get("risk_level") else "N/A")
                 purposes_data["Description"].append(purpose["description"] if purpose.get("description") else "")
             
-            st.dataframe(pd.DataFrame(purposes_data))
+            # Convert to DataFrame
+            df = pd.DataFrame(purposes_data)
+            
+            # Add filters
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Get unique categories
+                categories = sorted(list(set(df["Category"].tolist())))
+                selected_category = st.selectbox("Filter by Category", ["All"] + categories)
+            
+            with col2:
+                # Get unique risk levels
+                risk_levels = sorted(list(set(df["Risk Level"].tolist())))
+                selected_risk_level = st.selectbox("Filter by Risk Level", ["All"] + risk_levels)
+            
+            # Apply filters
+            filtered_df = df.copy()
+            if selected_category != "All":
+                filtered_df = filtered_df[filtered_df["Category"] == selected_category]
+            
+            if selected_risk_level != "All":
+                filtered_df = filtered_df[filtered_df["Risk Level"] == selected_risk_level]
+            
+            # Display filtered data
+            if not filtered_df.empty:
+                st.dataframe(filtered_df, use_container_width=True)
+            else:
+                st.warning("No purposes match the selected filters.")
         else:
             st.warning("No purposes available in the database.")
     
@@ -2071,7 +2099,35 @@ class DataMap:
                     policy_data["Status"].append(policy["status"] if policy.get("status") else "")
                     policy_data["Description"].append(policy["description"] if policy.get("description") else "")
                 
-                st.dataframe(pd.DataFrame(policy_data))
+                # Convert to DataFrame
+                df = pd.DataFrame(policy_data)
+                
+                # Add filters
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Get unique policy types
+                    policy_types = sorted(list(set([t for t in df["Type"].tolist() if t])))
+                    selected_type = st.selectbox("Filter by Policy Type", ["All"] + policy_types)
+                
+                with col2:
+                    # Get unique statuses
+                    statuses = sorted(list(set([s for s in df["Status"].tolist() if s])))
+                    selected_status = st.selectbox("Filter by Status", ["All"] + statuses)
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_type != "All":
+                    filtered_df = filtered_df[filtered_df["Type"] == selected_type]
+                
+                if selected_status != "All":
+                    filtered_df = filtered_df[filtered_df["Status"] == selected_status]
+                
+                # Display filtered data
+                if not filtered_df.empty:
+                    st.dataframe(filtered_df, use_container_width=True)
+                else:
+                    st.warning("No policies match the selected filters.")
             else:
                 st.warning("No data available in the database.")
         
@@ -2091,7 +2147,35 @@ class DataMap:
                     policy_purpose_data["Policy"].append(relation["policy_name"])
                     policy_purpose_data["Purpose"].append(relation["purpose_name"])
                 
-                st.dataframe(pd.DataFrame(policy_purpose_data))
+                # Convert to DataFrame
+                df = pd.DataFrame(policy_purpose_data)
+                
+                # Add filters
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Get unique policies
+                    policies = sorted(list(set(df["Policy"].tolist())))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="policy_purpose_policy")
+                
+                with col2:
+                    # Get unique purposes
+                    purposes = sorted(list(set(df["Purpose"].tolist())))
+                    selected_purpose = st.selectbox("Filter by Purpose", ["All"] + purposes, key="policy_purpose_purpose")
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_policy != "All":
+                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                
+                if selected_purpose != "All":
+                    filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                
+                # Display filtered data
+                if not filtered_df.empty:
+                    st.dataframe(filtered_df, use_container_width=True)
+                else:
+                    st.warning("No policy-purpose relationships match the selected filters.")
             else:
                 st.warning("No policy-purpose relationships available in the database.")
         
@@ -2115,7 +2199,48 @@ class DataMap:
                     ppde_data["Data Element"].append(relation["data_element_name"])
                     ppde_data["Access Allowed"].append("Yes" if relation["access_allowed"] else "No")
                 
-                st.dataframe(pd.DataFrame(ppde_data))
+                # Convert to DataFrame
+                df = pd.DataFrame(ppde_data)
+                
+                # Add filters
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Get unique policies
+                    policies = sorted(list(set(df["Policy"].tolist())))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="ppde_policy")
+                
+                with col2:
+                    # Get unique purposes
+                    purposes = sorted(list(set(df["Purpose"].tolist())))
+                    selected_purpose = st.selectbox("Filter by Purpose", ["All"] + purposes, key="ppde_purpose")
+                
+                with col3:
+                    # Filter by access allowed
+                    selected_access = st.selectbox("Filter by Access", ["All", "Yes", "No"], key="ppde_access")
+                
+                # Add data element search
+                data_element_search = st.text_input("Search Data Elements", "", key="ppde_search")
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_policy != "All":
+                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                
+                if selected_purpose != "All":
+                    filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                
+                if selected_access != "All":
+                    filtered_df = filtered_df[filtered_df["Access Allowed"] == selected_access]
+                
+                if data_element_search:
+                    filtered_df = filtered_df[filtered_df["Data Element"].str.contains(data_element_search, case=False)]
+                
+                # Display filtered data
+                if not filtered_df.empty:
+                    st.dataframe(filtered_df, use_container_width=True)
+                else:
+                    st.warning("No policy-purpose-data element relationships match the selected filters.")
             else:
                 st.warning("No policy-purpose-data element relationships available in the database.")
         
@@ -2143,7 +2268,69 @@ class DataMap:
                     ppdu_data["Allowed"].append("Yes" if rule["allowed"] else "No")
                     ppdu_data["Restrictions"].append(rule["restrictions"] if rule["restrictions"] else "None")
                 
-                st.dataframe(pd.DataFrame(ppdu_data))
+                # Convert to DataFrame
+                df = pd.DataFrame(ppdu_data)
+                
+                # Add filters
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Get unique policies
+                    policies = sorted(list(set(df["Policy"].tolist())))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="ppdu_policy")
+                
+                with col2:
+                    # Get unique purposes
+                    purposes = sorted(list(set(df["Purpose"].tolist())))
+                    selected_purpose = st.selectbox("Filter by Purpose", ["All"] + purposes, key="ppdu_purpose")
+                
+                # Second row of filters
+                col3, col4, col5 = st.columns(3)
+                
+                with col3:
+                    # Get unique operations
+                    operations = sorted(list(set(df["Operation"].tolist())))
+                    selected_operation = st.selectbox("Filter by Operation", ["All"] + operations, key="ppdu_operation")
+                
+                with col4:
+                    # Filter by allowed
+                    selected_allowed = st.selectbox("Filter by Allowed", ["All", "Yes", "No"], key="ppdu_allowed")
+                
+                with col5:
+                    # Filter by restrictions
+                    has_restrictions = st.selectbox("Has Restrictions", ["All", "Yes", "No"], key="ppdu_restrictions")
+                
+                # Add data element search
+                data_element_search = st.text_input("Search Data Elements", "", key="ppdu_search")
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_policy != "All":
+                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                
+                if selected_purpose != "All":
+                    filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                
+                if selected_operation != "All":
+                    filtered_df = filtered_df[filtered_df["Operation"] == selected_operation]
+                
+                if selected_allowed != "All":
+                    filtered_df = filtered_df[filtered_df["Allowed"] == selected_allowed]
+                
+                if has_restrictions != "All":
+                    if has_restrictions == "Yes":
+                        filtered_df = filtered_df[filtered_df["Restrictions"] != "None"]
+                    else:
+                        filtered_df = filtered_df[filtered_df["Restrictions"] == "None"]
+                
+                if data_element_search:
+                    filtered_df = filtered_df[filtered_df["Data Element"].str.contains(data_element_search, case=False)]
+                
+                # Display filtered data
+                if not filtered_df.empty:
+                    st.dataframe(filtered_df, use_container_width=True)
+                else:
+                    st.warning("No policy-purpose-data usage rules match the selected filters.")
             else:
                 st.warning("No policy-purpose-data usage rules available in the database.")
     
