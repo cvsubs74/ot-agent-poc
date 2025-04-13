@@ -417,6 +417,19 @@ INSERT INTO `purpose_category` (`name`, `description`) VALUES
 ('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
 ('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
 
+-- Seed Purpose data
+INSERT INTO `purpose` (`name`, `description`, `category_name`, `risk_level`) VALUES
+('Account Management', 'Managing customer accounts and providing account-related services', 'Service Provision', 'Low'),
+('Marketing', 'Sending marketing communications and promotional offers', 'Marketing and Advertising', 'Medium'),
+('HR Management', 'Managing employee data for HR purposes', 'Employment Management', 'Medium'),
+('Financial Operations', 'Processing financial data for accounting and business operations', 'Legitimate Business Interests', 'High'),
+('Analytics', 'Analyzing user behavior and preferences for service improvement', 'Analytics and Improvement', 'Medium'),
+('Security', 'Ensuring security of systems and data', 'Security and Fraud Prevention', 'Medium'),
+('Legal Compliance', 'Processing data to comply with legal obligations', 'Legal Compliance', 'Medium'),
+('Customer Support', 'Providing customer support and resolving issues', 'Service Provision', 'Low'),
+('Product Development', 'Improving products and services based on user feedback', 'Research and Development', 'Medium'),
+('Fraud Prevention', 'Detecting and preventing fraudulent activities', 'Security and Fraud Prevention', 'High');
+
 -- Seed Breach Type data
 INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
 -- Cyber Attacks category
@@ -463,6 +476,49 @@ CREATE TABLE IF NOT EXISTS `asset` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create Asset Data Element table
+CREATE TABLE IF NOT EXISTS `asset_data_element` (
+    `asset_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`asset_id`, `data_element_id`),
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
+-- Create Processing Activity table
+CREATE TABLE IF NOT EXISTS `processing_activity` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `status` VARCHAR(50),
+    `start_date` DATE,
+    `end_date` DATE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Processing Activity Purpose table
+CREATE TABLE IF NOT EXISTS `processing_activity_purpose` (
+    `processing_activity_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`processing_activity_id`, `purpose_id`),
+    FOREIGN KEY (`processing_activity_id`) REFERENCES `processing_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
+);
+
+-- Create Processing Activity Asset Data Element table
+CREATE TABLE IF NOT EXISTS `processing_activity_asset_data_element` (
+    `processing_activity_id` INT NOT NULL,
+    `asset_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`processing_activity_id`, `asset_id`, `data_element_id`),
+    FOREIGN KEY (`processing_activity_id`) REFERENCES `processing_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
 -- Seed Asset data
 INSERT INTO `asset` (`name`, `description`) VALUES
 ('CRM System', 'Customer Relationship Management system containing customer data and interactions'),
@@ -470,6 +526,58 @@ INSERT INTO `asset` (`name`, `description`) VALUES
 ('HR Portal', 'Human Resources portal for employee data management'),
 ('Marketing Platform', 'Platform for managing marketing campaigns and customer engagement'),
 ('Financial Database', 'Database containing financial records and transactions');
+
+-- Seed Asset Data Element relationships
+INSERT INTO `asset_data_element` (`asset_id`, `data_element_id`)
+SELECT a.id, de.id
+FROM `asset` a, `data_element` de
+WHERE 
+    (a.name = 'CRM System' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Customer ID', 'Purchase History')) OR
+    (a.name = 'ERP System' AND de.name IN ('Full Name', 'Email Address', 'Customer ID', 'Purchase History')) OR
+    (a.name = 'HR Portal' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Date of Birth', 'Social Security Number')) OR
+    (a.name = 'Marketing Platform' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Customer ID', 'IP Address', 'Device ID')) OR
+    (a.name = 'Financial Database' AND de.name IN ('Full Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number'));
+
+-- Seed Processing Activity data
+INSERT INTO `processing_activity` (`name`, `description`, `status`, `start_date`, `end_date`) VALUES
+('Customer Data Management', 'Managing customer data for account management and support', 'Active', '2025-01-01', NULL),
+('Marketing Campaign Analysis', 'Analyzing customer data for targeted marketing campaigns', 'Active', '2025-01-15', NULL),
+('Employee Onboarding', 'Processing employee data during the onboarding process', 'Active', '2025-02-01', NULL),
+('Financial Transactions Processing', 'Processing financial transaction data for accounting purposes', 'Active', '2025-01-10', NULL),
+('Website User Analytics', 'Collecting and analyzing website user behavior data', 'Active', '2025-01-05', NULL);
+
+-- Seed Processing Activity Purpose relationships
+INSERT INTO `processing_activity_purpose` (`processing_activity_id`, `purpose_id`)
+SELECT pa.id, p.id
+FROM `processing_activity` pa, `purpose` p
+WHERE 
+    (pa.name = 'Customer Data Management' AND p.name = 'Customer Support') OR
+    (pa.name = 'Customer Data Management' AND p.name = 'Service Delivery') OR
+    (pa.name = 'Marketing Campaign Analysis' AND p.name = 'Marketing Campaigns') OR
+    (pa.name = 'Marketing Campaign Analysis' AND p.name = 'Product Analytics') OR
+    (pa.name = 'Employee Onboarding' AND p.name = 'Employee Management') OR
+    (pa.name = 'Financial Transactions Processing' AND p.name = 'Payment Processing') OR
+    (pa.name = 'Financial Transactions Processing' AND p.name = 'Regulatory Compliance') OR
+    (pa.name = 'Website User Analytics' AND p.name = 'Product Analytics') OR
+    (pa.name = 'Website User Analytics' AND p.name = 'Research and Development');
+
+-- Seed Processing Activity Asset Data Element relationships
+INSERT INTO `processing_activity_asset_data_element` (`processing_activity_id`, `asset_id`, `data_element_id`)
+SELECT pa.id, a.id, de.id
+FROM `processing_activity` pa, `asset` a, `data_element` de
+WHERE 
+    -- Customer Data Management - CRM System - Customer data elements
+    (pa.name = 'Customer Data Management' AND a.name = 'CRM System' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Customer ID')) OR
+    -- Customer Data Management - ERP System - Customer data elements
+    (pa.name = 'Customer Data Management' AND a.name = 'ERP System' AND de.name IN ('Full Name', 'Email Address', 'Customer ID')) OR
+    -- Marketing Campaign Analysis - Marketing Platform - Customer and behavior data elements
+    (pa.name = 'Marketing Campaign Analysis' AND a.name = 'Marketing Platform' AND de.name IN ('Full Name', 'Email Address', 'Customer ID', 'IP Address', 'Device ID')) OR
+    -- Employee Onboarding - HR Portal - Employee data elements
+    (pa.name = 'Employee Onboarding' AND a.name = 'HR Portal' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Date of Birth', 'Social Security Number')) OR
+    -- Financial Transactions Processing - Financial Database - Financial data elements
+    (pa.name = 'Financial Transactions Processing' AND a.name = 'Financial Database' AND de.name IN ('Full Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number')) OR
+    -- Website User Analytics - Marketing Platform - User behavior data elements
+    (pa.name = 'Website User Analytics' AND a.name = 'Marketing Platform' AND de.name IN ('IP Address', 'Device ID'));
 
 -- =============================================
 -- SEED REGULATORY METADATA

@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from pyvis.network import Network
 import streamlit.components.v1 as components
+import plotly.express as px
+import plotly.graph_objects as go
 
 from repositories.GlossaryRepository import GlossaryRepository
 from repositories.RegulatoryMetadataRepository import RegulatoryMetadataRepository
@@ -1564,44 +1566,370 @@ class DataMap:
                     else:
                         st.warning("No Policy Purpose Data Usage mappings available in the database.")
             
-    def inventory_section(self):
-        """Handle the Inventory section with its tabs."""
-        st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Inventory</div>", unsafe_allow_html=True)
+    def assets_section(self):
+        """Handle the Assets section with data elements."""
+        st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Assets</div>", unsafe_allow_html=True)
         
-        tabs = st.tabs([
-            "Assets"
-        ])
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This section provides an inventory of data assets within the organization, including systems and applications that store or process data.</p>
+            <ul>
+                <li>Core systems that contain or process data</li>
+                <li>Applications and databases that serve as data sources</li>
+                <li>Systems that support business operations and data processing</li>
+                <li>Data elements stored or processed by each asset</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
+
+        # Get assets from repository
+        assets = self.inventory_repository.get_assets()
         
-        # Assets tab        
-        with tabs[0]:
-            st.subheader("Assets")
-            st.markdown('''
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides an inventory of data assets within the organization, including systems and applications that store or process data.</p>
-                <ul>
-                    <li>Core systems that contain or process data</li>
-                    <li>Applications and databases that serve as data sources</li>
-                    <li>Systems that support business operations and data processing</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
+        if not assets:
+            st.warning("No assets available in the database.")
+            return
+        
+        # Get asset data elements
+        asset_data_elements = self.inventory_repository.get_asset_data_elements()
+        
+        # Group data elements by asset
+        asset_to_data_elements = {}
+        data_element_names = set()
+        for ade in asset_data_elements:
+            asset_id = ade['asset_id']
+            if asset_id not in asset_to_data_elements:
+                asset_to_data_elements[asset_id] = []
             
-            # Get assets data from repository
-            assets = self.inventory_repository.get_assets()
-            if assets:
-                assets_data = {
-                    "Asset Name": [],
-                    "Description": []
-                }
-                for asset in assets:
-                    assets_data["Asset Name"].append(asset["name"])
-                    assets_data["Description"].append(asset["description"])
-                
-                st.dataframe(pd.DataFrame(assets_data))
-            else:
-                st.warning("No data available in the database.")
+            data_element_name = ade['data_element_name']
+            data_element_names.add(data_element_name)
+            
+            asset_to_data_elements[asset_id].append({
+                'name': data_element_name,
+                'description': ade['data_element_description']
+            })
         
-
-
+        # Filter by data element
+        data_element_options = list(data_element_names)
+        data_element_options.sort()
+        selected_data_elements = st.multiselect(
+            "Filter by Data Element",
+            options=data_element_options,
+            help="Select one or more data elements to filter assets"
+        )
+        
+        # Apply filters
+        filtered_assets = assets
+        if selected_data_elements:
+            # Filter assets that contain ALL of the selected data elements (AND logic)
+            filtered_asset_ids = set()
+            for asset_id, data_elements in asset_to_data_elements.items():
+                de_names = {de['name'] for de in data_elements}
+                # Check if ALL selected data elements are in this asset's data elements
+                if all(de_name in de_names for de_name in selected_data_elements):
+                    filtered_asset_ids.add(asset_id)
+            
+            filtered_assets = [asset for asset in assets if asset['id'] in filtered_asset_ids]
+        
+        # Display assets in a table view
+        st.subheader("Asset Inventory")
+        
+        # Create a DataFrame for all assets
+        asset_data = {
+            "Asset": [],
+            "Description": [],
+            "Type": [],
+            "Status": [],
+            "Data Element Count": []
+        }
+        
+        for asset in filtered_assets:
+            # Get data elements for this asset
+            data_elements = asset_to_data_elements.get(asset['id'], [])
+            
+            # Add to DataFrame
+            asset_data["Asset"].append(asset['name'])
+            asset_data["Description"].append(asset['description'])
+            asset_data["Type"].append(asset.get('type', 'N/A'))
+            asset_data["Status"].append(asset.get('status', 'Active'))
+            asset_data["Data Element Count"].append(len(data_elements))
+        
+        # Convert to DataFrame for display
+        df = pd.DataFrame(asset_data)
+        
+        # Remove any empty rows
+        df = df.dropna(how='all')
+        
+        # Display the DataFrame with a fixed height to avoid empty rows
+        st.dataframe(df, use_container_width=True, height=min(400, len(df) * 35 + 38))
+        
+        # Add a selectbox to choose an asset
+        asset_names = [asset['name'] for asset in filtered_assets]
+        if asset_names:
+            selected_asset_name = st.selectbox("Select an asset to view details", asset_names)
+            
+            # Find the selected asset
+            selected_asset = next((asset for asset in filtered_assets if asset['name'] == selected_asset_name), None)
+            
+            with st.container():
+                # Create a card-like container with custom styling
+                card_header = f'''
+                <div style="background-color: white; border-radius: 10px 10px 0 0; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 5px solid #3498db;">
+                    <h3 style="color: #2c3e50; margin-top: 0;">{selected_asset['name']}</h3>
+                    <p style="color: #7f8c8d;">{selected_asset['description']}</p>
+                    <p><span style="background-color: #e8f4f8; padding: 3px 8px; border-radius: 10px; font-size: 0.8em;">{selected_asset.get('status', 'Active')}</span></p>
+                </div>
+                '''
+                st.markdown(card_header, unsafe_allow_html=True)
+                
+                # Create a card for expanders
+                card_body = '<div style="background-color: white; border-radius: 0 0 10px 10px; padding: 0 15px 15px 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 5px solid #3498db;">'
+                st.markdown(card_body, unsafe_allow_html=True)
+                
+                # Get data elements for this asset
+                data_elements = asset_to_data_elements.get(selected_asset['id'], [])
+                
+                if data_elements:
+                    with st.expander(f"Data Elements ({len(data_elements)})"):
+                        # Create a DataFrame for the data elements
+                        de_data = {
+                            "Data Element": [],
+                            "Description": []
+                        }
+                        
+                        for de in data_elements:
+                            de_data["Data Element"].append(de['name'])
+                            de_data["Description"].append(de['description'])
+                        
+                        # Display the data elements in a styled dataframe
+                        st.dataframe(pd.DataFrame(de_data), use_container_width=True)
+                else:
+                    st.info(f"No data elements associated with {selected_asset['name']}")
+                
+                # Close the card div
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+    def processing_activities_section(self):
+        """Handle the Processing Activities section with purposes and data elements."""
+        st.markdown("<div class='page-header'><i class='fas fa-cogs'></i> &nbsp;Processing Activities</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p>This section provides an overview of data processing activities within the organization, including their purposes and the data elements they process.</p>
+            <ul>
+                <li>Processing activities represent business operations that process personal data</li>
+                <li>Each processing activity has a specific business purpose</li>
+                <li>Processing activities use data from one or more assets</li>
+                <li>Data elements processed are tracked for compliance and transparency</li>
+            </ul>
+        </div>''', unsafe_allow_html=True)
+        
+        # Get processing activities from repository
+        processing_activities = self.inventory_repository.get_processing_activities()
+        
+        if not processing_activities:
+            st.warning("No processing activities available in the database.")
+            return
+        
+        # Get processing activity purposes
+        processing_activity_purposes = self.inventory_repository.get_processing_activity_purposes()
+        
+        # Get processing activity asset data elements
+        processing_activity_asset_data_elements = self.inventory_repository.get_processing_activity_asset_data_elements()
+        
+        # Group purposes by processing activity
+        activity_to_purposes = {}
+        for pap in processing_activity_purposes:
+            activity_id = pap['processing_activity_id']
+            if activity_id not in activity_to_purposes:
+                activity_to_purposes[activity_id] = []
+            activity_to_purposes[activity_id].append({
+                'name': pap['purpose_name'],
+                'category': pap['purpose_category'],
+                'risk_level': pap['purpose_risk_level'],
+                'description': pap['purpose_description']
+            })
+        
+        # Group asset data elements by processing activity and then by asset
+        activity_to_assets = {}
+        for paade in processing_activity_asset_data_elements:
+            activity_id = paade['processing_activity_id']
+            asset_id = paade['asset_id']
+            
+            if activity_id not in activity_to_assets:
+                activity_to_assets[activity_id] = {}
+            
+            if asset_id not in activity_to_assets[activity_id]:
+                activity_to_assets[activity_id][asset_id] = {
+                    'name': paade['asset_name'],
+                    'description': paade['asset_description'],
+                    'data_elements': []
+                }
+            
+            activity_to_assets[activity_id][asset_id]['data_elements'].append({
+                'name': paade['data_element_name'],
+                'description': paade['data_element_description']
+            })
+        
+        # Add filtering options at the beginning
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Get unique purposes
+            all_purposes = set()
+            for purposes in activity_to_purposes.values():
+                all_purposes.update([p['name'] for p in purposes])
+            
+            selected_purpose = st.selectbox("Filter by Purpose", ["All"] + sorted(list(all_purposes)))
+        
+        with col2:
+            # Get unique assets
+            all_assets = set()
+            for assets in activity_to_assets.values():
+                all_assets.update([a['name'] for _, a in assets.items()])
+            
+            selected_asset = st.selectbox("Filter by Asset", ["All"] + sorted(list(all_assets)))
+        
+        # Apply filters
+        filtered_activities = processing_activities
+        if selected_purpose != "All" or selected_asset != "All":
+            filtered_activities = []
+            
+            for activity in processing_activities:
+                include = True
+                
+                if selected_purpose != "All":
+                    purposes = activity_to_purposes.get(activity['id'], [])
+                    purpose_names = [p['name'] for p in purposes]
+                    if selected_purpose not in purpose_names:
+                        include = False
+                
+                if selected_asset != "All" and include:
+                    assets = activity_to_assets.get(activity['id'], {})
+                    asset_names = [a['name'] for _, a in assets.items()]
+                    if selected_asset not in asset_names:
+                        include = False
+                
+                if include:
+                    filtered_activities.append(activity)
+        
+        # Create a DataFrame for all processing activities
+        pa_data = {
+            "Processing Activity": [],
+            "Description": [],
+            "Status": [],
+            "Start Date": [],
+            "End Date": [],
+            "Purpose(s)": [],
+            "Asset(s)": [],
+            "Data Element Count": []
+        }
+        
+        if not filtered_activities:
+            st.warning("No processing activities match the selected filters.")
+        else:
+            for activity in filtered_activities:
+                # Get purposes for this activity
+                purposes = activity_to_purposes.get(activity['id'], [])
+                purpose_names = ", ".join([p['name'] for p in purposes]) if purposes else "None"
+                
+                # Get assets for this activity
+                assets = activity_to_assets.get(activity['id'], {})
+                asset_names = ", ".join([a['name'] for _, a in assets.items()]) if assets else "None"
+                
+                # Count total data elements
+                data_element_count = sum(len(a['data_elements']) for _, a in assets.items()) if assets else 0
+                
+                # Add to DataFrame
+                pa_data["Processing Activity"].append(activity['name'])
+                pa_data["Description"].append(activity['description'])
+                pa_data["Status"].append(activity['status'])
+                pa_data["Start Date"].append(activity['start_date'])
+                pa_data["End Date"].append(activity['end_date'] if activity['end_date'] else "N/A")
+                pa_data["Purpose(s)"].append(purpose_names)
+                pa_data["Asset(s)"].append(asset_names)
+                pa_data["Data Element Count"].append(data_element_count)
+            
+            # Convert to DataFrame for display
+            df = pd.DataFrame(pa_data)
+            
+            # Remove any empty rows
+            df = df.dropna(how='all')
+            
+            # Display the DataFrame with a fixed height to avoid empty rows
+            st.dataframe(df, use_container_width=True, height=min(400, len(df) * 35 + 38))
+            
+            # Add a selectbox to choose a processing activity
+            activity_names = [activity['name'] for activity in filtered_activities]
+            if activity_names:
+                selected_activity_name = st.selectbox("Select a processing activity to view details", activity_names)
+                
+                # Find the selected activity
+                selected_activity = next((activity for activity in filtered_activities if activity['name'] == selected_activity_name), None)
+                
+                with st.container():
+                    # Create a card-like container with custom styling
+                    card_header = f'''
+                    <div style="background-color: white; border-radius: 10px 10px 0 0; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 5px solid #3498db;">
+                        <h3 style="color: #2c3e50; margin-top: 0;">{selected_activity['name']}</h3>
+                        <p style="color: #7f8c8d;">{selected_activity['description']}</p>
+                        <p><span style="background-color: #e8f4f8; padding: 3px 8px; border-radius: 10px; font-size: 0.8em;">{selected_activity['status']}</span></p>
+                    </div>
+                    '''
+                    st.markdown(card_header, unsafe_allow_html=True)
+                    
+                    # Create a card for expanders
+                    card_body = '<div style="background-color: white; border-radius: 0 0 10px 10px; padding: 0 15px 15px 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 5px solid #3498db;">'
+                    st.markdown(card_body, unsafe_allow_html=True)
+                    
+                    # Get purposes for this activity
+                    purposes = activity_to_purposes.get(selected_activity['id'], [])
+                    
+                    if purposes:
+                        with st.expander(f"Purpose{'s' if len(purposes) > 1 else ''} ({len(purposes)})"):
+                            for purpose in purposes:
+                                risk_color = {
+                                    'Low': '#2ecc71',  # Green
+                                    'Medium': '#f39c12',  # Orange
+                                    'High': '#e74c3c'  # Red
+                                }.get(purpose['risk_level'], '#7f8c8d')  # Default gray
+                                
+                                st.markdown(f'''
+                                <div style="background-color: white; border-radius: 5px; padding: 10px; margin-bottom: 10px; border-left: 3px solid {risk_color};">
+                                    <h4 style="margin-top: 0;">{purpose['name']}</h4>
+                                    <p style="font-size: 0.9em; margin-bottom: 5px;"><strong>Category:</strong> {purpose['category'] or 'N/A'}</p>
+                                    <p style="font-size: 0.9em; margin-bottom: 5px;"><strong>Risk Level:</strong> <span style="color: {risk_color};">{purpose['risk_level'] or 'N/A'}</span></p>
+                                    <p style="font-size: 0.9em;">{purpose['description'] or 'No description available'}</p>
+                                </div>
+                                ''', unsafe_allow_html=True)
+                    else:
+                        st.info(f"No purposes associated with {selected_activity['name']}")
+                    
+                    # Get assets and data elements for this activity
+                    assets = activity_to_assets.get(selected_activity['id'], {})
+                    
+                    if assets:
+                        with st.expander(f"Assets and Data Elements ({len(assets)})"):
+                            for asset_id, asset in assets.items():
+                                st.markdown(f"#### {asset['name']}")
+                                st.markdown(f"*{asset['description']}*")
+                                
+                                # Create a DataFrame for the data elements
+                                de_data = {
+                                    "Data Element": [],
+                                    "Description": []
+                                }
+                                
+                                for de in asset['data_elements']:
+                                    de_data["Data Element"].append(de['name'])
+                                    de_data["Description"].append(de['description'])
+                                
+                                # Display the data elements in a styled dataframe
+                                st.dataframe(pd.DataFrame(de_data), use_container_width=True)
+                    else:
+                        st.info(f"No assets associated with {selected_activity['name']}")
+                    
+                    # Close the card div
+                    st.markdown('</div>', unsafe_allow_html=True)
+        
     def purposes_page(self):
         """Display the Purposes page with all purposes from the repository."""
         st.markdown("<div class='page-header'><i class='fas fa-bullseye'></i> &nbsp;Purposes</div>", unsafe_allow_html=True)
@@ -1974,9 +2302,13 @@ class DataMap:
             # Fourth section: Inventory
             st.markdown("<div class='sidebar-section-header'>Inventory</div>", unsafe_allow_html=True)
             
-            # Inventory menu item
-            if st.button("📊 Assets", key="inventory_btn", use_container_width=True):
+            # Assets menu item
+            if st.button("📊 Assets", key="assets_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Assets'
+                
+            # Processing Activities menu item
+            if st.button("🔄 Processing Activities", key="processing_activities_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Processing Activities'
 
             
             
@@ -1993,7 +2325,9 @@ class DataMap:
         elif st.session_state['current_section'] == 'Decision Tree':
             self.decision_tree_section()
         elif st.session_state['current_section'] == 'Assets':
-            self.inventory_section()
+            self.assets_section()
+        elif st.session_state['current_section'] == 'Processing Activities':
+            self.processing_activities_section()
         elif st.session_state['current_section'] == 'Law API':
             self.law_inference_api()
         elif st.session_state['current_section'] == 'Sensitivity API':
