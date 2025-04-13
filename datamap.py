@@ -2076,9 +2076,9 @@ class DataMap:
             else:
                 st.warning("No policy-purpose-data usage rules available in the database.")
     
-    def governance_page(self):
-        """Display the Governance page with the policy compliance analysis tool."""
-        st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Governance</div>", unsafe_allow_html=True)
+    def policy_compliance_page(self):
+        """Display the Policy Compliance page with the policy compliance analysis tool."""
+        st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Policy Compliance</div>", unsafe_allow_html=True)
         
         st.markdown('''
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
@@ -2277,8 +2277,8 @@ class DataMap:
                 st.session_state['current_section'] = 'Policies'
             
             # Governance menu item
-            if st.button("⚖️ Governance", key="governance_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Governance'
+            if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Compliance'
             
             # Fourth section: Inventory
             st.markdown("<div class='sidebar-section-header'>Inventory</div>", unsafe_allow_html=True)
@@ -2325,8 +2325,8 @@ class DataMap:
             self.purposes_page()
         elif st.session_state['current_section'] == 'Policies':
             self.policies_page()
-        elif st.session_state['current_section'] == 'Governance':
-            self.governance_page()
+        elif st.session_state['current_section'] == 'Policy Compliance':
+            self.policy_compliance_page()
 
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.
@@ -4124,17 +4124,16 @@ class DataMap:
             purpose_id=purpose_id
         )
         
-        # Simulate policy evaluation for each data element
-        st.markdown("""
-        <h4 style="color: #3498db;">Data Access Decisions</h4>
-        <table style="width:100%; table-layout: fixed; border-collapse: collapse;">
-            <tr style="background-color: #eaf2f8;">
-                <th style="width: 25%; padding: 8px; text-align: left; border: 1px solid #ddd;">Data Element</th>
-                <th style="width: 15%; padding: 8px; text-align: left; border: 1px solid #ddd;">Operation</th>
-                <th style="width: 20%; padding: 8px; text-align: left; border: 1px solid #ddd;">Decision</th>
-                <th style="width: 40%; padding: 8px; text-align: left; border: 1px solid #ddd;">Restrictions</th>
-            </tr>
-        """, unsafe_allow_html=True)
+        # Prepare data for the decisions table
+        st.subheader("Data Access Decisions")
+        
+        # Create a DataFrame to hold the decisions
+        decisions_data = {
+            "Data Element": [],
+            "Operation": [],
+            "Decision": [],
+            "Restrictions": []
+        }
         
         # Process each data element using the policy data from the repository
         denied_operations = False
@@ -4184,16 +4183,26 @@ class DataMap:
                             denied_operations = True
                         break
             
-            st.markdown(f"""
-            <tr>
-                <td style="width: 25%; padding: 8px; text-align: left; border: 1px solid #ddd;">{data_element}</td>
-                <td style="width: 15%; padding: 8px; text-align: left; border: 1px solid #ddd;">{operation}</td>
-                <td style="width: 20%; padding: 8px; text-align: left; border: 1px solid #ddd; color: {decision_color};"><strong>{decision}</strong></td>
-                <td style="width: 40%; padding: 8px; text-align: left; border: 1px solid #ddd;">{restrictions}</td>
-            </tr>
-            """, unsafe_allow_html=True)
+            # Add row to the DataFrame
+            decisions_data["Data Element"].append(data_element)
+            decisions_data["Operation"].append(operation)
+            decisions_data["Decision"].append(decision)
+            decisions_data["Restrictions"].append(restrictions)
         
-        st.markdown("</table>", unsafe_allow_html=True)
+        # Create and display the DataFrame
+        decisions_df = pd.DataFrame(decisions_data)
+        
+        # Apply styling to the Decision column based on the decision
+        def highlight_decision(val):
+            if val == "Allowed":
+                return 'background-color: #d4edda; color: #155724'
+            elif val == "Allowed with Restrictions":
+                return 'background-color: #fff3cd; color: #856404'
+            else:  # Denied
+                return 'background-color: #f8d7da; color: #721c24'
+        
+        # Display the styled DataFrame
+        st.dataframe(decisions_df.style.applymap(highlight_decision, subset=['Decision']), use_container_width=True)
         
         # Add decision rationale
         st.markdown("""
