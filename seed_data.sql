@@ -546,20 +546,16 @@ INSERT INTO `processing_activity` (`name`, `description`, `status`, `start_date`
 ('Financial Transactions Processing', 'Processing financial transaction data for accounting purposes', 'Active', '2025-01-10', NULL),
 ('Website User Analytics', 'Collecting and analyzing website user behavior data', 'Active', '2025-01-05', NULL);
 
--- Seed Processing Activity Purpose relationships
+-- Seed Processing Activity Purpose relationships (one purpose per activity)
 INSERT INTO `processing_activity_purpose` (`processing_activity_id`, `purpose_id`)
 SELECT pa.id, p.id
 FROM `processing_activity` pa, `purpose` p
 WHERE 
     (pa.name = 'Customer Data Management' AND p.name = 'Customer Support') OR
-    (pa.name = 'Customer Data Management' AND p.name = 'Service Delivery') OR
     (pa.name = 'Marketing Campaign Analysis' AND p.name = 'Marketing Campaigns') OR
-    (pa.name = 'Marketing Campaign Analysis' AND p.name = 'Product Analytics') OR
     (pa.name = 'Employee Onboarding' AND p.name = 'Employee Management') OR
     (pa.name = 'Financial Transactions Processing' AND p.name = 'Payment Processing') OR
-    (pa.name = 'Financial Transactions Processing' AND p.name = 'Regulatory Compliance') OR
-    (pa.name = 'Website User Analytics' AND p.name = 'Product Analytics') OR
-    (pa.name = 'Website User Analytics' AND p.name = 'Research and Development');
+    (pa.name = 'Website User Analytics' AND p.name = 'Product Analytics');
 
 -- Seed Processing Activity Asset Data Element relationships
 INSERT INTO `processing_activity_asset_data_element` (`processing_activity_id`, `asset_id`, `data_element_id`)

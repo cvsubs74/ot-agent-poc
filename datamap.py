@@ -1929,6 +1929,80 @@ class DataMap:
                     
                     # Close the card div
                     st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Add Policy Compliance Analysis section (outside the card)
+                    if purposes and assets:
+                        st.subheader("Policy Compliance Analysis")
+                        
+                        # Add algorithm description
+                        st.markdown("""
+                        <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                            <h4 style="margin-top: 0;">How Policy Compliance Analysis Works</h4>
+                            <p>The Policy Compliance Analysis uses these mapping tables to determine if a processing activity complies with organizational policies:</p>
+                            <ol>
+                                <li><strong>Policy Purpose Data Elements</strong>: Maps which data elements are allowed for specific purposes under each policy.</li>
+                                <li><strong>Policy Purpose Data Usage</strong>: Defines permitted operations (read, write, share) for each data element-purpose combination.</li>
+                                <li><strong>Purpose Risk Levels</strong>: Categorizes purposes by risk level, which influences the strictness of compliance requirements.</li>
+                            </ol>
+                            <p>When analyzing policy compliance, the system considers:</p>
+                            <ul>
+                                <li>The business purpose of the processing activity</li>
+                                <li>All data elements involved in the processing</li>
+                                <li>The specific operation being performed (read, write, share)</li>
+                                <li>Any usage restrictions defined in the policy</li>
+                            </ul>
+                            <p>The system then evaluates each data element against policy rules and provides a detailed compliance assessment with recommendations for addressing any violations.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("Check if this processing activity complies with organizational policies.")
+                        
+                        # Get the purpose for this activity (assuming one purpose per activity)
+                        purpose = purposes[0]['name'] if purposes else None
+                        
+                        # Get all data elements from all assets
+                        all_data_elements = []
+                        for _, asset in assets.items():
+                            for de in asset['data_elements']:
+                                all_data_elements.append(de['name'])
+                        
+                        # Remove duplicates
+                        all_data_elements = list(set(all_data_elements))
+                        
+                        # Add operation selection dropdown
+                        operation = st.selectbox(
+                            "Select Operation",
+                            options=["read", "write", "share"],
+                            index=0,
+                            key=f"operation_select_{selected_activity['id']}"
+                        )
+                        
+                        # Add analyze button under the dropdown
+                        analyze_button = st.button(
+                            "Analyze Policy Compliance", 
+                            key=f"analyze_btn_{selected_activity['id']}"
+                        )
+                        
+                        if purpose and all_data_elements:
+                            if analyze_button:
+                                # Display policy compliance analysis
+                                st.markdown(f"### Policy Compliance Analysis for {purpose}")
+                                st.markdown(f"**Operation:** {operation.upper()}")
+                                
+                                # Analyze for the selected operation
+                                self._analyze_policy_compliance_for_activity(purpose, all_data_elements, operation)
+                            else:
+                                # Show placeholder message
+                                st.markdown("""
+                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                                    <h3 style="color: #7F8C8D;">Analysis Results</h3>
+                                    <p>Policy compliance analysis will appear here after clicking the Analyze button...</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.info("Insufficient data for policy compliance analysis.")
+                    
+
         
     def purposes_page(self):
         """Display the Purposes page with all purposes from the repository."""
@@ -4058,7 +4132,161 @@ class DataMap:
                 </div>
                 """, unsafe_allow_html=True)
 
-    def _analyze_policy_compliance(self, purpose, data_elements, operation):
+    def _analyze_policy_compliance_for_activity(self, purpose, data_elements, operation):
+        """Analyze policy compliance for a processing activity.
+        This is a simplified version of _analyze_policy_compliance for use in the Processing Activities section.
+        
+        Args:
+            purpose (str): The business purpose for data access
+            data_elements (list): List of data elements being accessed
+            operation (str): The operation type (read, write, share)
+        """
+        # Get policies from the database
+        policies = self.glossary_repository.get_policies()
+        
+        # Find the access control policy
+        access_control_policy = None
+        for policy in policies:
+            if policy["policy_type"] == "Access Control":
+                access_control_policy = policy
+                break
+        
+        if not access_control_policy:
+            st.error("No Access Control Policy found in the database.")
+            return
+        
+        # Get purpose ID
+        purpose_id = None
+        purposes = self.glossary_repository.get_purposes()
+        for p in purposes:
+            if p["name"] == purpose:
+                purpose_id = p["id"]
+                break
+        
+        if not purpose_id:
+            st.error(f"Purpose '{purpose}' not found in the database.")
+            return
+        
+        # Get data element IDs
+        data_element_ids = {}
+        all_data_elements = self.glossary_repository.get_data_elements()
+        for data_element in data_elements:
+            for de in all_data_elements:
+                if de["name"] == data_element:
+                    data_element_ids[data_element] = de["id"]
+                    break
+        
+        # Display applicable policy
+        st.markdown(f"""
+        <div style="margin-bottom: 15px;">
+            <p><strong>Applicable Policy:</strong> {access_control_policy['name']} ({access_control_policy['policy_type']})</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Get policy purpose data elements
+        policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+            policy_id=access_control_policy['id'], 
+            purpose_id=purpose_id
+        )
+        
+        # Get policy purpose data usages
+        policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages(
+            policy_id=access_control_policy['id'], 
+            purpose_id=purpose_id
+        )
+        
+        # Create a DataFrame to hold the decisions
+        decisions_data = {
+            "Data Element": [],
+            "Operation": [],
+            "Decision": [],
+            "Restrictions": []
+        }
+        
+        # Process each data element using the policy data from the repository
+        denied_operations = False
+        for data_element in data_elements:
+            data_element_id = data_element_ids.get(data_element)
+            
+            # Default values if no specific rules found
+            decision = "Denied"
+            restrictions = "No explicit permission in policy"
+            decision_color = "#e74c3c"
+            
+            # Check if there's a usage rule for this data element, purpose, and operation
+            for usage in policy_purpose_data_usages:
+                if (usage["data_element_name"] == data_element and 
+                    usage["operation"] == operation):
+                    
+                    if usage["allowed"]:
+                        if usage["restrictions"]:
+                            decision = "Allowed with Restrictions"
+                            restrictions = usage["restrictions"]
+                            decision_color = "#f39c12"
+                        else:
+                            decision = "Allowed"
+                            restrictions = "None"
+                            decision_color = "#2ecc71"
+                    else:
+                        decision = "Denied"
+                        restrictions = usage["restrictions"] if usage["restrictions"] else "Operation not allowed for this purpose"
+                        decision_color = "#e74c3c"
+                        denied_operations = True
+                    break
+            
+            # If no specific usage rule found, check if the data element is allowed for this purpose
+            if decision == "Denied" and restrictions == "No explicit permission in policy":
+                for element in policy_purpose_data_elements:
+                    if element["data_element_name"] == data_element:
+                        if element["access_allowed"]:
+                            # Default to allowed for read operations if no specific rule exists
+                            if operation == "read":
+                                decision = "Allowed"
+                                restrictions = "None"
+                                decision_color = "#2ecc71"
+                            else:
+                                # For write/share, still require explicit permission
+                                denied_operations = True
+                        else:
+                            denied_operations = True
+                        break
+            
+            # Add row to the DataFrame
+            decisions_data["Data Element"].append(data_element)
+            decisions_data["Operation"].append(operation)
+            decisions_data["Decision"].append(decision)
+            decisions_data["Restrictions"].append(restrictions)
+        
+        # Create and display the DataFrame
+        decisions_df = pd.DataFrame(decisions_data)
+        
+        # Apply styling to the Decision column based on the decision
+        def highlight_decision(val):
+            if val == "Allowed":
+                return 'background-color: #d4edda; color: #155724'
+            elif val == "Allowed with Restrictions":
+                return 'background-color: #fff3cd; color: #856404'
+            else:  # Denied
+                return 'background-color: #f8d7da; color: #721c24'
+        
+        # Display the styled DataFrame
+        st.dataframe(decisions_df.style.applymap(highlight_decision, subset=['Decision']), use_container_width=True)
+        
+        # Add compliance recommendations if there are denied operations
+        if denied_operations:
+            st.markdown("""
+            <div style="margin-top: 20px; background-color: #fef9e7; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12;">
+                <h4 style="color: #f39c12; margin-top: 0;">Compliance Issues Detected</h4>
+                <p>This processing activity has potential policy compliance issues. Consider:</p>
+                <ul>
+                    <li>Limiting data access to only what is necessary for the stated purpose</li>
+                    <li>Using anonymized or pseudonymized data when possible</li>
+                    <li>Documenting the business justification for accessing sensitive data</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    def _analyze_policy_compliance(self, purpose, data_elements, operation, jurisdiction=None):
         """Analyze policy compliance based on purpose, data elements, and operation.
         
         Args:
