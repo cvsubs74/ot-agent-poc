@@ -1985,16 +1985,6 @@ class DataMap:
         
         # Policies tab
         with tabs[0]:
-            st.subheader("Policies")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about organizational policies that govern data usage and access.</p>
-                <ul>
-                    <li>Defines rules for accessing data based on purpose limitation principles</li>
-                    <li>Establishes guidelines for data protection and privacy</li>
-                    <li>Supports compliance with regulatory requirements</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
             # Get policies data from repository
             policies = self.glossary_repository.get_policies()
             if policies:
@@ -2016,9 +2006,6 @@ class DataMap:
         
         # Policy Purpose tab
         with tabs[1]:
-            st.subheader("Policy Purpose Relationships")
-            st.markdown("This tab shows which business purposes are allowed under each policy.")
-            
             # Get policy purposes from repository
             policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
             
@@ -2039,9 +2026,6 @@ class DataMap:
         
         # Policy Purpose Data Element tab
         with tabs[2]:
-            st.subheader("Policy Purpose Data Element Relationships")
-            st.markdown("This tab shows which data elements are allowed for each policy-purpose combination.")
-            
             # Get policy purpose data elements from repository
             policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements()
             
@@ -2066,9 +2050,6 @@ class DataMap:
         
         # Policy Purpose Data Usage tab
         with tabs[3]:
-            st.subheader("Policy Purpose Data Usage Rules")
-            st.markdown("This tab shows the specific usage rules (read, write, share) for each policy-purpose-data element combination.")
-            
             # Get policy purpose data usages from repository
             policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages()
             
