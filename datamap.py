@@ -19,6 +19,7 @@ from repositories.GlossaryRepository import GlossaryRepository
 from repositories.RegulatoryMetadataRepository import RegulatoryMetadataRepository
 from repositories.InventoryRepository import InventoryRepository
 from repositories.DatabaseManager import DatabaseManager
+from repositories.ObligationRepository import ObligationRepository
 
 class DataMap:
     def __init__(self):
@@ -27,6 +28,7 @@ class DataMap:
         self.glossary_repository = GlossaryRepository(self.database_manager.connection)
         self.regulatory_metadata_repository = RegulatoryMetadataRepository(self.database_manager.connection)
         self.inventory_repository = InventoryRepository(self.database_manager.connection)
+        self.obligation_repository = ObligationRepository(self.database_manager.connection)
         
     @staticmethod
     def divider(height=1):
@@ -306,7 +308,7 @@ class DataMap:
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
-            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types"
+            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations"
         ])
         
         # Law tab
@@ -548,9 +550,107 @@ class DataMap:
             else:
                 st.warning("No data available in the database.")
                 
-
+        # Obligations tab
+        with tabs[9]:
+            st.subheader("Obligations")
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about regulatory and security obligations that organizations must fulfill.</p>
+                <ul>
+                    <li>Detailed descriptions of each obligation and its requirements</li>
+                    <li>Tracks implementation status and policy linkage</li>
+                    <li>Filter by control type, status, and source</li>
+                    <li>Supports compliance with various regulations and standards</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get obligations from repository
+            obligations = self.obligation_repository.get_obligations()
+            if obligations:
+                # Create filters
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Get unique control types
+                    control_types = sorted(list(set([obl["control_type"] for obl in obligations if obl["control_type"]]))) 
+                    control_types = ["All"] + control_types
+                    selected_control = st.selectbox("Filter by Control Type", control_types, key="obl_control_filter")
+                
+                with col2:
+                    # Get unique statuses
+                    statuses = sorted(list(set([obl["status"] for obl in obligations if obl["status"]]))) 
+                    statuses = ["All"] + statuses
+                    selected_status = st.selectbox("Filter by Status", statuses, key="obl_status_filter")
+                
+                with col3:
+                    # Get unique sources
+                    sources = sorted(list(set([obl["source"] for obl in obligations if obl["source"]]))) 
+                    sources = ["All"] + sources
+                    selected_source = st.selectbox("Filter by Source", sources, key="obl_source_filter")
+                
+                # Create dataframe
+                df = pd.DataFrame(obligations)
+                df = df.rename(columns={
+                    "id": "ID",
+                    "name": "Obligation",
+                    "description": "Description",
+                    "source": "Source",
+                    "control_type": "Control Type",
+                    "status": "Status",
+                    "policy_name": "Policy",
+                    "risk_accepted": "Risk Accepted",
+                    "created_at": "Created At"
+                })
+                
+                # Apply filters
+                if selected_control != "All":
+                    df = df[df["Control Type"] == selected_control]
+                if selected_status != "All":
+                    df = df[df["Status"] == selected_status]
+                if selected_source != "All":
+                    df = df[df["Source"] == selected_source]
+                
+                # Reorder columns for better display
+                display_columns = ["ID", "Obligation", "Description", "Source", "Control Type", "Status", "Policy", "Risk Accepted"]
+                df = df[display_columns]
+                
+                # Display the dataframe
+                st.dataframe(df, use_container_width=True)
+                
+                # Add new obligation section
+                with st.expander("Add New Obligation", expanded=False):
+                    with st.form("add_obligation_form"):
+                        obligation_name = st.text_input("Obligation Name")
+                        obligation_desc = st.text_area("Description")
+                        obligation_source = st.text_input("Source (e.g., Regulation, Standard)")
+                        obligation_control = st.selectbox(
+                            "Control Type",
+                            ["Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
+                            key="new_obligation_control"
+                        )
+                        obligation_status = st.selectbox(
+                            "Status",
+                            ["Open", "In Progress", "Implemented", "Accepted Risk"],
+                            key="new_obligation_status"
+                        )
+                        
+                        submitted = st.form_submit_button("Add Obligation")
+                        if submitted:
+                            if obligation_name and obligation_desc:
+                                # Add the obligation to the repository
+                                new_id = self.obligation_repository.add_obligation(
+                                    obligation_name, obligation_desc, obligation_source, 
+                                    obligation_control, obligation_status
+                                )
+                                if new_id:
+                                    st.success(f"Obligation '{obligation_name}' added successfully!")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error("Failed to add obligation. Please try again.")
+                            else:
+                                st.warning("Obligation Name and Description are required.")
+            else:
+                st.warning("No obligations available in the database.")
         
-
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
@@ -584,7 +684,8 @@ class DataMap:
             "Legal Basis Requirements",
             "Policy Purpose",
             "Policy Purpose Data Element",
-            "Policy Purpose Data Usage"
+            "Policy Purpose Data Usage",
+            "Sensitivity Obligations"
         ]
         
         # Define which tabs are used by each inference API
@@ -595,8 +696,9 @@ class DataMap:
             "Breach Notification Inference": [2],  # Law Incident Breach Notification tab
             "Transfer Mechanism Inference": [3],  # Law Transfer tab
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
-            "Data Sensitivity Inference": [5, 6, 7, 8, 9],  # Various sensitivity-related tabs
-            "Policy Inference": [12, 13, 14]  # Policy Purpose, Policy Purpose Data Element, Policy Purpose Data Usage
+            "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
+            "Policy Inference": [12, 13, 14],  # Policy Purpose, Policy Purpose Data Element, Policy Purpose Data Usage
+            "Obligation Inference": [15]  # Sensitivity Obligations tab
         }
         
         # Create a filter for inference APIs
@@ -1565,7 +1667,73 @@ class DataMap:
                         st.dataframe(filtered_df)
                     else:
                         st.warning("No Policy Purpose Data Usage mappings available in the database.")
-            
+                 
+                # Sensitivity Obligations tab
+                elif tab_idx == 15:
+                    st.markdown("""
+                        <div class="card">
+                            <h3>Sensitivity Obligations Mapping</h3>
+                            <p>This section defines standard security and privacy obligations that should be applied based on data sensitivity levels.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                    # Get all sensitivities
+                    sensitivities = self.glossary_repository.get_sensitivities()
+                    
+                    # Create a filter for sensitivity
+                    sensitivity_options = {s["id"]: s["name"] for s in sensitivities}
+                    sensitivity_options[0] = "All Sensitivities"
+                    
+                    selected_sensitivity_id = st.selectbox(
+                        "Filter by Sensitivity Level",
+                        options=list(sensitivity_options.keys()),
+                        format_func=lambda x: sensitivity_options[x],
+                        index=0,
+                        key="sensitivity_filter"
+                    )
+                    
+                    # Get sensitivity obligations with filter
+                    sensitivity_id = None if selected_sensitivity_id == 0 else selected_sensitivity_id
+                    sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                    
+                    if sensitivity_obligations:
+                        # Convert to DataFrame for display
+                        df = pd.DataFrame(sensitivity_obligations)
+                        # Rename columns for better display
+                        df = df.rename(columns={
+                            "id": "ID",
+                            "sensitivity_name": "Sensitivity Level",
+                            "obligation_name": "Standard Obligation",
+                            "obligation_description": "Description",
+                            "control_type": "Control Type",
+                            "priority": "Priority"
+                        })
+                        
+                        # Reorder columns for better display
+                        display_columns = ["ID", "Sensitivity Level", "Standard Obligation", "Description", "Control Type", "Priority"]
+                        df = df[display_columns]
+                        
+                        # Display the dataframe
+                        st.dataframe(df, use_container_width=True)
+                        
+                        # Add explanation
+                        st.markdown("""
+                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                            <h4 style="margin-top: 0;">How Sensitivity Obligations Work</h4>
+                            <p>This mapping table defines the standard security and privacy controls that should be applied based on data sensitivity:</p>
+                            <ul>
+                                <li><strong>Special Category Data:</strong> Requires the highest level of protection with strict encryption, access controls, and monitoring</li>
+                                <li><strong>Restricted Data:</strong> Requires strong protection measures including encryption and access restrictions</li>
+                                <li><strong>Confidential Data:</strong> Requires moderate protection with basic encryption and access controls</li>
+                                <li><strong>Internal Data:</strong> Requires standard organizational controls</li>
+                                <li><strong>Public Data:</strong> Requires basic integrity controls</li>
+                            </ul>
+                            <p>These mappings are used by the Obligation Inference API to recommend appropriate controls based on data sensitivity.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning("No sensitivity-obligation mappings available in the database.")
+                    
     def assets_section(self):
         """Handle the Assets section with data elements."""
         st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Assets</div>", unsafe_allow_html=True)
@@ -2486,9 +2654,11 @@ class DataMap:
             if st.button("📚 Core Constructs", key="core_constructs_button", use_container_width=True):
                 st.session_state['current_section'] = 'Core'
             
-            # Regulatory Intelligence menu item
-            if st.button("🔄 Regulatory Intelligence", key="regulatory_btn", use_container_width=True):
+            # Regulatory Metadata menu item
+            if st.button("📋 Regulatory Metadata", key="regulatory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Regulatory'
+                
+            # Removed Obligations menu item (moved to Core Constructs)
             
             # Decision Tree menu item
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
@@ -2586,6 +2756,396 @@ class DataMap:
         elif st.session_state['current_section'] == 'Policy Compliance':
             self.policy_compliance_page()
 
+    def regulatory_intelligence_section(self):
+        """Handle the Regulatory Intelligence section with its tabs."""
+        st.title("Regulatory Intelligence")
+        st.markdown("Manage regulatory obligations and their links to policies, controls, and risks.")
+        
+        # Create tabs for the section (removed Sensitivity Obligations tab as it's now in Regulatory Metadata)
+        tabs = st.tabs(["Obligation Inference"])
+        
+        # Handle each tab
+        with tabs[0]:
+            self.obligation_inference_page()
+            
+    def obligations_page(self):
+        """Display the Obligations page with all obligations from the repository."""
+        st.header("Obligations Management")
+        st.markdown("View and manage regulatory obligations that need to be addressed.")
+        
+        # Create columns for filters and actions
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            status_filter = st.selectbox(
+                "Filter by Status",
+                ["All", "Open", "In Progress", "Implemented", "Accepted Risk"],
+                key="obligation_status_filter"
+            )
+        
+        with col2:
+            control_filter = st.selectbox(
+                "Filter by Control Type",
+                ["All", "Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
+                key="obligation_control_filter"
+            )
+        
+        with col3:
+            policy_filter = st.selectbox(
+                "Filter by Policy Status",
+                ["All", "Linked to Policy", "No Policy"],
+                key="obligation_policy_filter"
+            )
+        
+        # Apply filters
+        status = None if status_filter == "All" else status_filter
+        control_type = None if control_filter == "All" else control_filter
+        policy_linked = None
+        if policy_filter == "Linked to Policy":
+            policy_linked = True
+        elif policy_filter == "No Policy":
+            policy_linked = False
+        
+        # Get obligations from repository with filters
+        obligations = self.obligation_repository.get_obligations(status, control_type, policy_linked)
+        
+        if obligations:
+            # Convert to DataFrame for display
+            df = pd.DataFrame(obligations)
+            # Rename columns for better display
+            df = df.rename(columns={
+                "id": "ID",
+                "name": "Obligation",
+                "description": "Description",
+                "source": "Source",
+                "control_type": "Control Type",
+                "status": "Status",
+                "policy_name": "Policy",
+                "risk_accepted": "Risk Accepted",
+                "created_at": "Created At"
+            })
+            
+            # Reorder columns for better display
+            display_columns = ["ID", "Obligation", "Description", "Source", "Control Type", "Status", "Policy", "Risk Accepted"]
+            df = df[display_columns]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No obligations found with the selected filters.")
+        
+        # Add new obligation section
+        with st.expander("Add New Obligation", expanded=False):
+            with st.form("add_obligation_form"):
+                obligation_name = st.text_input("Obligation Name")
+                obligation_desc = st.text_area("Description")
+                obligation_source = st.text_input("Source (e.g., Regulation, Standard)")
+                obligation_control = st.selectbox(
+                    "Control Type",
+                    ["Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
+                    key="new_obligation_control"
+                )
+                obligation_status = st.selectbox(
+                    "Status",
+                    ["Open", "In Progress", "Implemented", "Accepted Risk"],
+                    key="new_obligation_status"
+                )
+                
+                submitted = st.form_submit_button("Add Obligation")
+                if submitted:
+                    if obligation_name and obligation_desc:
+                        # Add the obligation to the repository
+                        new_id = self.obligation_repository.add_obligation(
+                            obligation_name, obligation_desc, obligation_source, 
+                            obligation_control, obligation_status
+                        )
+                        if new_id:
+                            st.success(f"Obligation '{obligation_name}' added successfully!")
+                            st.experimental_rerun()
+                        else:
+                            st.error("Failed to add obligation. Please try again.")
+                    else:
+                        st.warning("Obligation Name and Description are required.")
+        
+        # Manage existing obligations
+        if obligations:
+            with st.expander("Manage Existing Obligations", expanded=False):
+                # Select an obligation to manage
+                selected_id = st.selectbox(
+                    "Select Obligation to Manage",
+                    options=[o["id"] for o in obligations],
+                    format_func=lambda x: next((o["name"] for o in obligations if o["id"] == x), "Unknown"),
+                    key="manage_obligation_id"
+                )
+                
+                if selected_id:
+                    selected_obligation = next((o for o in obligations if o["id"] == selected_id), None)
+                    if selected_obligation:
+                        action = st.radio(
+                            "Action",
+                            ["Update Status", "Link to Policy", "Accept Risk", "Delete"],
+                            key="obligation_action"
+                        )
+                        
+                        if action == "Update Status":
+                            new_status = st.selectbox(
+                                "New Status",
+                                ["Open", "In Progress", "Implemented", "Accepted Risk"],
+                                index=["Open", "In Progress", "Implemented", "Accepted Risk"].index(selected_obligation["status"]) if selected_obligation["status"] in ["Open", "In Progress", "Implemented", "Accepted Risk"] else 0,
+                                key="new_status"
+                            )
+                            if st.button("Update Status"):
+                                success = self.obligation_repository.update_obligation(
+                                    selected_id, status=new_status
+                                )
+                                if success:
+                                    st.success(f"Status updated to {new_status}")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error("Failed to update status")
+                                    
+                        elif action == "Link to Policy":
+                            # Get policies from repository
+                            policies = self.glossary_repository.get_policies()
+                            policy_options = {p["id"]: p["name"] for p in policies}
+                            policy_options[0] = "None (Remove Link)"
+                            
+                            selected_policy = st.selectbox(
+                                "Select Policy",
+                                options=list(policy_options.keys()),
+                                format_func=lambda x: policy_options[x],
+                                index=0,
+                                key="link_policy"
+                            )
+                            
+                            if st.button("Link to Policy"):
+                                policy_id = selected_policy if selected_policy != 0 else None
+                                success = self.obligation_repository.update_obligation(
+                                    selected_id, policy_id=policy_id
+                                )
+                                if success:
+                                    if policy_id:
+                                        st.success(f"Linked to policy: {policy_options[policy_id]}")
+                                    else:
+                                        st.success("Policy link removed")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error("Failed to update policy link")
+                                    
+                        elif action == "Accept Risk":
+                            risk_accepted = st.checkbox(
+                                "Accept Risk for this Obligation",
+                                value=selected_obligation["risk_accepted"],
+                                key="accept_risk"
+                            )
+                            risk_notes = st.text_area("Risk Acceptance Notes")
+                            
+                            if st.button("Save Risk Decision"):
+                                # Update risk acceptance status
+                                success = self.obligation_repository.update_obligation(
+                                    selected_id, 
+                                    risk_accepted=risk_accepted,
+                                    status="Accepted Risk" if risk_accepted else "Open"
+                                )
+                                if success:
+                                    st.success("Risk decision saved")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error("Failed to save risk decision")
+                                    
+                        elif action == "Delete":
+                            st.warning("This action cannot be undone!")
+                            if st.button("Delete Obligation"):
+                                success = self.obligation_repository.delete_obligation(selected_id)
+                                if success:
+                                    st.success("Obligation deleted")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error("Failed to delete obligation")
+    
+    def sensitivity_obligations_page(self):
+        """Display the Sensitivity Obligations page with mappings from sensitivity to standard obligations."""
+        st.header("Sensitivity-Based Obligations")
+        st.markdown("Define standard obligations that should be applied based on data sensitivity levels.")
+        
+        # Get all sensitivities
+        sensitivities = self.glossary_repository.get_sensitivities()
+        
+        # Create a filter for sensitivity
+        sensitivity_options = {s["id"]: s["name"] for s in sensitivities}
+        sensitivity_options[0] = "All Sensitivities"
+        
+        selected_sensitivity_id = st.selectbox(
+            "Filter by Sensitivity Level",
+            options=list(sensitivity_options.keys()),
+            format_func=lambda x: sensitivity_options[x],
+            index=0,
+            key="sensitivity_filter"
+        )
+        
+        # Get sensitivity obligations with filter
+        sensitivity_id = None if selected_sensitivity_id == 0 else selected_sensitivity_id
+        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+        
+        if sensitivity_obligations:
+            # Convert to DataFrame for display
+            df = pd.DataFrame(sensitivity_obligations)
+            # Rename columns for better display
+            df = df.rename(columns={
+                "id": "ID",
+                "sensitivity_name": "Sensitivity Level",
+                "obligation_name": "Standard Obligation",
+                "obligation_description": "Description",
+                "control_type": "Control Type",
+                "priority": "Priority"
+            })
+            
+            # Reorder columns for better display
+            display_columns = ["ID", "Sensitivity Level", "Standard Obligation", "Description", "Control Type", "Priority"]
+            df = df[display_columns]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No sensitivity-obligation mappings found with the selected filter.")
+        
+        # Add new sensitivity obligation mapping
+        with st.expander("Add New Sensitivity Obligation", expanded=False):
+            with st.form("add_sensitivity_obligation_form"):
+                sens_id = st.selectbox(
+                    "Sensitivity Level",
+                    options=[s["id"] for s in sensitivities],
+                    format_func=lambda x: next((s["name"] for s in sensitivities if s["id"] == x), "Unknown"),
+                    key="new_sens_obligation_sensitivity"
+                )
+                
+                obligation_name = st.text_input("Standard Obligation Name")
+                obligation_desc = st.text_area("Description")
+                obligation_control = st.selectbox(
+                    "Control Type",
+                    ["Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
+                    key="new_sens_obligation_control"
+                )
+                obligation_priority = st.selectbox(
+                    "Priority",
+                    ["High", "Medium", "Low"],
+                    index=1,  # Default to Medium
+                    key="new_sens_obligation_priority"
+                )
+                
+                submitted = st.form_submit_button("Add Sensitivity Obligation")
+                if submitted:
+                    if sens_id and obligation_name and obligation_desc:
+                        # Add the sensitivity obligation to the repository
+                        new_id = self.obligation_repository.add_sensitivity_obligation(
+                            sens_id, obligation_name, obligation_desc, 
+                            obligation_control, obligation_priority
+                        )
+                        if new_id:
+                            st.success(f"Sensitivity obligation mapping added successfully!")
+                            st.experimental_rerun()
+                        else:
+                            st.error("Failed to add sensitivity obligation mapping. Please try again.")
+                    else:
+                        st.warning("All fields are required.")
+        
+        # Generate obligations from sensitivity
+        with st.expander("Generate Obligations from Sensitivity", expanded=False):
+            st.markdown("Generate actual obligations based on sensitivity level templates.")
+            
+            selected_sens_id = st.selectbox(
+                "Select Sensitivity Level",
+                options=[s["id"] for s in sensitivities],
+                format_func=lambda x: next((s["name"] for s in sensitivities if s["id"] == x), "Unknown"),
+                key="generate_obligations_sensitivity"
+            )
+            
+            if st.button("Generate Obligations"):
+                created_ids = self.obligation_repository.generate_obligations_from_sensitivity(selected_sens_id)
+                if created_ids:
+                    st.success(f"Generated {len(created_ids)} new obligations based on sensitivity level!")
+                    st.experimental_rerun()
+                else:
+                    st.info("No new obligations were generated. They may already exist.")
+    
+    def obligation_inference_page(self):
+        """Display the Obligation Inference page to infer obligations based on data sensitivity."""
+        st.header("Obligation Inference API")
+        st.markdown("Infer appropriate obligations based on data sensitivity levels.")
+        
+        # Create two columns for the form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # Get all sensitivities for the dropdown
+            sensitivities = self.glossary_repository.get_sensitivities()
+            
+            st.subheader("Input Parameters")
+            selected_sensitivity_id = st.selectbox(
+                "Data Sensitivity Level",
+                options=[s["id"] for s in sensitivities],
+                format_func=lambda x: next((s["name"] for s in sensitivities if s["id"] == x), "Unknown"),
+                key="infer_obligations_sensitivity"
+            )
+            
+            analyze_button = st.button("Analyze Obligations")
+        
+        with col2:
+            st.subheader("Inferred Obligations")
+            
+            if analyze_button and selected_sensitivity_id:
+                # Get the sensitivity name for display
+                sensitivity_name = next((s["name"] for s in sensitivities if s["id"] == selected_sensitivity_id), "Unknown")
+                
+                # Get obligations for this sensitivity level
+                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(selected_sensitivity_id)
+                
+                if sensitivity_obligations:
+                    st.markdown(f"### Recommended Obligations for {sensitivity_name} Data")
+                    
+                    # Group by control type for better organization
+                    control_types = set(so["control_type"] for so in sensitivity_obligations)
+                    
+                    for control_type in control_types:
+                        st.markdown(f"#### {control_type} Controls")
+                        control_obligations = [so for so in sensitivity_obligations if so["control_type"] == control_type]
+                        
+                        # Sort by priority
+                        priority_order = {"High": 0, "Medium": 1, "Low": 2}
+                        control_obligations.sort(key=lambda x: priority_order.get(x["priority"], 99))
+                        
+                        for obligation in control_obligations:
+                            with st.expander(f"{obligation['obligation_name']} ({obligation['priority']} Priority)", expanded=True):
+                                st.markdown(f"**Description:** {obligation['obligation_description']}")
+                                
+                                # Add a button to create this obligation
+                                if st.button(f"Create Obligation: {obligation['obligation_name']}", key=f"create_{obligation['id']}"):
+                                    # Check if this obligation already exists
+                                    existing_obligations = self.obligation_repository.get_obligations()
+                                    exists = any(o["name"] == obligation["obligation_name"] for o in existing_obligations)
+                                    
+                                    if not exists:
+                                        new_id = self.obligation_repository.add_obligation(
+                                            obligation["obligation_name"],
+                                            obligation["obligation_description"],
+                                            f"Sensitivity: {sensitivity_name}",
+                                            obligation["control_type"],
+                                            "Open"
+                                        )
+                                        if new_id:
+                                            st.success(f"Created obligation: {obligation['obligation_name']}")
+                                        else:
+                                            st.error("Failed to create obligation")
+                                    else:
+                                        st.info(f"Obligation '{obligation['obligation_name']}' already exists")
+                else:
+                    st.info(f"No standard obligations defined for {sensitivity_name} sensitivity level.")
+            else:
+                st.markdown("""Select a sensitivity level and click 'Analyze Obligations' to see recommended obligations.
+                
+The Obligation Inference API helps you determine what security and privacy controls should be implemented based on the sensitivity of the data you're handling.
+                """)
+                
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.
         Initially the network stabilizes (nodes become static) but if you drag a node the physics
