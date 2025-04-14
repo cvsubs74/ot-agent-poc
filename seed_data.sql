@@ -444,7 +444,8 @@ INSERT INTO `purpose` (`name`, `description`, `category_name`, `risk_level`) VAL
 ('Legal Compliance', 'Processing data to comply with legal obligations', 'Legal Compliance', 'Medium'),
 ('Customer Support', 'Providing customer support and resolving issues', 'Service Provision', 'Low'),
 ('Product Development', 'Improving products and services based on user feedback', 'Research and Development', 'Medium'),
-('Fraud Prevention', 'Detecting and preventing fraudulent activities', 'Security and Fraud Prevention', 'High');
+('Fraud Prevention', 'Detecting and preventing fraudulent activities', 'Security and Fraud Prevention', 'High'),
+('AI Model Generation', 'Financial Score Prediction', 'High');
 
 -- Seed Breach Type data
 INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
@@ -560,7 +561,8 @@ INSERT INTO `processing_activity` (`name`, `description`, `status`, `start_date`
 ('Marketing Campaign Analysis', 'Analyzing customer data for targeted marketing campaigns', 'Active', '2025-01-15', NULL),
 ('Employee Onboarding', 'Processing employee data during the onboarding process', 'Active', '2025-02-01', NULL),
 ('Financial Transactions Processing', 'Processing financial transaction data for accounting purposes', 'Active', '2025-01-10', NULL),
-('Website User Analytics', 'Collecting and analyzing website user behavior data', 'Active', '2025-01-05', NULL);
+('Website User Analytics', 'Collecting and analyzing website user behavior data', 'Active', '2025-01-05', NULL),
+('Financial Score Prediction', 'Processing financial data to generate AI-based credit scoring models', 'Active', '2025-03-01', NULL);
 
 -- Seed Processing Activity Purpose relationships (one purpose per activity)
 INSERT INTO `processing_activity_purpose` (`processing_activity_id`, `purpose_id`)
@@ -571,7 +573,8 @@ WHERE
     (pa.name = 'Marketing Campaign Analysis' AND p.name = 'Marketing Campaigns') OR
     (pa.name = 'Employee Onboarding' AND p.name = 'Employee Management') OR
     (pa.name = 'Financial Transactions Processing' AND p.name = 'Payment Processing') OR
-    (pa.name = 'Website User Analytics' AND p.name = 'Product Analytics');
+    (pa.name = 'Website User Analytics' AND p.name = 'Product Analytics') OR
+    (pa.name = 'Financial Score Prediction' AND p.name = 'AI Model Generation');
 
 -- Seed Processing Activity Asset Data Element relationships
 INSERT INTO `processing_activity_asset_data_element` (`processing_activity_id`, `asset_id`, `data_element_id`)
@@ -589,7 +592,9 @@ WHERE
     -- Financial Transactions Processing - Financial Database - Financial data elements
     (pa.name = 'Financial Transactions Processing' AND a.name = 'Financial Database' AND de.name IN ('Full Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number')) OR
     -- Website User Analytics - Marketing Platform - User behavior data elements
-    (pa.name = 'Website User Analytics' AND a.name = 'Marketing Platform' AND de.name IN ('IP Address', 'Device ID'));
+    (pa.name = 'Website User Analytics' AND a.name = 'Marketing Platform' AND de.name IN ('IP Address', 'Device ID')) OR
+    -- Financial Score Prediction - Financial Database - Financial and personal data elements
+    (pa.name = 'Financial Score Prediction' AND a.name = 'Financial Database' AND de.name IN ('Full Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number', 'Date of Birth', 'Address', 'Income'));
 
 -- =============================================
 -- SEED REGULATORY METADATA

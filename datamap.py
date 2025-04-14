@@ -795,10 +795,9 @@ class DataMap:
             "Transfer Mechanism Inference": [3],  # Law Transfer tab
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
             "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
-            "Policy Inference": [12, 13, 14],  # Policy Purpose, Policy Purpose Data Element, Policy Purpose Data Usage
-            "Obligation Inference": [15, 16, 17],  # Sensitivity Obligations tab, Obligation Policy, Obligation Risk
-            "Obligation Policy Mapping": [16],  # Obligation Policy tab
-            "Obligation Risk Mapping": [17]  # Obligation Risk tab
+            "Obligation Inference": [5, 6, 7, 8, 9, 15],  # Same tabs as Data Sensitivity Inference + Sensitivity Obligations
+            "Policy Inference": [5, 6, 7, 8, 9, 15, 16],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Policy
+            "Risk Inference": [5, 6, 7, 8, 9, 15, 17]  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
         }
         
         # Create a filter for inference APIs
@@ -920,21 +919,67 @@ class DataMap:
             st.markdown("""
             <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
                 <h4 style="margin-top: 0;">How Policy Inference Works</h4>
-                <p>The Policy Inference API uses purpose limitation principles to determine whether access to data is permitted based on organizational policies:</p>
+                <p>The Policy Inference API uses sensitivity and obligation mappings to recommend organizational policies based on data sensitivity and obligations:</p>
                 <ul>
-                    <li><strong>Policy Purpose</strong>: Maps policies to business purposes, establishing which purposes are governed by which policies.</li>
-                    <li><strong>Policy Purpose Data Element</strong>: Determines which data elements can be accessed for specific purpose-policy combinations.</li>
-                    <li><strong>Policy Purpose Data Usage</strong>: Defines how data can be used (read, write, share) for each purpose, with specific restrictions.</li>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
+                    <li><strong>Obligation Policy</strong>: Maps security and privacy obligations to organizational policies that should be implemented.</li>
                 </ul>
-                <p>When making an access governance determination, the system considers:</p>
+                <p>The Policy Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
+                    <li>Map these obligations to relevant organizational policies using the Obligation Policy mapping</li>
+                    <li>Calculate a relevance score for each policy based on how many obligations it addresses</li>
+                    <li>Present a prioritized list of recommended policies to implement</li>
+                </ol>
+                <p>This approach helps organizations implement a comprehensive policy framework that addresses their specific data protection requirements and ensures compliance with relevant regulations.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Obligation Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Obligation Inference Works</h4>
+                <p>The Obligation Inference API uses sensitivity mapping tables to determine what security and privacy controls should be implemented based on data sensitivity:</p>
                 <ul>
-                    <li>The business purpose for data access</li>
-                    <li>The specific data elements being requested</li>
-                    <li>The type of operation (read, write, share)</li>
-                    <li>Any context-specific restrictions</li>
-                    <li>Data sensitivity levels</li>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for hierarchical classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to specific security and privacy obligations.</li>
                 </ul>
-                <p>The system helps organizations enforce purpose-based access control and ensures data is only used for approved purposes in compliance with privacy regulations and internal policies.</p>
+                <p>The Obligation Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Based on the inferred sensitivity, identify all applicable security and privacy obligations</li>
+                    <li>Group obligations by control type (e.g., Technical, Administrative, Physical)</li>
+                    <li>Prioritize obligations based on their importance (High, Medium, Low)</li>
+                </ol>
+                <p>This approach ensures organizations implement appropriate safeguards proportional to the sensitivity of the data they process, helping maintain compliance with privacy regulations and security best practices.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Risk Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Risk Inference Works</h4>
+                <p>The Risk Inference API uses sensitivity and obligation mappings to identify potential risks if security and privacy obligations are not implemented:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
+                    <li><strong>Obligation Risk</strong>: Maps security and privacy obligations to potential risks if not implemented.</li>
+                </ul>
+                <p>The Risk Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
+                    <li>Map these obligations to potential risks using the Obligation Risk mapping</li>
+                    <li>Evaluate the likelihood and impact of each risk</li>
+                    <li>Calculate an overall risk rating (Critical, High, Medium, Low)</li>
+                </ol>
+                <p>This risk-based approach helps organizations prioritize their compliance efforts based on the potential consequences of non-compliance, focusing resources on mitigating the most significant risks first.</p>
             </div>
             """, unsafe_allow_html=True)
         
