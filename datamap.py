@@ -3730,8 +3730,18 @@ class DataMap:
             # Data Subject Rights Inference menu item
             if st.button("👤 Data Subject Rights Inference", key="dsr_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'DSR API'
-                
-
+            
+            # Obligation Inference menu item
+            if st.button("🔒 Obligation Inference", key="obligation_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Obligation API'
+            
+            # Policy Inference menu item
+            if st.button("📋 Policy Inference", key="policy_inference_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Inference API'
+            
+            # Risk Inference menu item
+            if st.button("⚠️ Risk Inference", key="risk_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Risk API'
             
             # Third section: Data Use Governance
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
@@ -3789,6 +3799,12 @@ class DataMap:
             self.transfer_mechanism_api()
         elif st.session_state['current_section'] == 'DSR API':
             self.data_subject_rights_api()
+        elif st.session_state['current_section'] == 'Obligation API':
+            self.obligation_inference_api()
+        elif st.session_state['current_section'] == 'Policy Inference API':
+            self.policy_recommendation_api()
+        elif st.session_state['current_section'] == 'Risk API':
+            self.risk_inference_api()
         elif st.session_state['current_section'] == 'Purposes':
             self.purposes_page()
         elif st.session_state['current_section'] == 'Policies':
@@ -4181,10 +4197,8 @@ class DataMap:
                 else:
                     st.info(f"No standard obligations defined for {sensitivity_name} sensitivity level.")
             else:
-                st.markdown("""Select a sensitivity level and click 'Analyze Obligations' to see recommended obligations.
-                
-The Obligation Inference API helps you determine what security and privacy controls should be implemented based on the sensitivity of the data you're handling.
-                """)
+                # Display instructions when the form hasn't been submitted yet
+                st.info("Fill in the parameters on the left and click 'Infer Obligations' to get results.")
                 
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.
@@ -6506,6 +6520,645 @@ The Obligation Inference API helps you determine what security and privacy contr
                 </div>
                 """, unsafe_allow_html=True)
 
+
+    def obligation_inference_api(self):
+        """Implement an obligation inference API based on data sensitivity.
+        This allows users to input data elements and get obligation recommendations.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Obligation Inference API</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p><strong>Obligation Inference API</strong> determines what security and privacy controls should be implemented based on the sensitivity of the data you're handling.</p>
+            <ul>
+                <li>Analyzes data elements to determine their sensitivity levels</li>
+                <li>Maps sensitivities to appropriate security and privacy obligations</li>
+                <li>Prioritizes obligations based on data sensitivity</li>
+                <li>Groups obligations by control type for easier implementation</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get laws for dropdown selection
+            laws = self.glossary_repository.get_laws()
+            if not laws:
+                st.warning("No laws available in the database.")
+                return
+                
+            law_options = [law["name"] for law in laws]
+            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="obligation_law")
+            
+            # Get data subject types
+            data_subject_types = self.glossary_repository.get_data_subject_types()
+            if data_subject_types:
+                dst_options = [dst["name"] for dst in data_subject_types]
+                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="obligation_dst")
+            else:
+                st.warning("No data subject types available.")
+                return
+            
+            # Option to select either data element or data category
+            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="obligation_data_type")
+            
+            if data_type == "Data Element":
+                data_elements = self.glossary_repository.get_data_elements()
+                if data_elements:
+                    de_options = [de["name"] for de in data_elements]
+                    selected_data = st.selectbox("Select Data Element", options=de_options, key="obligation_data_element")
+                else:
+                    st.warning("No data elements available.")
+                    return
+            else:  # Data Category
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    dc_options = [dc["name"] for dc in data_categories]
+                    selected_data = st.selectbox("Select Data Category", options=dc_options, key="obligation_data_category")
+                else:
+                    st.warning("No data categories available.")
+                    return
+            
+            # Add a button to trigger inference
+            infer_button = st.button("Infer Obligations", key="infer_obligations_button")
+        
+        with col2:            
+            st.subheader("Obligations Identified")
+
+            if infer_button:
+                # First, infer the sensitivity of the data
+                sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+                
+                if sensitivity:
+                    st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                    
+                    # Get sensitivity ID
+                    all_sensitivities = self.glossary_repository.get_sensitivities()
+                    sensitivity_id = None
+                    for s in all_sensitivities:
+                        if s["name"] == sensitivity:
+                            sensitivity_id = s["id"]
+                            break
+                    
+                    if sensitivity_id:
+                        # Get obligations for this sensitivity
+                        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                        
+                        if sensitivity_obligations:
+                            # Display the obligations
+                            st.subheader("Recommended Obligations")
+                            
+                            # Create a DataFrame for display
+                            obligations_data = []
+                            for so in sensitivity_obligations:
+                                obligations_data.append({
+                                    "Obligation": so["obligation_name"],
+                                    "Description": so["obligation_description"],
+                                    "Control Type": so["control_type"],
+                                    "Priority": so["priority"]
+                                })
+                            
+                            df = pd.DataFrame(obligations_data)
+                            
+                            # Add filters
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                control_types = ["All"] + sorted(list(set(df["Control Type"])))
+                                selected_control = st.selectbox(
+                                    "Filter by Control Type",
+                                    control_types,
+                                    key="obligation_api_control_filter"
+                                )
+                            
+                            with col2:
+                                priorities = ["All"] + sorted(list(set(df["Priority"])))
+                                selected_priority = st.selectbox(
+                                    "Filter by Priority",
+                                    priorities,
+                                    key="obligation_api_priority_filter"
+                                )
+                            
+                            # Apply filters
+                            filtered_df = df.copy()
+                            if selected_control != "All":
+                                filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
+                            if selected_priority != "All":
+                                filtered_df = filtered_df[filtered_df["Priority"] == selected_priority]
+                            
+                            # Sort by Priority and Control Type
+                            priority_order = {"High": 0, "Medium": 1, "Low": 2}
+                            filtered_df["Priority Order"] = filtered_df["Priority"].map(priority_order)
+                            filtered_df = filtered_df.sort_values(by=["Priority Order", "Control Type"])
+                            filtered_df = filtered_df.drop(columns=["Priority Order"])
+                            
+                            # Display the dataframe
+                            st.dataframe(filtered_df, use_container_width=True)
+                            
+                            # Add explanation
+                            st.markdown("""
+                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                <h4 style="margin-top: 0;">How the Obligation Inference Algorithm Works</h4>
+                                <p>The algorithm follows this functional flow:</p>
+                                <ul>
+                                    <li><strong>Input:</strong> Data elements from the selected asset</li>
+                                    <li><strong>Sensitivity Analysis:</strong> Determine sensitivity level for each data element</li>
+                                    <li><strong>Obligation Mapping:</strong> Match sensitivities to relevant security and privacy obligations</li>
+                                    <li><strong>Control Categorization:</strong> Group obligations by control type (Encryption, Access Control, etc.)</li>
+                                    <li><strong>Priority Assignment:</strong> Assign implementation priority based on data sensitivity</li>
+                                    <li><strong>Output:</strong> Prioritized list of security and privacy obligations</li>
+                                </ul>
+                                <p>The recommendations are prioritized as follows:</p>
+                                <ul>
+                                    <li><strong>High Priority:</strong> Critical controls that must be implemented to protect sensitive data</li>
+                                    <li><strong>Medium Priority:</strong> Important controls that should be implemented in most cases</li>
+                                    <li><strong>Low Priority:</strong> Recommended controls that enhance protection but may be optional</li>
+                                </ul>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+            else:
+                # Display instructions when the form hasn't been submitted yet
+                st.info("Fill in the details on the left and click 'Infer Obligations' to get results.")
+                
+                # Display a placeholder message when no analysis has been performed
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Obligation recommendations will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+    def policy_recommendation_api(self):
+        """Implement a policy recommendation API based on data sensitivity and obligations.
+        This allows users to input data elements and get policy recommendations.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-file-contract'></i> &nbsp;Policy Inference API</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p><strong>Policy Inference API</strong> recommends organizational policies that should be implemented based on the sensitivity of data and associated obligations.</p>
+            <ul>
+                <li>Analyzes data elements to determine their sensitivity levels</li>
+                <li>Identifies security and privacy obligations based on sensitivity</li>
+                <li>Maps obligations to relevant organizational policies</li>
+                <li>Ranks policies by relevance to the identified obligations</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get laws for dropdown selection
+            laws = self.glossary_repository.get_laws()
+            if not laws:
+                st.warning("No laws available in the database.")
+                return
+                
+            law_options = [law["name"] for law in laws]
+            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="policy_law")
+            
+            # Get data subject types
+            data_subject_types = self.glossary_repository.get_data_subject_types()
+            if data_subject_types:
+                dst_options = [dst["name"] for dst in data_subject_types]
+                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="policy_dst")
+            else:
+                st.warning("No data subject types available.")
+                return
+            
+            # Option to select either data element or data category
+            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="policy_data_type")
+            
+            if data_type == "Data Element":
+                data_elements = self.glossary_repository.get_data_elements()
+                if data_elements:
+                    de_options = [de["name"] for de in data_elements]
+                    selected_data = st.selectbox("Select Data Element", options=de_options, key="policy_data_element")
+                else:
+                    st.warning("No data elements available.")
+                    return
+            else:  # Data Category
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    dc_options = [dc["name"] for dc in data_categories]
+                    selected_data = st.selectbox("Select Data Category", options=dc_options, key="policy_data_category")
+                else:
+                    st.warning("No data categories available.")
+                    return
+            
+            # Add a button to trigger inference
+            infer_button = st.button("Infer Policies", key="recommend_policies_button")
+        
+        with col2:
+            st.subheader("Policy Recommendations")
+            
+            if infer_button:
+                # First, infer the sensitivity of the data
+                sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+                
+                if sensitivity:
+                    st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                    
+                    # Get sensitivity ID
+                    all_sensitivities = self.glossary_repository.get_sensitivities()
+                    sensitivity_id = None
+                    for s in all_sensitivities:
+                        if s["name"] == sensitivity:
+                            sensitivity_id = s["id"]
+                            break
+                    
+                    if sensitivity_id:
+                        # Get obligations for this sensitivity
+                        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                        
+                        if sensitivity_obligations:
+                            # Create a list of obligations for policy lookup
+                            all_obligations = []
+                            for so in sensitivity_obligations:
+                                all_obligations.append({
+                                    "id": so["obligation_id"],
+                                    "name": so["obligation_name"],
+                                    "control_type": so["control_type"],
+                                    "priority": so["priority"]
+                                })
+                            
+                            # Get policies for these obligations
+                            st.subheader("Recommended Policies")
+                            
+                            # Get policies for the given obligations from the repository
+                            all_policies = []
+                            obligation_ids = [o["id"] for o in all_obligations]
+                            
+                            # Get policies for each obligation using the repository
+                            for obligation_id in obligation_ids:
+                                policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
+                                obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
+                                
+                                for policy in policies:
+                                    all_policies.append({
+                                        "Obligation": obligation_name,
+                                        "Policy": policy["name"],
+                                        "Description": policy["description"],
+                                        "Status": policy["status"],
+                                        "Relevance Score": policy["relevance_score"]
+                                    })
+                            
+                            if all_policies:
+                                # Create a DataFrame
+                                df = pd.DataFrame(all_policies)
+                                
+                                # Add filters
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    policy_names = ["All"] + sorted(list(set(df["Policy"])))
+                                    selected_policy = st.selectbox(
+                                        "Filter by Policy",
+                                        policy_names,
+                                        key="policy_api_name_filter"
+                                    )
+                                
+                                with col2:
+                                    statuses = ["All"] + sorted(list(set(df["Status"])))
+                                    selected_status = st.selectbox(
+                                        "Filter by Status",
+                                        statuses,
+                                        key="policy_api_status_filter"
+                                    )
+                                
+                                # Apply filters
+                                filtered_df = df.copy()
+                                if selected_policy != "All":
+                                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                                if selected_status != "All":
+                                    filtered_df = filtered_df[filtered_df["Status"] == selected_status]
+                                
+                                # Sort by Relevance Score (descending)
+                                filtered_df = filtered_df.sort_values(by=["Relevance Score"], ascending=False)
+                                
+                                # Display the dataframe
+                                st.dataframe(filtered_df, use_container_width=True)
+                                
+                                # Group policies by type
+                                policy_groups = filtered_df.groupby("Policy")["Relevance Score"].max().sort_values(ascending=False)
+                                top_policies = policy_groups.index.tolist()
+                                
+                                # Display top policies summary
+                                st.subheader("Policy Implementation Summary")
+                                st.markdown("""
+                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                    <h4 style="margin-top: 0;">Recommended Policy Implementation</h4>
+                                    <p>Based on the data elements and their sensitivity levels, the following policies should be implemented:</p>
+                                    <ol>
+                                """, unsafe_allow_html=True)
+                                
+                                for policy in top_policies[:5]:  # Show top 5 policies
+                                    st.markdown(f"<li><strong>{policy}</strong></li>", unsafe_allow_html=True)
+                                
+                                st.markdown("""
+                                    </ol>
+                                    <p>These policies will address the compliance obligations required for the sensitive data.</p>
+                                </div>
+                                
+                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                    <h4 style="margin-top: 0;">How the Policy Recommendation Algorithm Works</h4>
+                                    <p>The algorithm follows this functional flow:</p>
+                                    <ul>
+                                        <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                                        <li><strong>Policy Discovery:</strong> Identify organizational policies that address each obligation</li>
+                                        <li><strong>Relevance Assessment:</strong> Determine how relevant each policy is to the specific obligations</li>
+                                        <li><strong>Policy Prioritization:</strong> Rank policies by their relevance to the identified obligations</li>
+                                        <li><strong>Policy Grouping:</strong> Group related policies to provide comprehensive coverage</li>
+                                        <li><strong>Output:</strong> Prioritized list of policies to implement for the asset</li>
+                                    </ul>
+                                    <p>The relevance score indicates how important each policy is for addressing the identified obligations.</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            else:
+                                st.info("No policies found for the identified obligations.")
+                        else:
+                            st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                    else:
+                        st.warning(f"Could not find sensitivity ID for {sensitivity}.")
+                else:
+                    st.warning("Could not determine sensitivity for the selected data.")
+            else:
+                # Display instructions when the form hasn't been submitted yet
+                st.info("Fill in the details on the left and click 'Infer Policies' to get results.")
+
+                # Show a sample result visualization
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Policy recommendations will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)                    
+                    
+    def risk_inference_api(self):
+        """Implement a risk inference API based on data sensitivity and obligations.
+        This allows users to input data elements and get risk assessments.
+        """
+        st.markdown("<div class='page-header'><i class='fas fa-exclamation-triangle'></i> &nbsp;Risk Inference API</div>", unsafe_allow_html=True)
+        
+        st.markdown('''
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <p><strong>Risk Inference API</strong> identifies potential risks if security and privacy obligations are not properly implemented.</p>
+            <ul>
+                <li>Analyzes data elements to determine their sensitivity levels</li>
+                <li>Identifies security and privacy obligations based on sensitivity</li>
+                <li>Maps obligations to potential risks if not implemented</li>
+                <li>Assesses likelihood and impact of each risk</li>
+                <li>Calculates overall risk ratings based on likelihood and impact</li>
+            </ul>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Create two columns for input form and results
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("Input Parameters")
+            
+            # Get laws for dropdown selection
+            laws = self.glossary_repository.get_laws()
+            if not laws:
+                st.warning("No laws available in the database.")
+                return
+                
+            law_options = [law["name"] for law in laws]
+            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="risk_law")
+            
+            # Get data subject types
+            data_subject_types = self.glossary_repository.get_data_subject_types()
+            if data_subject_types:
+                dst_options = [dst["name"] for dst in data_subject_types]
+                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="risk_dst")
+            else:
+                st.warning("No data subject types available.")
+                return
+            
+            # Option to select either data element or data category
+            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="risk_data_type")
+            
+            if data_type == "Data Element":
+                data_elements = self.glossary_repository.get_data_elements()
+                if data_elements:
+                    de_options = [de["name"] for de in data_elements]
+                    selected_data = st.selectbox("Select Data Element", options=de_options, key="risk_data_element")
+                else:
+                    st.warning("No data elements available.")
+                    return
+            else:  # Data Category
+                data_categories = self.glossary_repository.get_data_categories()
+                if data_categories:
+                    dc_options = [dc["name"] for dc in data_categories]
+                    selected_data = st.selectbox("Select Data Category", options=dc_options, key="risk_data_category")
+                else:
+                    st.warning("No data categories available.")
+                    return
+            
+            # Add a button to trigger inference
+            infer_button = st.button("Infer Risks", key="identify_risks_button")
+        
+        with col2:
+            st.subheader("Risk Recommendations")
+            
+            if infer_button:
+                # First, infer the sensitivity of the data
+                sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+                
+                if sensitivity:
+                    st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                    
+                    # Get sensitivity ID
+                    all_sensitivities = self.glossary_repository.get_sensitivities()
+                    sensitivity_id = None
+                    for s in all_sensitivities:
+                        if s["name"] == sensitivity:
+                            sensitivity_id = s["id"]
+                            break
+                    
+                    if sensitivity_id:
+                        # Get obligations for this sensitivity
+                        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                        
+                        if sensitivity_obligations:
+                            # Create a list of obligations for risk lookup
+                            all_obligations = []
+                            for so in sensitivity_obligations:
+                                all_obligations.append({
+                                    "id": so["obligation_id"],
+                                    "name": so["obligation_name"],
+                                    "control_type": so["control_type"],
+                                    "priority": so["priority"]
+                                })
+                            
+                            # Get risks for these obligations
+                            st.subheader("Potential Risks")
+                            
+                            # Get risks for the given obligations from the repository
+                            all_risks = []
+                            obligation_ids = [o["id"] for o in all_obligations]
+                            
+                            # Get risks for each obligation using the repository
+                            for obligation_id in obligation_ids:
+                                risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
+                                obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
+                                
+                                for risk in risks:
+                                    all_risks.append({
+                                        "Obligation": obligation_name,
+                                        "Risk": risk["name"],
+                                        "Risk Category": risk["category"],
+                                        "Likelihood": risk["likelihood"],
+                                        "Impact": risk["impact"]
+                                    })
+                            
+                            if all_risks:
+                                # Create a DataFrame
+                                df = pd.DataFrame(all_risks)
+                                
+                                # Add filters
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    risk_categories = ["All"] + sorted(list(set(df["Risk Category"])))
+                                    selected_category = st.selectbox(
+                                        "Filter by Risk Category",
+                                        risk_categories,
+                                        key="risk_api_category_filter"
+                                    )
+                                
+                                with col2:
+                                    likelihoods = ["All"] + sorted(list(set(df["Likelihood"])))
+                                    selected_likelihood = st.selectbox(
+                                        "Filter by Likelihood",
+                                        likelihoods,
+                                        key="risk_api_likelihood_filter"
+                                    )
+                                
+                                with col3:
+                                    impacts = ["All"] + sorted(list(set(df["Impact"])))
+                                    selected_impact = st.selectbox(
+                                        "Filter by Impact",
+                                        impacts,
+                                        key="risk_api_impact_filter"
+                                    )
+                                
+                                # Apply filters
+                                filtered_df = df.copy()
+                                if selected_category != "All":
+                                    filtered_df = filtered_df[filtered_df["Risk Category"] == selected_category]
+                                if selected_likelihood != "All":
+                                    filtered_df = filtered_df[filtered_df["Likelihood"] == selected_likelihood]
+                                if selected_impact != "All":
+                                    filtered_df = filtered_df[filtered_df["Impact"] == selected_impact]
+                                
+                                # Create risk rating column
+                                def get_risk_rating(row):
+                                    if row["Likelihood"] == "High" and row["Impact"] == "High":
+                                        return "Critical"
+                                    elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
+                                         (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
+                                        return "High"
+                                    elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
+                                         (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
+                                         (row["Likelihood"] == "Low" and row["Impact"] == "High"):
+                                        return "Medium"
+                                    else:
+                                        return "Low"
+                                
+                                filtered_df["Risk Rating"] = filtered_df.apply(get_risk_rating, axis=1)
+                                
+                                # Sort by Risk Rating
+                                risk_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+                                filtered_df["Rating Order"] = filtered_df["Risk Rating"].map(risk_order)
+                                filtered_df = filtered_df.sort_values(by=["Rating Order", "Risk Category"])
+                                filtered_df = filtered_df.drop(columns=["Rating Order"])
+                                
+                                # Display the dataframe with the new Risk Rating column
+                                display_columns = ["Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating", "Obligation"]
+                                filtered_df = filtered_df[display_columns]
+                                
+                                st.dataframe(filtered_df, use_container_width=True)
+                                
+                                # Display risk summary
+                                st.subheader("Risk Assessment Summary")
+                                
+                                # Count risks by rating
+                                risk_counts = filtered_df["Risk Rating"].value_counts()
+                                
+                                # Create a summary message based on risk counts
+                                summary_message = """
+                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                    <h4 style="margin-top: 0;">Risk Assessment</h4>
+                                    <p>If the recommended obligations are not implemented, this data may be exposed to the following risks:</p>
+                                    <ul>
+                                """
+                                
+                                if "Critical" in risk_counts:
+                                    summary_message += f"<li><strong style='color: #d9534f;'>Critical Risks:</strong> {risk_counts['Critical']} potential critical risk(s) identified</li>"
+                                
+                                if "High" in risk_counts:
+                                    summary_message += f"<li><strong style='color: #f0ad4e;'>High Risks:</strong> {risk_counts['High']} potential high risk(s) identified</li>"
+                                
+                                if "Medium" in risk_counts:
+                                    summary_message += f"<li><strong style='color: #5bc0de;'>Medium Risks:</strong> {risk_counts['Medium']} potential medium risk(s) identified</li>"
+                                
+                                if "Low" in risk_counts:
+                                    summary_message += f"<li><strong style='color: #5cb85c;'>Low Risks:</strong> {risk_counts['Low']} potential low risk(s) identified</li>"
+                                
+                                summary_message += """
+                                    </ul>
+                                    <p>These risks should be carefully evaluated and either mitigated through implementing the recommended obligations or formally accepted as residual risks.</p>
+                                </div>
+                                
+                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                    <h4 style="margin-top: 0;">How the Risk Recommendation Algorithm Works</h4>
+                                    <p>The algorithm follows this functional flow:</p>
+                                    <ul>
+                                        <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                                        <li><strong>Risk Identification:</strong> Determine potential risks if obligations are not fulfilled</li>
+                                        <li><strong>Risk Classification:</strong> Categorize risks by type (e.g., Data Breach, Regulatory, Reputational)</li>
+                                        <li><strong>Impact Assessment:</strong> Evaluate the potential impact of each risk (High, Medium, Low)</li>
+                                        <li><strong>Likelihood Evaluation:</strong> Assess the probability of each risk occurring (High, Medium, Low)</li>
+                                        <li><strong>Risk Rating:</strong> Calculate overall risk rating by combining impact and likelihood</li>
+                                        <li><strong>Output:</strong> Prioritized list of risks with severity ratings</li>
+                                    </ul>
+                                    <p>The risk rating matrix combines likelihood and impact as follows:</p>
+                                    <ul>
+                                        <li><strong>Critical:</strong> High likelihood + High impact</li>
+                                        <li><strong>High:</strong> High likelihood + Medium impact, or Medium likelihood + High impact</li>
+                                        <li><strong>Medium:</strong> Medium likelihood + Medium impact, High likelihood + Low impact, or Low likelihood + High impact</li>
+                                        <li><strong>Low:</strong> All other combinations</li>
+                                    </ul>
+                                </div>
+                                """
+                                
+                                st.markdown(summary_message, unsafe_allow_html=True)
+                            else:
+                                st.info("No risks identified for the obligations.")
+                        else:
+                            st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                    else:
+                        st.warning(f"Could not find sensitivity ID for {sensitivity}.")
+            else:
+                # Display instructions when the form hasn't been submitted yet
+                st.info("Fill in the details on the left and click 'Infer Risks' to get results.")
+
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">Sample Result</h3>
+                    <p>Risk recommendations will appear here after analysis...</p>
+                </div>
+                """, unsafe_allow_html=True)                    
 
 if __name__ == "__main__":
     app = DataMap()
