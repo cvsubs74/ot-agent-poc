@@ -308,7 +308,7 @@ class DataMap:
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
-            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations"
+            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations", "Risks"
         ])
         
         # Law tab
@@ -651,6 +651,102 @@ class DataMap:
             else:
                 st.warning("No obligations available in the database.")
         
+        # Risks tab
+        with tabs[10]:
+            st.subheader("Risks")
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about potential privacy and security risks that organizations may face when handling personal data.</p>
+                <ul>
+                    <li>Detailed descriptions of common privacy and security risks</li>
+                    <li>Risk categorization by type (security, privacy, compliance, etc.)</li>
+                    <li>Risk assessment information including likelihood and impact</li>
+                    <li>Foundation for risk-based compliance decision making</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Sample risk data (in a real implementation, this would come from a repository)
+            risk_data = [
+                {"id": 1, "name": "Unauthorized Data Access", "description": "Unauthorized individuals gain access to sensitive personal data due to inadequate access controls", "category": "Security", "likelihood": "High", "impact": "High"},
+                {"id": 2, "name": "Data Breach", "description": "Personal data is exposed, lost, altered, or accessed without authorization", "category": "Security", "likelihood": "Medium", "impact": "High"},
+                {"id": 3, "name": "Excessive Data Collection", "description": "Collection of personal data beyond what is necessary for the stated purpose", "category": "Privacy", "likelihood": "High", "impact": "Medium"},
+                {"id": 4, "name": "Improper Data Retention", "description": "Retention of personal data beyond the necessary period for the stated purpose", "category": "Privacy", "likelihood": "High", "impact": "Medium"},
+                {"id": 5, "name": "Inadequate Consent Management", "description": "Failure to obtain, record, or manage valid consent for data processing activities", "category": "Consent", "likelihood": "Medium", "impact": "High"},
+                {"id": 6, "name": "Cross-Border Transfer Violations", "description": "Transfer of personal data to jurisdictions without adequate protection or proper transfer mechanisms", "category": "Transfer", "likelihood": "Medium", "impact": "High"},
+                {"id": 7, "name": "Insufficient Data Subject Rights Management", "description": "Inability to fulfill data subject requests (access, deletion, portability, etc.) within required timeframes", "category": "Rights", "likelihood": "Medium", "impact": "Medium"},
+                {"id": 8, "name": "Inadequate Security Controls", "description": "Lack of appropriate technical and organizational measures to protect personal data", "category": "Security", "likelihood": "Medium", "impact": "High"},
+                {"id": 9, "name": "Vendor Non-Compliance", "description": "Third-party processors handling personal data without adequate contractual controls or compliance verification", "category": "Third Party", "likelihood": "High", "impact": "Medium"},
+                {"id": 10, "name": "Incomplete Data Inventory", "description": "Incomplete or inaccurate records of data processing activities and data assets", "category": "Governance", "likelihood": "High", "impact": "Medium"}
+            ]
+            
+            # Create filters
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Get unique risk categories
+                categories = sorted(list(set([risk["category"] for risk in risk_data if risk["category"]]))) 
+                categories = ["All"] + categories
+                selected_category = st.selectbox("Filter by Risk Category", categories, key="risk_category_filter")
+            
+            with col2:
+                # Get unique likelihood levels
+                likelihoods = sorted(list(set([risk["likelihood"] for risk in risk_data if risk["likelihood"]]))) 
+                likelihoods = ["All"] + likelihoods
+                selected_likelihood = st.selectbox("Filter by Likelihood", likelihoods, key="risk_likelihood_filter")
+            
+            with col3:
+                # Get unique impact levels
+                impacts = sorted(list(set([risk["impact"] for risk in risk_data if risk["impact"]]))) 
+                impacts = ["All"] + impacts
+                selected_impact = st.selectbox("Filter by Impact", impacts, key="risk_impact_filter")
+            
+            # Create dataframe
+            df = pd.DataFrame(risk_data)
+            df = df.rename(columns={
+                "id": "ID",
+                "name": "Risk",
+                "description": "Description",
+                "category": "Risk Category",
+                "likelihood": "Likelihood",
+                "impact": "Impact"
+            })
+            
+            # Apply filters
+            if selected_category != "All":
+                df = df[df["Risk Category"] == selected_category]
+            if selected_likelihood != "All":
+                df = df[df["Likelihood"] == selected_likelihood]
+            if selected_impact != "All":
+                df = df[df["Impact"] == selected_impact]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
+            
+            # Add new risk section
+            with st.expander("Add New Risk", expanded=False):
+                with st.form("add_risk_form"):
+                    risk_name = st.text_input("Risk Name")
+                    risk_desc = st.text_area("Description")
+                    risk_category = st.selectbox(
+                        "Risk Category",
+                        ["Security", "Privacy", "Consent", "Transfer", "Rights", "Third Party", "Governance", "Other"],
+                        key="new_risk_category"
+                    )
+                    risk_likelihood = st.selectbox(
+                        "Likelihood",
+                        ["Low", "Medium", "High"],
+                        key="new_risk_likelihood"
+                    )
+                    risk_impact = st.selectbox(
+                        "Impact",
+                        ["Low", "Medium", "High"],
+                        key="new_risk_impact"
+                    )
+                    
+                    # Submit button
+                    submitted = st.form_submit_button("Add Risk")
+                    if submitted:
+                        st.success(f"Risk '{risk_name}' has been added successfully!")
+        
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
@@ -685,7 +781,9 @@ class DataMap:
             "Policy Purpose",
             "Policy Purpose Data Element",
             "Policy Purpose Data Usage",
-            "Sensitivity Obligations"
+            "Sensitivity Obligations",
+            "Obligation Policy",
+            "Obligation Risk"
         ]
         
         # Define which tabs are used by each inference API
@@ -698,7 +796,9 @@ class DataMap:
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
             "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
             "Policy Inference": [12, 13, 14],  # Policy Purpose, Policy Purpose Data Element, Policy Purpose Data Usage
-            "Obligation Inference": [15]  # Sensitivity Obligations tab
+            "Obligation Inference": [15, 16, 17],  # Sensitivity Obligations tab, Obligation Policy, Obligation Risk
+            "Obligation Policy Mapping": [16],  # Obligation Policy tab
+            "Obligation Risk Mapping": [17]  # Obligation Risk tab
         }
         
         # Create a filter for inference APIs
@@ -1733,6 +1833,239 @@ class DataMap:
                         """, unsafe_allow_html=True)
                     else:
                         st.warning("No sensitivity-obligation mappings available in the database.")
+                
+                # Obligation Policy tab
+                elif tab_idx == 16:
+                    st.markdown("""
+                        <div class="card">
+                            <h3>Obligation-Policy Mapping</h3>
+                            <p>This section maps obligations to organizational policies, establishing which policies address specific compliance requirements.</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get all obligations
+                    obligations = self.obligation_repository.get_obligations()
+                    
+                    # Create a filter for obligations
+                    obligation_options = {o["id"]: o["name"] for o in obligations}
+                    obligation_options[0] = "All Obligations"
+                    
+                    # Get all policies
+                    policies = self.glossary_repository.get_policies()
+                    
+                    # Create a filter for policies
+                    policy_options = {p["id"]: p["name"] for p in policies}
+                    policy_options[0] = "All Policies"
+                    
+                    # Create filters
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        selected_obligation_id = st.selectbox(
+                            "Filter by Obligation",
+                            options=list(obligation_options.keys()),
+                            format_func=lambda x: obligation_options[x],
+                            index=0,
+                            key="obligation_policy_obligation_filter"
+                        )
+                    
+                    with col2:
+                        selected_policy_id = st.selectbox(
+                            "Filter by Policy",
+                            options=list(policy_options.keys()),
+                            format_func=lambda x: policy_options[x],
+                            index=0,
+                            key="obligation_policy_policy_filter"
+                        )
+                    
+                    with col3:
+                        control_types = ["All", "Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"]
+                        selected_control_type = st.selectbox(
+                            "Filter by Control Type",
+                            options=control_types,
+                            index=0,
+                            key="obligation_policy_control_filter"
+                        )
+                    
+                    # Get obligation-policy mappings from the repository
+                    obligation_policy_data = self.obligation_repository.get_obligation_policies()
+                    
+                    # Filter the data based on selections
+                    filtered_data = obligation_policy_data
+                    if selected_obligation_id != 0:
+                        filtered_data = [item for item in filtered_data if item["obligation_id"] == selected_obligation_id]
+                    if selected_policy_id != 0:
+                        filtered_data = [item for item in filtered_data if item["policy_id"] == selected_policy_id]
+                    if selected_control_type != "All":
+                        filtered_data = [item for item in filtered_data if item["control_type"] == selected_control_type]
+                    
+                    if filtered_data:
+                        # Create a DataFrame
+                        df = pd.DataFrame(filtered_data)
+                        df = df.rename(columns={
+                            "obligation_name": "Obligation",
+                            "policy_name": "Policy",
+                            "control_type": "Control Type",
+                            "relevance_score": "Relevance Score"
+                        })
+                        
+                        # Display columns in a specific order
+                        display_columns = ["Obligation", "Policy", "Control Type", "Relevance Score"]
+                        df = df[display_columns]
+                        
+                        # Sort by relevance score (descending)
+                        df = df.sort_values(by=["Relevance Score"], ascending=False)
+                        
+                        # Display the dataframe
+                        st.dataframe(df, use_container_width=True)
+                        
+                        # Add explanation
+                        st.markdown("""
+                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                            <h4 style="margin-top: 0;">How Obligation-Policy Mapping Works</h4>
+                            <p>The Obligation-Policy mapping establishes which organizational policies address specific compliance obligations:</p>
+                            <ul>
+                                <li><strong>Relevance Score:</strong> Indicates how directly a policy addresses an obligation (1.0 = perfect match)</li>
+                                <li><strong>Control Type:</strong> Categorizes the type of control implemented by the obligation</li>
+                                <li><strong>Multiple Policies:</strong> An obligation may be addressed by multiple policies with varying degrees of relevance</li>
+                            </ul>
+                            <p>This mapping enables organizations to demonstrate compliance by linking obligations to specific policy documents.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning("No obligation-policy mappings match the selected filters.")
+                
+                # Obligation Risk tab
+                elif tab_idx == 17:
+                    st.markdown("""
+                        <div class="card">
+                            <h3>Obligation-Risk Mapping</h3>
+                            <p>This section maps obligations to potential risks, establishing which risks may materialize if specific obligations are not fulfilled.</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get all obligations
+                    obligations = self.obligation_repository.get_obligations()
+                    
+                    # Create a filter for obligations
+                    obligation_options = {o["id"]: o["name"] for o in obligations}
+                    obligation_options[0] = "All Obligations"
+                    
+                    # Sample risk data (in a real implementation, this would come from a repository)
+                    risk_data = [
+                        {"id": 1, "name": "Unauthorized Data Access", "category": "Security"},
+                        {"id": 2, "name": "Data Breach", "category": "Security"},
+                        {"id": 3, "name": "Excessive Data Collection", "category": "Privacy"},
+                        {"id": 4, "name": "Improper Data Retention", "category": "Privacy"},
+                        {"id": 5, "name": "Inadequate Consent Management", "category": "Consent"},
+                        {"id": 6, "name": "Cross-Border Transfer Violations", "category": "Transfer"},
+                        {"id": 7, "name": "Insufficient Data Subject Rights Management", "category": "Rights"},
+                        {"id": 8, "name": "Inadequate Security Controls", "category": "Security"},
+                        {"id": 9, "name": "Vendor Non-Compliance", "category": "Third Party"},
+                        {"id": 10, "name": "Incomplete Data Inventory", "category": "Governance"}
+                    ]
+                    
+                    # Create a filter for risks
+                    risk_options = {r["id"]: r["name"] for r in risk_data}
+                    risk_options[0] = "All Risks"
+                    
+                    # Create filters
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        selected_obligation_id = st.selectbox(
+                            "Filter by Obligation",
+                            options=list(obligation_options.keys()),
+                            format_func=lambda x: obligation_options[x],
+                            index=0,
+                            key="obligation_risk_obligation_filter"
+                        )
+                    
+                    with col2:
+                        selected_risk_id = st.selectbox(
+                            "Filter by Risk",
+                            options=list(risk_options.keys()),
+                            format_func=lambda x: risk_options[x],
+                            index=0,
+                            key="obligation_risk_risk_filter"
+                        )
+                    
+                    with col3:
+                        risk_categories = ["All", "Security", "Privacy", "Consent", "Transfer", "Rights", "Third Party", "Governance"]
+                        selected_risk_category = st.selectbox(
+                            "Filter by Risk Category",
+                            options=risk_categories,
+                            index=0,
+                            key="obligation_risk_category_filter"
+                        )
+                    
+                    # Get obligation-risk mappings from the repository
+                    obligation_risk_data = self.obligation_repository.get_obligation_risks()
+                    
+                    # Filter the data based on selections
+                    filtered_data = obligation_risk_data
+                    if selected_obligation_id != 0:
+                        filtered_data = [item for item in filtered_data if item["obligation_id"] == selected_obligation_id]
+                    if selected_risk_id != 0:
+                        filtered_data = [item for item in filtered_data if item["risk_id"] == selected_risk_id]
+                    if selected_risk_category != "All":
+                        filtered_data = [item for item in filtered_data if item.get("category", "") == selected_risk_category]
+                    
+                    if filtered_data:
+                        # Create a DataFrame
+                        df = pd.DataFrame(filtered_data)
+                        # Create a mapping of columns that might exist in the data
+                        column_mapping = {}
+                        if "obligation_name" in df.columns:
+                            column_mapping["obligation_name"] = "Obligation"
+                        if "risk_name" in df.columns:
+                            column_mapping["risk_name"] = "Risk"
+                        if "category" in df.columns:
+                            column_mapping["category"] = "Risk Category"
+                        if "likelihood" in df.columns:
+                            column_mapping["likelihood"] = "Likelihood"
+                        if "impact" in df.columns:
+                            column_mapping["impact"] = "Impact"
+                        
+                        # Rename columns that exist
+                        df = df.rename(columns=column_mapping)
+                        
+                        # Display columns in a specific order, but only include columns that exist
+                        display_columns = ["Obligation", "Risk", "Risk Category", "Likelihood", "Impact"]
+                        available_columns = [col for col in display_columns if col in df.columns]
+                        if available_columns:
+                            df = df[available_columns]
+                        
+                        # Sort by risk category and likelihood, but only use columns that exist
+                        sort_columns = []
+                        if "Risk Category" in df.columns:
+                            sort_columns.append("Risk Category")
+                        if "Likelihood" in df.columns:
+                            sort_columns.append("Likelihood")
+                        if "Impact" in df.columns:
+                            sort_columns.append("Impact")
+                        
+                        if sort_columns:
+                            df = df.sort_values(by=sort_columns)
+                        
+                        # Display the dataframe
+                        st.dataframe(df, use_container_width=True)
+                        
+                        # Add explanation
+                        st.markdown("""
+                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                            <h4 style="margin-top: 0;">How Obligation-Risk Mapping Works</h4>
+                            <p>The Obligation-Risk mapping identifies potential risks that may materialize if specific obligations are not fulfilled:</p>
+                            <ul>
+                                <li><strong>Risk Assessment:</strong> Each mapping includes the likelihood and impact of the risk materializing</li>
+                                <li><strong>Risk Categories:</strong> Risks are categorized by type (security, privacy, etc.) for easier management</li>
+                                <li><strong>Multiple Risks:</strong> An obligation may mitigate multiple risks with varying degrees of likelihood and impact</li>
+                            </ul>
+                            <p>This mapping enables organizations to make risk-based decisions about which obligations to prioritize and which risks to accept.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning("No obligation-risk mappings match the selected filters.")
                     
     def assets_section(self):
         """Handle the Assets section with data elements."""
@@ -1867,8 +2200,20 @@ class DataMap:
                         # Display the data elements in a styled dataframe
                         st.dataframe(pd.DataFrame(de_data), use_container_width=True)
                     
-                    # Add button to infer obligations based on data elements - outside the expander
-                    if st.button("Infer Obligations", key=f"infer_obligations_{selected_asset['id']}"):
+                    # Add buttons for obligation inference, policy recommendations, and risk recommendations
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        infer_obligations = st.button("Infer Obligations", key=f"infer_obligations_{selected_asset['id']}")
+                    
+                    with col2:
+                        recommend_policies = st.button("Recommend Policies", key=f"recommend_policies_{selected_asset['id']}")
+                    
+                    with col3:
+                        recommend_risks = st.button("Recommend Risks", key=f"recommend_risks_{selected_asset['id']}")
+                    
+                    # Handle Infer Obligations button
+                    if infer_obligations:
                         # Get data element sensitivities
                         data_element_sensitivities = self.infer_data_element_sensitivities(data_elements)
                         
@@ -1892,6 +2237,78 @@ class DataMap:
                             
                             # Get obligations based on sensitivities
                             self.show_sensitivity_based_obligations(data_element_sensitivities)
+                        else:
+                            st.warning("Could not determine sensitivities for the data elements.")
+                    
+                    # Handle Recommend Policies button
+                    if recommend_policies:
+                        # Get data element sensitivities first
+                        data_element_sensitivities = self.infer_data_element_sensitivities(data_elements)
+                        
+                        if data_element_sensitivities:
+                            # First get the obligations based on sensitivities
+                            sensitivity_levels = set(item['sensitivity'] for item in data_element_sensitivities.values())
+                            all_sensitivities = self.glossary_repository.get_sensitivities()
+                            sensitivity_ids = {}
+                            
+                            for sensitivity in all_sensitivities:
+                                if sensitivity['name'] in sensitivity_levels:
+                                    sensitivity_ids[sensitivity['name']] = sensitivity['id']
+                            
+                            # Get all obligations for these sensitivity levels
+                            all_obligations = []
+                            for sensitivity_name, sensitivity_id in sensitivity_ids.items():
+                                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                                if sensitivity_obligations:
+                                    for so in sensitivity_obligations:
+                                        all_obligations.append({
+                                            "id": so["obligation_id"],  # Using the actual obligation_id now
+                                            "name": so["obligation_name"],
+                                            "control_type": so["control_type"],
+                                            "priority": so["priority"]
+                                        })
+                            
+                            if all_obligations:
+                                # Now get policies for these obligations
+                                self.show_obligation_based_policies(all_obligations)
+                            else:
+                                st.warning("No obligations found for the sensitivities.")
+                        else:
+                            st.warning("Could not determine sensitivities for the data elements.")
+                    
+                    # Handle Recommend Risks button
+                    if recommend_risks:
+                        # Get data element sensitivities first
+                        data_element_sensitivities = self.infer_data_element_sensitivities(data_elements)
+                        
+                        if data_element_sensitivities:
+                            # First get the obligations based on sensitivities
+                            sensitivity_levels = set(item['sensitivity'] for item in data_element_sensitivities.values())
+                            all_sensitivities = self.glossary_repository.get_sensitivities()
+                            sensitivity_ids = {}
+                            
+                            for sensitivity in all_sensitivities:
+                                if sensitivity['name'] in sensitivity_levels:
+                                    sensitivity_ids[sensitivity['name']] = sensitivity['id']
+                            
+                            # Get all obligations for these sensitivity levels
+                            all_obligations = []
+                            for sensitivity_name, sensitivity_id in sensitivity_ids.items():
+                                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                                if sensitivity_obligations:
+                                    for so in sensitivity_obligations:
+                                        all_obligations.append({
+                                            "id": so["obligation_id"],  # Using the actual obligation_id now
+                                            "name": so["obligation_name"],
+                                            "control_type": so["control_type"],
+                                            "priority": so["priority"]
+                                        })
+                            
+                            if all_obligations:
+                                # Now get risks for these obligations
+                                self.show_obligation_based_risks(all_obligations)
+                            else:
+                                st.warning("No obligations found for the sensitivities.")
                         else:
                             st.warning("Could not determine sensitivities for the data elements.")
                 else:
@@ -2216,9 +2633,17 @@ class DataMap:
             
             # Add explanation
             st.markdown("""
-            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                <h4 style="margin-top: 0;">How Obligation Inference Works</h4>
-                <p>The Obligation Inference API analyzes the data elements in your asset and determines their sensitivity levels. Based on these sensitivity levels, it recommends appropriate security and privacy obligations that should be implemented.</p>
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How the Obligation Inference Algorithm Works</h4>
+                <p>The algorithm follows this functional flow:</p>
+                <ul>
+                    <li><strong>Input:</strong> Data elements from the selected asset</li>
+                    <li><strong>Sensitivity Analysis:</strong> Determine sensitivity level for each data element</li>
+                    <li><strong>Obligation Mapping:</strong> Match sensitivities to relevant security and privacy obligations</li>
+                    <li><strong>Control Categorization:</strong> Group obligations by control type (Encryption, Access Control, etc.)</li>
+                    <li><strong>Priority Assignment:</strong> Assign implementation priority based on data sensitivity</li>
+                    <li><strong>Output:</strong> Prioritized list of security and privacy obligations</li>
+                </ul>
                 <p>The recommendations are prioritized as follows:</p>
                 <ul>
                     <li><strong>High Priority:</strong> Critical controls that must be implemented to protect sensitive data</li>
@@ -2230,6 +2655,262 @@ class DataMap:
             """, unsafe_allow_html=True)
         else:
             st.info("No obligations defined for these sensitivity levels.")
+    
+    def show_obligation_based_policies(self, obligations):
+        """Show policies based on obligations.
+        
+        Args:
+            obligations: List of obligation dictionaries with 'id', 'name', 'control_type', and 'priority' keys
+        """
+        if not obligations:
+            st.warning("No obligation information available.")
+            return
+        
+        st.subheader("Recommended Policies")
+        
+        # Get policies for the given obligations from the repository
+        all_policies = []
+        obligation_ids = [o["id"] for o in obligations]
+        
+        # Get policies for each obligation using the repository
+        for obligation_id in obligation_ids:
+            policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
+            obligation_name = next((o["name"] for o in obligations if o["id"] == obligation_id), "Unknown")
+            
+            for policy in policies:
+                all_policies.append({
+                    "Obligation": obligation_name,
+                    "Policy": policy["name"],
+                    "Control Type": policy.get("control_type", ""),
+                    "Relevance Score": policy["relevance_score"]
+                })
+        
+        if all_policies:
+            # Create a DataFrame
+            df = pd.DataFrame(all_policies)
+            
+            # Add filters
+            col1, col2 = st.columns(2)
+            with col1:
+                policy_names = ["All"] + sorted(list(set(df["Policy"])))
+                selected_policy = st.selectbox(
+                    "Filter by Policy",
+                    policy_names,
+                    key="policy_name_filter"
+                )
+            
+            with col2:
+                control_types = ["All"] + sorted(list(set(df["Control Type"])))
+                selected_control = st.selectbox(
+                    "Filter by Control Type",
+                    control_types,
+                    key="policy_control_filter"
+                )
+            
+            # Apply filters
+            filtered_df = df.copy()
+            if selected_policy != "All":
+                filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+            if selected_control != "All":
+                filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
+            
+            # Sort by Relevance Score (descending)
+            filtered_df = filtered_df.sort_values(by=["Relevance Score"], ascending=False)
+            
+            # Display the dataframe
+            st.dataframe(filtered_df, use_container_width=True)
+            
+            # Group policies by type
+            policy_groups = filtered_df.groupby("Policy")["Relevance Score"].max().sort_values(ascending=False)
+            top_policies = policy_groups.index.tolist()
+            
+            # Display top policies summary
+            st.subheader("Policy Implementation Summary")
+            st.markdown("""
+            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                <h4 style="margin-top: 0;">Recommended Policy Implementation</h4>
+                <p>Based on the data elements in this asset and their sensitivity levels, the following policies should be implemented:</p>
+                <ol>
+            """, unsafe_allow_html=True)
+            
+            for policy in top_policies[:5]:  # Show top 5 policies
+                st.markdown(f"<li><strong>{policy}</strong></li>", unsafe_allow_html=True)
+            
+            st.markdown("""
+                </ol>
+                <p>These policies will address the compliance obligations required for the sensitive data in this asset.</p>
+            </div>
+            
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How the Policy Recommendation Algorithm Works</h4>
+                <p>The algorithm follows this functional flow:</p>
+                <ul>
+                    <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                    <li><strong>Policy Discovery:</strong> Identify organizational policies that address each obligation</li>
+                    <li><strong>Relevance Assessment:</strong> Determine how relevant each policy is to the specific obligations</li>
+                    <li><strong>Policy Prioritization:</strong> Rank policies by their relevance to the identified obligations</li>
+                    <li><strong>Policy Grouping:</strong> Group related policies to provide comprehensive coverage</li>
+                    <li><strong>Output:</strong> Prioritized list of policies to implement for the asset</li>
+                </ul>
+                <p>The relevance score indicates how important each policy is for addressing the identified obligations.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("No policies found for the identified obligations.")
+    
+    def show_obligation_based_risks(self, obligations):
+        """Show risks based on obligations.
+        
+        Args:
+            obligations: List of obligation dictionaries with 'id', 'name', 'control_type', and 'priority' keys
+        """
+        if not obligations:
+            st.warning("No obligation information available.")
+            return
+        
+        st.subheader("Potential Risks")
+        
+        # Get risks for the given obligations from the repository
+        all_risks = []
+        obligation_ids = [o["id"] for o in obligations]
+        
+        # Get risks for each obligation using the repository
+        for obligation_id in obligation_ids:
+            risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
+            obligation_name = next((o["name"] for o in obligations if o["id"] == obligation_id), "Unknown")
+            
+            for risk in risks:
+                all_risks.append({
+                    "Obligation": obligation_name,
+                    "Risk": risk["name"],
+                    "Risk Category": risk["category"],
+                    "Likelihood": risk["likelihood"],
+                    "Impact": risk["impact"]
+                })
+        
+        if all_risks:
+            # Create a DataFrame
+            df = pd.DataFrame(all_risks)
+            
+            # Add filters
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                risk_categories = ["All"] + sorted(list(set(df["Risk Category"])))
+                selected_category = st.selectbox(
+                    "Filter by Risk Category",
+                    risk_categories,
+                    key="risk_category_filter"
+                )
+            
+            with col2:
+                likelihoods = ["All"] + sorted(list(set(df["Likelihood"])))
+                selected_likelihood = st.selectbox(
+                    "Filter by Likelihood",
+                    likelihoods,
+                    key="risk_likelihood_filter"
+                )
+            
+            with col3:
+                impacts = ["All"] + sorted(list(set(df["Impact"])))
+                selected_impact = st.selectbox(
+                    "Filter by Impact",
+                    impacts,
+                    key="risk_impact_filter"
+                )
+            
+            # Apply filters
+            filtered_df = df.copy()
+            if selected_category != "All":
+                filtered_df = filtered_df[filtered_df["Risk Category"] == selected_category]
+            if selected_likelihood != "All":
+                filtered_df = filtered_df[filtered_df["Likelihood"] == selected_likelihood]
+            if selected_impact != "All":
+                filtered_df = filtered_df[filtered_df["Impact"] == selected_impact]
+            
+            # Create risk rating column
+            def get_risk_rating(row):
+                if row["Likelihood"] == "High" and row["Impact"] == "High":
+                    return "Critical"
+                elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
+                     (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
+                    return "High"
+                elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
+                     (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
+                     (row["Likelihood"] == "Low" and row["Impact"] == "High"):
+                    return "Medium"
+                else:
+                    return "Low"
+            
+            filtered_df["Risk Rating"] = filtered_df.apply(get_risk_rating, axis=1)
+            
+            # Sort by Risk Rating
+            risk_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+            filtered_df["Rating Order"] = filtered_df["Risk Rating"].map(risk_order)
+            filtered_df = filtered_df.sort_values(by=["Rating Order", "Risk Category"])
+            filtered_df = filtered_df.drop(columns=["Rating Order"])
+            
+            # Display the dataframe with the new Risk Rating column
+            display_columns = ["Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating", "Obligation"]
+            filtered_df = filtered_df[display_columns]
+            
+            st.dataframe(filtered_df, use_container_width=True)
+            
+            # Display risk summary
+            st.subheader("Risk Assessment Summary")
+            
+            # Count risks by rating
+            risk_counts = filtered_df["Risk Rating"].value_counts()
+            
+            # Create a summary message based on risk counts
+            summary_message = """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">Risk Assessment</h4>
+                <p>If the recommended obligations are not implemented, this asset may be exposed to the following risks:</p>
+                <ul>
+            """
+            
+            if "Critical" in risk_counts:
+                summary_message += f"<li><strong style='color: #d9534f;'>Critical Risks:</strong> {risk_counts['Critical']} potential critical risk(s) identified</li>"
+            
+            if "High" in risk_counts:
+                summary_message += f"<li><strong style='color: #f0ad4e;'>High Risks:</strong> {risk_counts['High']} potential high risk(s) identified</li>"
+            
+            if "Medium" in risk_counts:
+                summary_message += f"<li><strong style='color: #5bc0de;'>Medium Risks:</strong> {risk_counts['Medium']} potential medium risk(s) identified</li>"
+            
+            if "Low" in risk_counts:
+                summary_message += f"<li><strong style='color: #5cb85c;'>Low Risks:</strong> {risk_counts['Low']} potential low risk(s) identified</li>"
+            
+            summary_message += """
+                </ul>
+                <p>These risks should be carefully evaluated and either mitigated through implementing the recommended obligations or formally accepted as residual risks.</p>
+            </div>
+            
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How the Risk Recommendation Algorithm Works</h4>
+                <p>The algorithm follows this functional flow:</p>
+                <ul>
+                    <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                    <li><strong>Risk Identification:</strong> Determine potential risks if obligations are not fulfilled</li>
+                    <li><strong>Risk Classification:</strong> Categorize risks by type (e.g., Data Breach, Regulatory, Reputational)</li>
+                    <li><strong>Impact Assessment:</strong> Evaluate the potential impact of each risk (High, Medium, Low)</li>
+                    <li><strong>Likelihood Evaluation:</strong> Assess the probability of each risk occurring (High, Medium, Low)</li>
+                    <li><strong>Risk Rating:</strong> Calculate overall risk rating by combining impact and likelihood</li>
+                    <li><strong>Output:</strong> Prioritized list of risks with severity ratings</li>
+                </ul>
+                <p>The risk rating matrix combines likelihood and impact as follows:</p>
+                <ul>
+                    <li><strong>Critical:</strong> High likelihood + High impact</li>
+                    <li><strong>High:</strong> High likelihood + Medium impact, or Medium likelihood + High impact</li>
+                    <li><strong>Medium:</strong> Medium likelihood + Medium impact, High likelihood + Low impact, or Low likelihood + High impact</li>
+                    <li><strong>Low:</strong> All other combinations</li>
+                </ul>
+            </div>
+            """
+            
+            st.markdown(summary_message, unsafe_allow_html=True)
+        else:
+            st.info("No risks identified for the obligations.")
     
     def processing_activities_section(self):
         """Handle the Processing Activities section with purposes and data elements."""

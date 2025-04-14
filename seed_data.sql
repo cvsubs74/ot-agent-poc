@@ -2,6 +2,9 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS obligation_risk;
+DROP TABLE IF EXISTS obligation_policy;
+DROP TABLE IF EXISTS risk;
 DROP TABLE IF EXISTS sensitivity_obligation;
 DROP TABLE IF EXISTS obligation;
 DROP TABLE IF EXISTS policy_purpose_data_usage;
@@ -115,6 +118,16 @@ CREATE TABLE IF NOT EXISTS `breach_type` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create Risk table
+CREATE TABLE IF NOT EXISTS `risk` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `category` VARCHAR(100),
+    `likelihood` VARCHAR(50) DEFAULT 'Medium',
+    `impact` VARCHAR(50) DEFAULT 'Medium',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 
 -- =============================================
@@ -1545,11 +1558,36 @@ CREATE TABLE IF NOT EXISTS `obligation` (
 CREATE TABLE IF NOT EXISTS `sensitivity_obligation` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `sensitivity_id` INT NOT NULL,
-    `obligation_name` VARCHAR(255) NOT NULL,
-    `obligation_description` TEXT,
-    `control_type` VARCHAR(100),
+    `obligation_id` INT NOT NULL,
     `priority` VARCHAR(50) DEFAULT 'Medium',
-    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_sensitivity_obligation` (`sensitivity_id`, `obligation_id`)
+);
+
+-- Create Obligation Policy mapping table
+CREATE TABLE IF NOT EXISTS `obligation_policy` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `obligation_id` INT NOT NULL,
+    `policy_id` INT NOT NULL,
+    `control_type` VARCHAR(100),
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_obligation_policy` (`obligation_id`, `policy_id`)
+);
+
+-- Create Obligation Risk mapping table
+CREATE TABLE IF NOT EXISTS `obligation_risk` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `obligation_id` INT NOT NULL,
+    `risk_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_obligation_risk` (`obligation_id`, `risk_id`)
 );
 
 -- =============================================
@@ -1557,35 +1595,53 @@ CREATE TABLE IF NOT EXISTS `sensitivity_obligation` (
 -- =============================================
 
 -- Insert standard obligations for sensitivity levels
-INSERT INTO `sensitivity_obligation` (`sensitivity_id`, `obligation_name`, `obligation_description`, `control_type`, `priority`)
+INSERT INTO `sensitivity_obligation` (`sensitivity_id`, `obligation_id`, `priority`)
 VALUES
 -- Special Category (highest sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Encrypt Data at Rest', 'All special category data must be encrypted when stored using industry-standard encryption algorithms.', 'Encryption', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Encrypt Data in Transit', 'All special category data must be transmitted using secure protocols (TLS 1.2+) with strong encryption.', 'Encryption', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Implement Access Controls', 'Access to special category data must be restricted to authorized personnel only, using role-based access controls.', 'Access Control', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Data Masking', 'Special category data must be masked when displayed to users without a need-to-know or in non-production environments.', 'Masking', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Audit Logging', 'All access to special category data must be logged and monitored for suspicious activity.', 'Monitoring', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Special Category'), 'Enforce Retention Limits', 'Special category data must be deleted or anonymized after the defined retention period expires.', 'Retention', 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Implement Data Masking'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM obligation WHERE name = 'Implement Data Retention Controls'), 'High'),
 
 -- Restricted (high sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Restricted'), 'Encrypt Data at Rest', 'All restricted data must be encrypted when stored.', 'Encryption', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Restricted'), 'Encrypt Data in Transit', 'All restricted data must be transmitted using secure protocols.', 'Encryption', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Restricted'), 'Implement Access Controls', 'Access to restricted data must be limited to authorized personnel only.', 'Access Control', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Restricted'), 'Data Masking', 'Restricted data should be masked in non-production environments.', 'Masking', 'High'),
-((SELECT id FROM sensitivity WHERE name = 'Restricted'), 'Audit Logging', 'All access to restricted data must be logged.', 'Monitoring', 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM obligation WHERE name = 'Implement Data Masking'), 'High'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), 'High'),
 
 -- Confidential (medium sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Confidential'), 'Encrypt Sensitive Fields', 'Specific confidential fields should be encrypted when stored.', 'Encryption', 'Medium'),
-((SELECT id FROM sensitivity WHERE name = 'Confidential'), 'Secure Transmission', 'Confidential data should be transmitted using secure protocols.', 'Encryption', 'Medium'),
-((SELECT id FROM sensitivity WHERE name = 'Confidential'), 'Basic Access Controls', 'Access to confidential data should be limited to authenticated users with appropriate permissions.', 'Access Control', 'Medium'),
-((SELECT id FROM sensitivity WHERE name = 'Confidential'), 'Audit Critical Operations', 'Critical operations on confidential data should be logged.', 'Monitoring', 'Medium'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), 'Medium'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), 'Medium'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'Medium'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), 'Medium'),
 
 -- Internal (low sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Internal'), 'Basic Authentication', 'Access to internal data should require basic authentication.', 'Access Control', 'Low'),
-((SELECT id FROM sensitivity WHERE name = 'Internal'), 'Standard Protections', 'Apply standard organizational security controls to internal data.', 'General', 'Low'),
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'Low'),
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Data Classification'), 'Low'),
 
 -- Public (minimal sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Public'), 'Basic Integrity Controls', 'Ensure the integrity of public data through basic controls.', 'General', 'Low');
+((SELECT id FROM sensitivity WHERE name = 'Public'), (SELECT id FROM obligation WHERE name = 'Implement Data Classification'), 'Low');
+
+-- =============================================
+-- SEED SAMPLE RISKS
+-- =============================================
+
+-- Insert sample risks
+INSERT INTO `risk` (`name`, `description`, `category`, `likelihood`, `impact`)
+VALUES
+('Unauthorized Data Access', 'Unauthorized individuals gain access to sensitive personal data due to inadequate access controls', 'Security', 'High', 'High'),
+('Data Breach', 'Personal data is exposed, lost, altered, or accessed without authorization', 'Security', 'Medium', 'High'),
+('Excessive Data Collection', 'Collection of personal data beyond what is necessary for the stated purpose', 'Privacy', 'High', 'Medium'),
+('Improper Data Retention', 'Retention of personal data beyond the necessary period for the stated purpose', 'Privacy', 'High', 'Medium'),
+('Inadequate Consent Management', 'Failure to obtain, record, or manage valid consent for data processing activities', 'Consent', 'Medium', 'High'),
+('Cross-Border Transfer Violations', 'Transfer of personal data to jurisdictions without adequate protection or proper transfer mechanisms', 'Transfer', 'Medium', 'High'),
+('Insufficient Data Subject Rights Management', 'Inability to fulfill data subject requests (access, deletion, portability, etc.) within required timeframes', 'Rights', 'Medium', 'Medium'),
+('Inadequate Security Controls', 'Lack of appropriate technical and organizational measures to protect personal data', 'Security', 'Medium', 'High'),
+('Vendor Non-Compliance', 'Third-party processors handling personal data without adequate contractual controls or compliance verification', 'Third Party', 'High', 'Medium'),
+('Incomplete Data Inventory', 'Incomplete or inaccurate records of data processing activities and data assets', 'Governance', 'High', 'Medium');
 
 -- =============================================
 -- SEED SAMPLE OBLIGATIONS
@@ -1594,10 +1650,94 @@ VALUES
 -- Insert sample obligations
 INSERT INTO `obligation` (`name`, `description`, `source`, `control_type`, `status`, `risk_accepted`)
 VALUES
-('Implement Data Encryption', 'All personal data must be encrypted both at rest and in transit using industry-standard encryption algorithms.', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
-('Conduct Regular Security Assessments', 'Regular security assessments must be conducted to identify and mitigate vulnerabilities.', 'ISO 27001', 'Monitoring', 'In Progress', FALSE),
-('Implement Data Minimization', 'Only collect and process personal data that is necessary for the specified purpose.', 'GDPR Article 5', 'General', 'Open', FALSE),
-('Establish Data Retention Policy', 'Define and enforce data retention periods for all personal data.', 'CCPA Section 1798.100', 'Retention', 'Implemented', FALSE),
-('Implement Access Controls', 'Restrict access to personal data to authorized personnel only.', 'HIPAA Security Rule', 'Access Control', 'Open', FALSE),
-('Conduct Privacy Impact Assessments', 'Conduct PIAs for high-risk processing activities.', 'GDPR Article 35', 'General', 'Open', TRUE),
-('Implement Data Masking', 'Mask sensitive data in non-production environments.', 'Internal Security Policy', 'Masking', 'In Progress', FALSE);
+('Encrypt Data at Rest', 'All personal data must be encrypted when stored using industry-standard encryption algorithms.', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
+('Encrypt Data in Transit', 'All personal data must be encrypted during transmission using secure protocols (TLS 1.2+).', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
+('Implement Access Controls', 'Restrict access to personal data to authorized personnel only using role-based access controls.', 'HIPAA Security Rule', 'Access Control', 'Open', FALSE),
+('Maintain Access Logs', 'Maintain logs of all access to sensitive personal data for auditing purposes.', 'HIPAA Security Rule', 'Monitoring', 'In Progress', FALSE),
+('Implement Data Masking', 'Mask sensitive data in non-production environments and when displayed to users without need-to-know.', 'Internal Security Policy', 'Masking', 'In Progress', FALSE),
+('Implement Data Retention Controls', 'Define and enforce data retention periods for all personal data with automated deletion.', 'CCPA Section 1798.100', 'Retention', 'Implemented', FALSE),
+('Monitor Data Access', 'Implement monitoring systems to detect and alert on suspicious access patterns to sensitive data.', 'ISO 27001', 'Monitoring', 'Open', FALSE),
+('Implement Least Privilege', 'Ensure users have only the minimum privileges necessary to perform their job functions.', 'NIST SP 800-53', 'Access Control', 'Open', FALSE),
+('Implement Data Classification', 'Classify all data based on sensitivity to ensure appropriate controls are applied.', 'ISO 27001', 'General', 'Open', FALSE),
+('Conduct Regular Security Assessments', 'Perform regular security assessments to identify and mitigate vulnerabilities.', 'ISO 27001', 'General', 'In Progress', FALSE);
+
+-- =============================================
+-- SEED OBLIGATION-POLICY MAPPINGS
+-- =============================================
+
+-- Insert sample obligation-policy mappings
+INSERT INTO `obligation_policy` (`obligation_id`, `policy_id`, `control_type`, `relevance_score`)
+VALUES
+-- Encrypt Data at Rest mappings
+((SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Encryption', 1.0),
+((SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), (SELECT id FROM policy WHERE name = 'Data Minimization Policy'), 'Encryption', 0.6),
+
+-- Encrypt Data in Transit mappings
+((SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Encryption', 1.0),
+((SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), (SELECT id FROM policy WHERE name = 'Data Sharing Policy'), 'Encryption', 0.8),
+
+-- Implement Access Controls mappings
+((SELECT id FROM obligation WHERE name = 'Implement Access Controls'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Access Control', 1.0),
+((SELECT id FROM obligation WHERE name = 'Implement Access Controls'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Access Control', 0.7),
+
+-- Maintain Access Logs mappings
+((SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Monitoring', 0.9),
+((SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Monitoring', 0.6),
+
+-- Implement Data Masking mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Masking'), (SELECT id FROM policy WHERE name = 'Data Minimization Policy'), 'Masking', 1.0),
+((SELECT id FROM obligation WHERE name = 'Implement Data Masking'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Masking', 0.7),
+
+-- Implement Data Retention Controls mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Retention Controls'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Retention', 1.0),
+
+-- Monitor Data Access mappings
+((SELECT id FROM obligation WHERE name = 'Monitor Data Access'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Monitoring', 0.8),
+((SELECT id FROM obligation WHERE name = 'Monitor Data Access'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Monitoring', 0.6),
+
+-- Implement Least Privilege mappings
+((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Access Control', 1.0),
+
+-- Implement Data Classification mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Classification'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'General', 0.9),
+
+-- Conduct Regular Security Assessments mappings
+((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'General', 0.7);
+
+-- =============================================
+-- SEED OBLIGATION-RISK MAPPINGS
+-- =============================================
+
+-- Insert sample obligation-risk mappings
+INSERT INTO `obligation_risk` (`obligation_id`, `risk_id`)
+VALUES
+-- Encrypt Data at Rest risk mappings
+((SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), (SELECT id FROM risk WHERE name = 'Data Breach')), 
+((SELECT id FROM obligation WHERE name = 'Encrypt Data at Rest'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Encrypt Data in Transit risk mappings
+((SELECT id FROM obligation WHERE name = 'Encrypt Data in Transit'), (SELECT id FROM risk WHERE name = 'Data Breach')),
+
+-- Implement Access Controls risk mappings
+((SELECT id FROM obligation WHERE name = 'Implement Access Controls'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Maintain Access Logs risk mappings
+((SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Implement Data Masking risk mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Masking'), (SELECT id FROM risk WHERE name = 'Excessive Data Collection')),
+
+-- Implement Data Retention Controls risk mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Retention Controls'), (SELECT id FROM risk WHERE name = 'Improper Data Retention')),
+
+-- Monitor Data Access risk mappings
+((SELECT id FROM obligation WHERE name = 'Monitor Data Access'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Implement Least Privilege risk mappings
+((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Implement Data Classification risk mappings
+((SELECT id FROM obligation WHERE name = 'Implement Data Classification'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls')),
+
+-- Conduct Regular Security Assessments risk mappings
+((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls'));
