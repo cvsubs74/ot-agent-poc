@@ -26,6 +26,9 @@ class RegulatoryMetadataRepository:
         self.create_policy_purpose_table()
         self.create_policy_purpose_data_element_table()
         self.create_policy_purpose_data_usage_table()
+        self.create_framework_control_table()
+        self.create_policy_control_table()
+        self.create_risk_control_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""
@@ -2440,3 +2443,206 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
 
+    def create_framework_control_table(self):
+        """Create the Framework Control mapping table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `framework_control` (
+            `framework_id` INT NOT NULL,
+            `control_id` INT NOT NULL,
+            `relevance_score` FLOAT NOT NULL,
+            PRIMARY KEY (`framework_id`, `control_id`),
+            FOREIGN KEY (`framework_id`) REFERENCES `framework`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    def create_policy_control_table(self):
+        """Create the Policy Control mapping table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_control` (
+            `policy_id` INT NOT NULL,
+            `control_id` INT NOT NULL,
+            `relevance_score` FLOAT NOT NULL,
+            PRIMARY KEY (`policy_id`, `control_id`),
+            FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    def create_risk_control_table(self):
+        """Create the Risk Control mapping table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `risk_control` (
+            `risk_id` INT NOT NULL,
+            `control_id` INT NOT NULL,
+            `mitigation_level` VARCHAR(50) NOT NULL,
+            PRIMARY KEY (`risk_id`, `control_id`),
+            FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+    
+    def get_framework_controls(self, framework_id=None, control_id=None):
+        """Get framework control mappings."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            SELECT fc.framework_id, f.name as framework_name, f.category as framework_category, f.version,
+                   fc.control_id, c.name as control_name, c.control_type, c.implementation_status, c.priority,
+                   fc.relevance_score
+            FROM framework_control fc
+            JOIN framework f ON fc.framework_id = f.id
+            JOIN control c ON fc.control_id = c.id
+            """
+            
+            params = []
+            where_clauses = []
+            
+            if framework_id:
+                where_clauses.append("fc.framework_id = %s")
+                params.append(framework_id)
+            
+            if control_id:
+                where_clauses.append("fc.control_id = %s")
+                params.append(control_id)
+                
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+                
+            cursor.execute(query, params)
+            
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "framework_id": row[0],
+                    "framework_name": row[1],
+                    "framework_category": row[2],
+                    "framework_version": row[3],
+                    "control_id": row[4],
+                    "control_name": row[5],
+                    "control_type": row[6],
+                    "implementation_status": row[7],
+                    "priority": row[8],
+                    "relevance_score": float(row[9])
+                })
+                
+            return results
+        except Exception as e:
+            print(f"Error getting framework controls: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_policy_controls(self, policy_id=None, control_id=None):
+        """Get policy control mappings."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            SELECT pc.policy_id, p.name as policy_name, p.policy_type,
+                   pc.control_id, c.name as control_name, c.control_type, c.implementation_status, c.priority,
+                   pc.relevance_score
+            FROM policy_control pc
+            JOIN policy p ON pc.policy_id = p.id
+            JOIN control c ON pc.control_id = c.id
+            """
+            
+            params = []
+            where_clauses = []
+            
+            if policy_id:
+                where_clauses.append("pc.policy_id = %s")
+                params.append(policy_id)
+            
+            if control_id:
+                where_clauses.append("pc.control_id = %s")
+                params.append(control_id)
+                
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+                
+            cursor.execute(query, params)
+            
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "policy_id": row[0],
+                    "policy_name": row[1],
+                    "policy_type": row[2],
+                    "control_id": row[3],
+                    "control_name": row[4],
+                    "control_type": row[5],
+                    "implementation_status": row[6],
+                    "priority": row[7],
+                    "relevance_score": float(row[8])
+                })
+                
+            return results
+        except Exception as e:
+            print(f"Error getting policy controls: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_risk_controls(self, risk_id=None, control_id=None):
+        """Get risk control mappings."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            SELECT rc.risk_id, r.name as risk_name, r.category as risk_category, r.likelihood, r.impact,
+                   rc.control_id, c.name as control_name, c.control_type, c.implementation_status, c.priority,
+                   rc.mitigation_level
+            FROM risk_control rc
+            JOIN risk r ON rc.risk_id = r.id
+            JOIN control c ON rc.control_id = c.id
+            """
+            
+            params = []
+            where_clauses = []
+            
+            if risk_id:
+                where_clauses.append("rc.risk_id = %s")
+                params.append(risk_id)
+            
+            if control_id:
+                where_clauses.append("rc.control_id = %s")
+                params.append(control_id)
+                
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+                
+            cursor.execute(query, params)
+            
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "risk_id": row[0],
+                    "risk_name": row[1],
+                    "risk_category": row[2],
+                    "risk_likelihood": row[3],
+                    "risk_impact": row[4],
+                    "control_id": row[5],
+                    "control_name": row[6],
+                    "control_type": row[7],
+                    "implementation_status": row[8],
+                    "priority": row[9],
+                    "mitigation_level": row[10]
+                })
+                
+            return results
+        except Exception as e:
+            print(f"Error getting risk controls: {e}")
+            return []
+        finally:
+            cursor.close()

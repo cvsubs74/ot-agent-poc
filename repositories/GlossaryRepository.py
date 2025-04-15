@@ -20,6 +20,8 @@ class GlossaryRepository:
         self.create_breach_type_table()
         self.create_policy_table()
         self.create_purpose_table()
+        self.create_framework_table()
+        self.create_control_table()
         
     def create_law_table(self):
         """Create the Law table."""
@@ -190,6 +192,41 @@ class GlossaryRepository:
             `risk_level` VARCHAR(50),
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_framework_table(self):
+        """Create the Framework table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `framework` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `version` VARCHAR(50),
+            `category` VARCHAR(100),
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
+    def create_control_table(self):
+        """Create the Control table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `control` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `description` TEXT,
+            `control_type` VARCHAR(100),
+            `implementation_status` VARCHAR(50),
+            `priority` VARCHAR(50),
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
         cursor.execute(create_table_query)
@@ -1252,3 +1289,276 @@ class GlossaryRepository:
         self.seed_breach_types()
         self.seed_policies()
         self.seed_purposes()
+        self.seed_frameworks()
+        self.seed_controls()
+        
+    # Framework methods
+    def add_framework(self, name, description, version, category):
+        """Add a new framework to the database.
+        
+        Args:
+            name (str): The name of the framework
+            description (str): The description of the framework
+            version (str): The version of the framework
+            category (str): The category of the framework
+            
+        Returns:
+            int: The ID of the newly added framework or None if an error occurred
+        """
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO framework (name, description, version, category)
+            VALUES (%s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (name, description, version, category))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding framework: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_frameworks(self):
+        """Get all frameworks from the database.
+        
+        Returns:
+            list: A list of dictionaries containing framework information
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description, version, category FROM framework;")
+            frameworks = []
+            for row in cursor.fetchall():
+                frameworks.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "version": row[3],
+                    "category": row[4]
+                })
+            return frameworks
+        except Exception as e:
+            print(f"Error getting frameworks: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_risks(self):
+        """Get all risks from the database.
+        
+        Returns:
+            list: A list of dictionaries containing risk information
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description, category, likelihood, impact FROM risk;")
+            risks = []
+            for row in cursor.fetchall():
+                risks.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "category": row[3],
+                    "likelihood": row[4],
+                    "impact": row[5]
+                })
+            return risks
+        except Exception as e:
+            print(f"Error getting risks: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_framework_by_id(self, framework_id):
+        """Get a framework by its ID.
+        
+        Args:
+            framework_id (int): The ID of the framework to retrieve
+            
+        Returns:
+            dict: A dictionary containing framework information or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                SELECT id, name, description, version, category 
+                FROM framework 
+                WHERE id = %s;
+            """, (framework_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "version": row[3],
+                    "category": row[4]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting framework by ID {framework_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def seed_frameworks(self):
+        """Seed the database with initial framework data."""
+        frameworks = [
+            ("NIST CSF", "NIST Cybersecurity Framework", "2.0", "Security"),
+            ("ISO 27001", "Information Security Management System Standard", "2022", "Security"),
+            ("GDPR Controls", "General Data Protection Regulation Controls Framework", "1.0", "Privacy"),
+            ("HIPAA Security Rule", "Health Insurance Portability and Accountability Act Security Standards", "2013", "Healthcare"),
+            ("PCI DSS", "Payment Card Industry Data Security Standard", "4.0", "Financial"),
+            ("SOC 2", "Service Organization Control 2", "2017", "Compliance"),
+            ("CCPA Framework", "California Consumer Privacy Act Controls Framework", "1.0", "Privacy"),
+            ("NIST 800-53", "Security and Privacy Controls for Information Systems and Organizations", "Rev. 5", "Government")
+        ]
+        
+        cursor = self.connection.cursor()
+        try:
+            for name, description, version, category in frameworks:
+                cursor.execute("SELECT id FROM framework WHERE name = %s;", (name,))
+                if not cursor.fetchone():
+                    cursor.execute(
+                        "INSERT INTO framework (name, description, version, category) VALUES (%s, %s, %s, %s);",
+                        (name, description, version, category)
+                    )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding frameworks: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+            
+    # Control methods
+    def add_control(self, name, description, control_type, implementation_status, priority):
+        """Add a new control to the database.
+        
+        Args:
+            name (str): The name of the control
+            description (str): The description of the control
+            control_type (str): The type of control (e.g., 'Technical', 'Administrative', 'Physical')
+            implementation_status (str): The implementation status of the control
+            priority (str): The priority of the control (e.g., 'High', 'Medium', 'Low')
+            
+        Returns:
+            int: The ID of the newly added control or None if an error occurred
+        """
+        cursor = self.connection.cursor()
+        try:
+            insert_query = """
+            INSERT INTO control (name, description, control_type, implementation_status, priority)
+            VALUES (%s, %s, %s, %s, %s);
+            """
+            cursor.execute(insert_query, (name, description, control_type, implementation_status, priority))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error adding control: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_controls(self):
+        """Get all controls from the database.
+        
+        Returns:
+            list: A list of dictionaries containing control information
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description, control_type, implementation_status, priority FROM control;")
+            controls = []
+            for row in cursor.fetchall():
+                controls.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "control_type": row[3],
+                    "implementation_status": row[4],
+                    "priority": row[5]
+                })
+            return controls
+        except Exception as e:
+            print(f"Error getting controls: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_control_by_id(self, control_id):
+        """Get a control by its ID.
+        
+        Args:
+            control_id (int): The ID of the control to retrieve
+            
+        Returns:
+            dict: A dictionary containing control information or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                SELECT id, name, description, control_type, implementation_status, priority 
+                FROM control 
+                WHERE id = %s;
+            """, (control_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "control_type": row[3],
+                    "implementation_status": row[4],
+                    "priority": row[5]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting control by ID {control_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def seed_controls(self):
+        """Seed the database with initial control data."""
+        controls = [
+            ("Access Control", "Limit access to information systems to authorized users", "Technical", "Implemented", "High"),
+            ("Data Encryption", "Encrypt sensitive data at rest and in transit", "Technical", "Implemented", "High"),
+            ("Security Awareness Training", "Educate users about security best practices", "Administrative", "Implemented", "Medium"),
+            ("Incident Response Plan", "Procedures for responding to security incidents", "Administrative", "Implemented", "High"),
+            ("Vulnerability Management", "Identify and remediate security vulnerabilities", "Technical", "Implemented", "High"),
+            ("Data Backup", "Regular backup of critical data", "Technical", "Implemented", "Medium"),
+            ("Physical Access Controls", "Restrict physical access to facilities", "Physical", "Implemented", "Medium"),
+            ("Network Segmentation", "Divide network into segments to limit access", "Technical", "Implemented", "Medium"),
+            ("Secure Configuration", "Implement secure configurations for systems", "Technical", "Implemented", "High"),
+            ("Audit Logging", "Record and monitor system activities", "Technical", "Implemented", "Medium"),
+            ("Data Loss Prevention", "Prevent unauthorized data exfiltration", "Technical", "Implemented", "High"),
+            ("Vendor Management", "Assess and manage third-party security risks", "Administrative", "Implemented", "Medium"),
+            ("Change Management", "Control changes to systems and applications", "Administrative", "Implemented", "Medium"),
+            ("Disaster Recovery", "Recover systems after a disaster", "Administrative", "Implemented", "High"),
+            ("Penetration Testing", "Test systems for security vulnerabilities", "Technical", "Implemented", "Medium"),
+            ("Multi-Factor Authentication", "Require multiple forms of authentication", "Technical", "Implemented", "High"),
+            ("Data Minimization", "Collect only necessary personal data", "Administrative", "Implemented", "Medium"),
+            ("Privacy Impact Assessment", "Assess privacy risks of new projects", "Administrative", "Implemented", "Medium"),
+            ("Data Subject Rights Management", "Process data subject rights requests", "Administrative", "Implemented", "High"),
+            ("Consent Management", "Obtain and manage user consent", "Administrative", "Implemented", "High")
+        ]
+        
+        cursor = self.connection.cursor()
+        try:
+            for name, description, control_type, implementation_status, priority in controls:
+                cursor.execute("SELECT id FROM control WHERE name = %s;", (name,))
+                if not cursor.fetchone():
+                    cursor.execute(
+                        "INSERT INTO control (name, description, control_type, implementation_status, priority) VALUES (%s, %s, %s, %s, %s);",
+                        (name, description, control_type, implementation_status, priority)
+                    )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding controls: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()

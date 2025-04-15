@@ -308,7 +308,8 @@ class DataMap:
         
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
-            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations", "Risks"
+            "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations", "Risks",
+            "Frameworks", "Controls"
         ])
         
         # Law tab
@@ -747,6 +748,180 @@ class DataMap:
                     if submitted:
                         st.success(f"Risk '{risk_name}' has been added successfully!")
         
+        # Frameworks tab
+        with tabs[11]:
+            st.subheader("Frameworks")
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about security and compliance frameworks that organizations can implement to ensure proper data protection.</p>
+                <ul>
+                    <li>Detailed descriptions of common security and compliance frameworks</li>
+                    <li>Framework categorization by type (security, privacy, industry-specific, etc.)</li>
+                    <li>Framework version and adoption information</li>
+                    <li>Foundation for structured compliance implementation</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get framework data from repository
+            framework_data = self.glossary_repository.get_frameworks()
+            if not framework_data:
+                st.warning("No framework data available in the database.")
+                framework_data = []
+            
+            # Create filters
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Get unique framework categories
+                categories = sorted(list(set([framework["category"] for framework in framework_data if framework["category"]]))) 
+                categories = ["All"] + categories
+                selected_category = st.selectbox("Filter by Framework Category", categories, key="framework_category_filter")
+            
+            with col2:
+                # Get unique framework versions
+                versions = sorted(list(set([framework["version"] for framework in framework_data if framework["version"]]))) 
+                versions = ["All"] + versions
+                selected_version = st.selectbox("Filter by Version", versions, key="framework_version_filter")
+            
+            # Create dataframe
+            df = pd.DataFrame(framework_data)
+            df = df.rename(columns={
+                "id": "ID",
+                "name": "Framework",
+                "description": "Description",
+                "category": "Category",
+                "version": "Version"
+            })
+            
+            # Apply filters
+            if selected_category != "All":
+                df = df[df["Category"] == selected_category]
+            if selected_version != "All":
+                df = df[df["Version"] == selected_version]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
+            
+            # Add new framework section
+            with st.expander("Add New Framework", expanded=False):
+                with st.form("add_framework_form"):
+                    framework_name = st.text_input("Framework Name")
+                    framework_desc = st.text_area("Description")
+                    framework_category = st.selectbox(
+                        "Framework Category",
+                        ["Security", "Privacy", "Industry-Specific", "Healthcare", "Financial", "Other"],
+                        key="new_framework_category"
+                    )
+                    framework_version = st.text_input("Version")
+                    
+                    # Submit button
+                    submitted = st.form_submit_button("Add Framework")
+                    if submitted:
+                        if framework_name and framework_desc and framework_category and framework_version:
+                            # Add framework to database
+                            framework_id = self.glossary_repository.add_framework(framework_name, framework_desc, framework_version, framework_category)
+                            if framework_id:
+                                st.success(f"Framework '{framework_name}' has been added successfully!")
+                            else:
+                                st.error("Failed to add framework. Please try again.")
+                        else:
+                            st.error("Please fill in all fields.")
+        
+        # Controls tab
+        with tabs[12]:
+            st.subheader("Controls")
+            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+                <p>This section provides information about security and privacy controls that organizations can implement to mitigate risks and ensure compliance with regulations and frameworks.</p>
+                <ul>
+                    <li>Detailed descriptions of common security and privacy controls</li>
+                    <li>Control categorization by type (technical, administrative, physical, etc.)</li>
+                    <li>Implementation status and priority information</li>
+                    <li>Foundation for structured risk mitigation</li>
+                </ul>
+            </div>''', unsafe_allow_html=True)
+            
+            # Get control data from repository
+            control_data = self.glossary_repository.get_controls()
+            if not control_data:
+                st.warning("No control data available in the database.")
+                control_data = []
+            
+            # Create filters
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Get unique control types
+                control_types = sorted(list(set([control["control_type"] for control in control_data if control["control_type"]]))) 
+                control_types = ["All"] + control_types
+                selected_control_type = st.selectbox("Filter by Control Type", control_types, key="control_type_filter")
+            
+            with col2:
+                # Get unique implementation statuses
+                statuses = sorted(list(set([control["implementation_status"] for control in control_data if control["implementation_status"]]))) 
+                statuses = ["All"] + statuses
+                selected_status = st.selectbox("Filter by Implementation Status", statuses, key="control_status_filter")
+            
+            with col3:
+                # Get unique priorities
+                priorities = sorted(list(set([control["priority"] for control in control_data if control["priority"]]))) 
+                priorities = ["All"] + priorities
+                selected_priority = st.selectbox("Filter by Priority", priorities, key="control_priority_filter")
+            
+            # Create dataframe
+            df = pd.DataFrame(control_data)
+            df = df.rename(columns={
+                "id": "ID",
+                "name": "Control",
+                "description": "Description",
+                "control_type": "Control Type",
+                "implementation_status": "Implementation Status",
+                "priority": "Priority"
+            })
+            
+            # Apply filters
+            if selected_control_type != "All":
+                df = df[df["Control Type"] == selected_control_type]
+            if selected_status != "All":
+                df = df[df["Implementation Status"] == selected_status]
+            if selected_priority != "All":
+                df = df[df["Priority"] == selected_priority]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
+            
+            # Add new control section
+            with st.expander("Add New Control", expanded=False):
+                with st.form("add_control_form"):
+                    control_name = st.text_input("Control Name")
+                    control_desc = st.text_area("Description")
+                    control_type = st.selectbox(
+                        "Control Type",
+                        ["Technical", "Administrative", "Physical", "Other"],
+                        key="new_control_type"
+                    )
+                    implementation_status = st.selectbox(
+                        "Implementation Status",
+                        ["Not Implemented", "Partially Implemented", "Implemented"],
+                        key="new_implementation_status"
+                    )
+                    priority = st.selectbox(
+                        "Priority",
+                        ["Low", "Medium", "High"],
+                        key="new_priority"
+                    )
+                    
+                    # Submit button
+                    submitted = st.form_submit_button("Add Control")
+                    if submitted:
+                        if control_name and control_desc and control_type and implementation_status and priority:
+                            # Add control to database
+                            control_id = self.glossary_repository.add_control(control_name, control_desc, control_type, implementation_status, priority)
+                            if control_id:
+                                st.success(f"Control '{control_name}' has been added successfully!")
+                            else:
+                                st.error("Failed to add control. Please try again.")
+                        else:
+                            st.error("Please fill in all fields.")
+        
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
@@ -783,7 +958,10 @@ class DataMap:
             "Policy Purpose Data Usage",
             "Sensitivity Obligations",
             "Obligation Policy",
-            "Obligation Risk"
+            "Obligation Risk",
+            "Framework Control",
+            "Policy Control",
+            "Risk Control"
         ]
         
         # Define which tabs are used by each inference API
@@ -797,7 +975,8 @@ class DataMap:
             "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
             "Obligation Inference": [5, 6, 7, 8, 9, 15],  # Same tabs as Data Sensitivity Inference + Sensitivity Obligations
             "Policy Inference": [5, 6, 7, 8, 9, 15, 16],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Policy
-            "Risk Inference": [5, 6, 7, 8, 9, 15, 17]  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
+            "Risk Inference": [5, 6, 7, 8, 9, 15, 17],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
+            "Control Inference": [18, 19, 20]  # Framework Control, Policy Control, Risk Control tabs
         }
         
         # Create a filter for inference APIs
@@ -980,6 +1159,27 @@ class DataMap:
                     <li>Calculate an overall risk rating (Critical, High, Medium, Low)</li>
                 </ol>
                 <p>This risk-based approach helps organizations prioritize their compliance efforts based on the potential consequences of non-compliance, focusing resources on mitigating the most significant risks first.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_inference_api == "Control Inference":
+            st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Control Inference Works</h4>
+                <p>The Control Inference API suggests appropriate security and privacy controls based on frameworks, policies, or risks:</p>
+                <ul>
+                    <li><strong>Framework Control</strong>: Maps security and compliance frameworks to specific controls that help implement the framework requirements.</li>
+                    <li><strong>Policy Control</strong>: Maps organizational policies to specific controls that help enforce those policies.</li>
+                    <li><strong>Risk Control</strong>: Maps identified risks to specific controls that help mitigate those risks.</li>
+                </ul>
+                <p>The Control Inference process follows these steps:</p>
+                <ol>
+                    <li>Identify the input context (framework, policy, or risk) that requires control recommendations</li>
+                    <li>Query the appropriate mapping table (Framework Control, Policy Control, or Risk Control)</li>
+                    <li>Retrieve controls with their relevance scores or mitigation levels</li>
+                    <li>Rank controls based on their effectiveness for the given context</li>
+                    <li>Present a prioritized list of recommended controls</li>
+                </ol>
+                <p>This approach ensures that organizations implement the most effective controls for their specific compliance requirements and risk profile, optimizing their security and privacy investments.</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -1996,19 +2196,11 @@ class DataMap:
                     obligation_options = {o["id"]: o["name"] for o in obligations}
                     obligation_options[0] = "All Obligations"
                     
-                    # Sample risk data (in a real implementation, this would come from a repository)
-                    risk_data = [
-                        {"id": 1, "name": "Unauthorized Data Access", "category": "Security"},
-                        {"id": 2, "name": "Data Breach", "category": "Security"},
-                        {"id": 3, "name": "Excessive Data Collection", "category": "Privacy"},
-                        {"id": 4, "name": "Improper Data Retention", "category": "Privacy"},
-                        {"id": 5, "name": "Inadequate Consent Management", "category": "Consent"},
-                        {"id": 6, "name": "Cross-Border Transfer Violations", "category": "Transfer"},
-                        {"id": 7, "name": "Insufficient Data Subject Rights Management", "category": "Rights"},
-                        {"id": 8, "name": "Inadequate Security Controls", "category": "Security"},
-                        {"id": 9, "name": "Vendor Non-Compliance", "category": "Third Party"},
-                        {"id": 10, "name": "Incomplete Data Inventory", "category": "Governance"}
-                    ]
+                    # Get risk data from the repository
+                    risk_data = self.glossary_repository.get_risks()
+                    if not risk_data:
+                        st.warning("No risk data available in the database.")
+                        return
                     
                     # Create a filter for risks
                     risk_options = {r["id"]: r["name"] for r in risk_data}
@@ -2111,6 +2303,360 @@ class DataMap:
                         """, unsafe_allow_html=True)
                     else:
                         st.warning("No obligation-risk mappings match the selected filters.")
+                
+                # Framework Control tab
+                elif tab_idx == 18:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Framework Control</h3>
+                        <p>This section maps security and compliance frameworks to specific controls that help implement the framework requirements.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get all frameworks from the repository
+                    frameworks = self.glossary_repository.get_frameworks()
+                    if not frameworks:
+                        st.warning("No frameworks available in the database.")
+                        return
+                    
+                    # Create a filter for frameworks
+                    framework_options = {f["id"]: f["name"] for f in frameworks}
+                    framework_options[0] = "All Frameworks"
+                    
+                    # Get all controls from the repository
+                    controls = self.glossary_repository.get_controls()
+                    if not controls:
+                        st.warning("No controls available in the database.")
+                        return
+                    
+                    # Create a filter for controls
+                    control_options = {c["id"]: c["name"] for c in controls}
+                    control_options[0] = "All Controls"
+                    
+                    # Create filters
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        selected_framework_id = st.selectbox(
+                            "Filter by Framework",
+                            options=list(framework_options.keys()),
+                            format_func=lambda x: framework_options[x],
+                            key="framework_control_framework_filter"
+                        )
+                    
+                    with col2:
+                        selected_control_id = st.selectbox(
+                            "Filter by Control",
+                            options=list(control_options.keys()),
+                            format_func=lambda x: control_options[x],
+                            key="framework_control_control_filter"
+                        )
+                    
+                    # Get framework-control mappings from the repository
+                    if selected_framework_id != 0 and selected_control_id != 0:
+                        # Both framework and control selected
+                        framework_controls = self.regulatory_metadata_repository.get_framework_controls(
+                            framework_id=selected_framework_id,
+                            control_id=selected_control_id
+                        )
+                    elif selected_framework_id != 0:
+                        # Only framework selected
+                        framework_controls = self.regulatory_metadata_repository.get_framework_controls(
+                            framework_id=selected_framework_id
+                        )
+                    elif selected_control_id != 0:
+                        # Only control selected
+                        framework_controls = self.regulatory_metadata_repository.get_framework_controls(
+                            control_id=selected_control_id
+                        )
+                    else:
+                        # No filters selected
+                        framework_controls = self.regulatory_metadata_repository.get_framework_controls()
+                    
+                    if framework_controls:
+                        # Create a DataFrame
+                        df = pd.DataFrame(framework_controls)
+                        
+                        # Rename columns for better display
+                        column_mapping = {
+                            "framework_name": "Framework",
+                            "framework_category": "Framework Category",
+                            "framework_version": "Version",
+                            "control_name": "Control",
+                            "control_type": "Control Type",
+                            "implementation_status": "Implementation Status",
+                            "priority": "Priority",
+                            "relevance_score": "Relevance Score"
+                        }
+                        
+                        # Only rename columns that exist
+                        existing_columns = set(df.columns).intersection(set(column_mapping.keys()))
+                        rename_mapping = {col: column_mapping[col] for col in existing_columns}
+                        df = df.rename(columns=rename_mapping)
+                        
+                        # Define display columns in preferred order
+                        display_columns = [
+                            "Framework", "Framework Category", "Version", 
+                            "Control", "Control Type", "Implementation Status", "Priority", "Relevance Score"
+                        ]
+                        
+                        # Only include columns that exist in the DataFrame
+                        available_columns = [col for col in display_columns if col in df.columns]
+                        if available_columns:
+                            df = df[available_columns]
+                            
+                            # Sort by framework and control
+                            sort_columns = []
+                            if "Framework" in df.columns:
+                                sort_columns.append("Framework")
+                            if "Control" in df.columns:
+                                sort_columns.append("Control")
+                            if "Relevance Score" in df.columns:
+                                sort_columns.append("Relevance Score")
+                                
+                            if sort_columns:
+                                df = df.sort_values(by=sort_columns, ascending=[True, True, False])
+                            
+                            # Display the filtered data
+                            st.dataframe(df)
+                    else:
+                        st.info("No framework-control mappings found with the selected filters.")
+                
+                # Policy Control tab
+                elif tab_idx == 19:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Policy Control</h3>
+                        <p>This section maps organizational policies to specific controls that help enforce those policies.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get all policies from the repository
+                    policies = self.glossary_repository.get_policies()
+                    if not policies:
+                        st.warning("No policies available in the database.")
+                        return
+                    
+                    # Create a filter for policies
+                    policy_options = {p["id"]: p["name"] for p in policies}
+                    policy_options[0] = "All Policies"
+                    
+                    # Get all controls from the repository
+                    controls = self.glossary_repository.get_controls()
+                    if not controls:
+                        st.warning("No controls available in the database.")
+                        return
+                    
+                    # Create a filter for controls
+                    control_options = {c["id"]: c["name"] for c in controls}
+                    control_options[0] = "All Controls"
+                    
+                    # Create filters
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        selected_policy_id = st.selectbox(
+                            "Filter by Policy",
+                            options=list(policy_options.keys()),
+                            format_func=lambda x: policy_options[x],
+                            key="policy_control_policy_filter"
+                        )
+                    
+                    with col2:
+                        selected_control_id = st.selectbox(
+                            "Filter by Control",
+                            options=list(control_options.keys()),
+                            format_func=lambda x: control_options[x],
+                            key="policy_control_control_filter"
+                        )
+                    
+                    # Get policy-control mappings from the repository
+                    if selected_policy_id != 0 and selected_control_id != 0:
+                        # Both policy and control selected
+                        policy_controls = self.regulatory_metadata_repository.get_policy_controls(
+                            policy_id=selected_policy_id,
+                            control_id=selected_control_id
+                        )
+                    elif selected_policy_id != 0:
+                        # Only policy selected
+                        policy_controls = self.regulatory_metadata_repository.get_policy_controls(
+                            policy_id=selected_policy_id
+                        )
+                    elif selected_control_id != 0:
+                        # Only control selected
+                        policy_controls = self.regulatory_metadata_repository.get_policy_controls(
+                            control_id=selected_control_id
+                        )
+                    else:
+                        # No filters selected
+                        policy_controls = self.regulatory_metadata_repository.get_policy_controls()
+                    
+                    if policy_controls:
+                        # Create a DataFrame
+                        df = pd.DataFrame(policy_controls)
+                        
+                        # Rename columns for better display
+                        column_mapping = {
+                            "policy_name": "Policy",
+                            "policy_type": "Policy Type",
+                            "control_name": "Control",
+                            "control_type": "Control Type",
+                            "implementation_status": "Implementation Status",
+                            "priority": "Priority",
+                            "relevance_score": "Relevance Score"
+                        }
+                        
+                        # Only rename columns that exist
+                        existing_columns = set(df.columns).intersection(set(column_mapping.keys()))
+                        rename_mapping = {col: column_mapping[col] for col in existing_columns}
+                        df = df.rename(columns=rename_mapping)
+                        
+                        # Define display columns in preferred order
+                        display_columns = [
+                            "Policy", "Policy Type", "Control", "Control Type", 
+                            "Implementation Status", "Priority", "Relevance Score"
+                        ]
+                        
+                        # Only include columns that exist in the DataFrame
+                        available_columns = [col for col in display_columns if col in df.columns]
+                        if available_columns:
+                            df = df[available_columns]
+                            
+                            # Sort by policy and control
+                            sort_columns = []
+                            if "Policy" in df.columns:
+                                sort_columns.append("Policy")
+                            if "Control" in df.columns:
+                                sort_columns.append("Control")
+                            if "Relevance Score" in df.columns:
+                                sort_columns.append("Relevance Score")
+                                
+                            if sort_columns:
+                                df = df.sort_values(by=sort_columns, ascending=[True, True, False])
+                            
+                            # Display the filtered data
+                            st.dataframe(df)
+                    else:
+                        st.info("No policy-control mappings found with the selected filters.")
+                
+                # Risk Control tab
+                elif tab_idx == 20:
+                    st.markdown("""
+                    <div class="card">
+                        <h3>Risk Control</h3>
+                        <p>This section maps identified risks to specific controls that help mitigate those risks.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Get all risks from the repository
+                    risks = self.glossary_repository.get_risks()
+                    if not risks:
+                        st.warning("No risks available in the database.")
+                        return
+                    
+                    # Create a filter for risks
+                    risk_options = {r["id"]: r["name"] for r in risks}
+                    risk_options[0] = "All Risks"
+                    
+                    # Get all controls from the repository
+                    controls = self.glossary_repository.get_controls()
+                    if not controls:
+                        st.warning("No controls available in the database.")
+                        return
+                    
+                    # Create a filter for controls
+                    control_options = {c["id"]: c["name"] for c in controls}
+                    control_options[0] = "All Controls"
+                    
+                    # Create filters
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        selected_risk_id = st.selectbox(
+                            "Filter by Risk",
+                            options=list(risk_options.keys()),
+                            format_func=lambda x: risk_options[x],
+                            key="risk_control_risk_filter"
+                        )
+                    
+                    with col2:
+                        selected_control_id = st.selectbox(
+                            "Filter by Control",
+                            options=list(control_options.keys()),
+                            format_func=lambda x: control_options[x],
+                            key="risk_control_control_filter"
+                        )
+                    
+                    # Get risk-control mappings from the repository
+                    if selected_risk_id != 0 and selected_control_id != 0:
+                        # Both risk and control selected
+                        risk_controls = self.regulatory_metadata_repository.get_risk_controls(
+                            risk_id=selected_risk_id,
+                            control_id=selected_control_id
+                        )
+                    elif selected_risk_id != 0:
+                        # Only risk selected
+                        risk_controls = self.regulatory_metadata_repository.get_risk_controls(
+                            risk_id=selected_risk_id
+                        )
+                    elif selected_control_id != 0:
+                        # Only control selected
+                        risk_controls = self.regulatory_metadata_repository.get_risk_controls(
+                            control_id=selected_control_id
+                        )
+                    else:
+                        # No filters selected
+                        risk_controls = self.regulatory_metadata_repository.get_risk_controls()
+                    
+                    if risk_controls:
+                        # Create a DataFrame
+                        df = pd.DataFrame(risk_controls)
+                        
+                        # Rename columns for better display
+                        column_mapping = {
+                            "risk_name": "Risk",
+                            "risk_category": "Risk Category",
+                            "risk_likelihood": "Likelihood",
+                            "risk_impact": "Impact",
+                            "control_name": "Control",
+                            "control_type": "Control Type",
+                            "implementation_status": "Implementation Status",
+                            "priority": "Priority",
+                            "mitigation_level": "Mitigation Level"
+                        }
+                        
+                        # Only rename columns that exist
+                        existing_columns = set(df.columns).intersection(set(column_mapping.keys()))
+                        rename_mapping = {col: column_mapping[col] for col in existing_columns}
+                        df = df.rename(columns=rename_mapping)
+                        
+                        # Define display columns in preferred order
+                        display_columns = [
+                            "Risk", "Risk Category", "Likelihood", "Impact", 
+                            "Control", "Control Type", "Implementation Status", "Priority", "Mitigation Level"
+                        ]
+                        
+                        # Only include columns that exist in the DataFrame
+                        available_columns = [col for col in display_columns if col in df.columns]
+                        if available_columns:
+                            df = df[available_columns]
+                            
+                            # Sort by risk and control
+                            sort_columns = []
+                            if "Risk" in df.columns:
+                                sort_columns.append("Risk")
+                            if "Control" in df.columns:
+                                sort_columns.append("Control")
+                            if "Mitigation Level" in df.columns:
+                                sort_columns.append("Mitigation Level")
+                                
+                            if sort_columns:
+                                df = df.sort_values(by=sort_columns, ascending=[True, True, False])
+                            
+                            # Display the filtered data
+                            st.dataframe(df)
+                    else:
+                        st.info("No risk-control mappings found with the selected filters.")
                     
     def assets_section(self):
         """Handle the Assets section with data elements."""
@@ -3787,6 +4333,10 @@ class DataMap:
             # Risk Inference menu item
             if st.button("⚠️ Risk Inference", key="risk_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Risk API'
+
+            # Control Inference menu item
+            if st.button("⚠️ Control Inference", key="control_api_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Control API'                
             
             # Third section: Data Use Governance
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
@@ -3856,19 +4406,9 @@ class DataMap:
             self.policies_page()
         elif st.session_state['current_section'] == 'Policy Compliance':
             self.policy_compliance_page()
+        elif st.session_state['current_section'] == 'Control API':
+            self.control_inference_page()            
 
-    def regulatory_intelligence_section(self):
-        """Handle the Regulatory Intelligence section with its tabs."""
-        st.title("Regulatory Intelligence")
-        st.markdown("Manage regulatory obligations and their links to policies, controls, and risks.")
-        
-        # Create tabs for the section (removed Sensitivity Obligations tab as it's now in Regulatory Metadata)
-        tabs = st.tabs(["Obligation Inference"])
-        
-        # Handle each tab
-        with tabs[0]:
-            self.obligation_inference_page()
-            
     def obligations_page(self):
         """Display the Obligations page with all obligations from the repository."""
         st.header("Obligations Management")
@@ -4244,6 +4784,226 @@ class DataMap:
             else:
                 # Display instructions when the form hasn't been submitted yet
                 st.info("Fill in the parameters on the left and click 'Infer Obligations' to get results.")
+    
+    def control_inference_page(self):
+        """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
+        st.header("Control Inference API")
+        st.markdown("Recommend appropriate controls based on frameworks, policies, or risks.")
+        
+        # Create tabs for different inference sources
+        source_tabs = st.tabs(["Policy-Based", "Risk-Based", "Framework-Based"])
+        
+        # Policy-Based Control Inference
+        with source_tabs[0]:
+            st.subheader("Policy-Based Control Recommendations")
+            st.markdown("Recommend controls that help implement specific policies.")
+            
+            # Get all policies from the repository
+            policies = self.glossary_repository.get_policies()
+            if not policies:
+                st.warning("No policies available in the database.")
+                return
+            
+            # Create two columns for the form and results
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.subheader("Input Parameters")
+                selected_policy_id = st.selectbox(
+                    "Select Policy",
+                    options=[p["id"] for p in policies],
+                    format_func=lambda x: next((p["name"] for p in policies if p["id"] == x), "Unknown"),
+                    key="policy_control_inference"
+                )
+                
+                analyze_button = st.button("Recommend Controls", key="policy_controls_button")
+            
+            with col2:
+                st.subheader("Recommended Controls")
+                
+                if analyze_button and selected_policy_id:
+                    # Get the policy name for display
+                    policy_name = next((p["name"] for p in policies if p["id"] == selected_policy_id), "Unknown")
+                    
+                    # Get policy controls from the repository
+                    policy_controls_list = self.regulatory_metadata_repository.get_policy_controls(policy_id=selected_policy_id)
+                    
+                    # Convert to a dictionary format for easier access
+                    policy_controls = {}
+                    if policy_controls_list:
+                        policy_controls[selected_policy_id] = policy_controls_list
+                    
+                    if selected_policy_id in policy_controls:
+                        controls = policy_controls[selected_policy_id]
+                        
+                        st.markdown(f"### Recommended Controls for {policy_name}")
+                        
+                        # Group by control type for better organization
+                        control_types = set(c["control_type"] for c in controls)
+                        
+                        for control_type in control_types:
+                            st.markdown(f"#### {control_type} Controls")
+                            type_controls = [c for c in controls if c["control_type"] == control_type]
+                            
+                            # Sort by relevance score
+                            type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
+                            
+                            for control in type_controls:
+                                with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
+                                    # Use control_type and implementation_status instead of description
+                                    st.markdown(f"**Control Type:** {control['control_type']}")
+                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                    st.markdown(f"**Priority:** {control['priority']}")
+                                    
+                                    # Add a button to implement this control
+                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_policy_{control['control_id']}"):
+                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
+                    else:
+                        st.info(f"No control recommendations available for {policy_name}.")
+                else:
+                    # Display instructions when the form hasn't been submitted yet
+                    st.info("Select a policy and click 'Recommend Controls' to get results.")
+        
+        # Risk-Based Control Inference
+        with source_tabs[1]:
+            st.subheader("Risk-Based Control Recommendations")
+            st.markdown("Recommend controls that help mitigate specific risks.")
+            
+            # Get all risks from the repository
+            risks = self.glossary_repository.get_risks()
+            if not risks:
+                st.warning("No risks available in the database.")
+                return
+            
+            # Create two columns for the form and results
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.subheader("Input Parameters")
+                selected_risk_id = st.selectbox(
+                    "Select Risk",
+                    options=[r["id"] for r in risks],
+                    format_func=lambda x: next((r["name"] for r in risks if r["id"] == x), "Unknown"),
+                    key="risk_control_inference"
+                )
+                
+                analyze_button = st.button("Recommend Controls", key="risk_controls_button")
+            
+            with col2:
+                st.subheader("Recommended Controls")
+                
+                if analyze_button and selected_risk_id:
+                    # Get the risk name for display
+                    risk_name = next((r["name"] for r in risks if r["id"] == selected_risk_id), "Unknown")
+                    
+                    # Get risk controls from the repository
+                    risk_controls_list = self.regulatory_metadata_repository.get_risk_controls(risk_id=selected_risk_id)
+                    
+                    # Convert to a dictionary format for easier access
+                    risk_controls = {}
+                    if risk_controls_list:
+                        risk_controls[selected_risk_id] = risk_controls_list
+                    
+                    if selected_risk_id in risk_controls:
+                        controls = risk_controls[selected_risk_id]
+                        
+                        st.markdown(f"### Recommended Controls for {risk_name} Risk")
+                        
+                        # Group by control type for better organization
+                        control_types = set(c["control_type"] for c in controls)
+                        
+                        for control_type in control_types:
+                            st.markdown(f"#### {control_type} Controls")
+                            type_controls = [c for c in controls if c["control_type"] == control_type]
+                            
+                            # Sort by mitigation level
+                            mitigation_order = {"High": 0, "Medium": 1, "Low": 2}
+                            type_controls.sort(key=lambda x: mitigation_order.get(x["mitigation_level"], 99))
+                            
+                            for control in type_controls:
+                                with st.expander(f"{control['control_name']} (Mitigation: {control['mitigation_level']})", expanded=True):
+                                    st.markdown(f"**Control Type:** {control['control_type']}")
+                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                    st.markdown(f"**Priority:** {control['priority']}")
+                                    
+                                    # Add a button to implement this control
+                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_risk_{control['control_id']}"):
+                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
+                    else:
+                        st.info(f"No control recommendations available for {risk_name}.")
+                else:
+                    # Display instructions when the form hasn't been submitted yet
+                    st.info("Select a risk and click 'Recommend Controls' to get results.")
+        
+        # Framework-Based Control Inference
+        with source_tabs[2]:
+            st.subheader("Framework-Based Control Recommendations")
+            st.markdown("Recommend controls that help implement specific compliance frameworks.")
+            
+            # Get all frameworks from the repository
+            frameworks = self.glossary_repository.get_frameworks()
+            if not frameworks:
+                st.warning("No frameworks available in the database.")
+                return
+            
+            # Create two columns for the form and results
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.subheader("Input Parameters")
+                selected_framework_id = st.selectbox(
+                    "Select Framework",
+                    options=[f["id"] for f in frameworks],
+                    format_func=lambda x: next((f["name"] for f in frameworks if f["id"] == x), "Unknown"),
+                    key="framework_control_inference"
+                )
+                
+                analyze_button = st.button("Recommend Controls", key="framework_controls_button")
+            
+            with col2:
+                st.subheader("Recommended Controls")
+                
+                if analyze_button and selected_framework_id:
+                    # Get the framework name for display
+                    framework_name = next((f["name"] for f in frameworks if f["id"] == selected_framework_id), "Unknown")
+                    
+                    # Get framework controls from the repository
+                    framework_controls_list = self.regulatory_metadata_repository.get_framework_controls(framework_id=selected_framework_id)
+                    
+                    # Convert to a dictionary format for easier access
+                    framework_controls = {}
+                    if framework_controls_list:
+                        framework_controls[selected_framework_id] = framework_controls_list
+                    
+                    if selected_framework_id in framework_controls:
+                        controls = framework_controls[selected_framework_id]
+                        
+                        st.markdown(f"### Recommended Controls for {framework_name}")
+                        
+                        # Group by control type for better organization
+                        control_types = set(c["control_type"] for c in controls)
+                        
+                        for control_type in control_types:
+                            st.markdown(f"#### {control_type} Controls")
+                            type_controls = [c for c in controls if c["control_type"] == control_type]
+                            
+                            # Sort by relevance score
+                            type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
+                            
+                            for control in type_controls:
+                                with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
+                                    st.markdown(f"**Control Type:** {control['control_type']}")
+                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                    st.markdown(f"**Priority:** {control['priority']}")
+                                    
+                                    # Add a button to implement this control
+                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_framework_{control['control_id']}"):
+                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
+                    else:
+                        st.info(f"No control recommendations available for {framework_name}.")
+                else:
+                    # Display instructions when the form hasn't been submitted yet
+                    st.info("Select a framework and click 'Recommend Controls' to get results.")
                 
     def decision_tree_section(self):
         """Visualize the regulatory metadata as a decision tree using PyVis with physics.

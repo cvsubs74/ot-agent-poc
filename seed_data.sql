@@ -2,6 +2,9 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
+DROP TABLE IF EXISTS framework_control;
+DROP TABLE IF EXISTS policy_control;
+DROP TABLE IF EXISTS risk_control;
 DROP TABLE IF EXISTS obligation_risk;
 DROP TABLE IF EXISTS obligation_policy;
 DROP TABLE IF EXISTS risk;
@@ -40,6 +43,8 @@ DROP TABLE IF EXISTS purpose_category;
 DROP TABLE IF EXISTS legal_basis;
 DROP TABLE IF EXISTS jurisdiction;
 DROP TABLE IF EXISTS law;
+DROP TABLE IF EXISTS framework;
+DROP TABLE IF EXISTS control;
 
 -- =============================================
 -- GLOSSARY TABLES
@@ -945,6 +950,53 @@ CREATE TABLE IF NOT EXISTS `purpose` (
     FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
 );
 
+-- Create Framework table
+CREATE TABLE IF NOT EXISTS `framework` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `version` VARCHAR(50),
+    `category` VARCHAR(100),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Control table
+CREATE TABLE IF NOT EXISTS `control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `control_type` VARCHAR(100),
+    `implementation_status` VARCHAR(50),
+    `priority` VARCHAR(50),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed Framework data
+INSERT INTO `framework` (`name`, `description`, `version`, `category`) VALUES
+('NIST CSF', 'The NIST Cybersecurity Framework provides a policy framework of computer security guidance for how organizations can assess and improve their ability to prevent, detect, and respond to cyber attacks.', '1.1', 'Security'),
+('ISO 27001', 'ISO/IEC 27001 is an international standard on how to manage information security. It details requirements for establishing, implementing, maintaining and continually improving an information security management system (ISMS).', '2013', 'Security'),
+('GDPR Controls', 'A set of controls derived from the General Data Protection Regulation (GDPR) requirements to ensure compliance with EU data protection law.', '2018', 'Privacy'),
+('PCI DSS', 'The Payment Card Industry Data Security Standard (PCI DSS) is an information security standard for organizations that handle branded credit cards from the major card schemes.', '3.2.1', 'Industry-Specific'),
+('HIPAA Security Rule', 'The HIPAA Security Rule establishes national standards to protect individuals\'s electronic personal health information that is created, received, used, or maintained by a covered entity.', '2003', 'Healthcare');
+
+-- Seed Control data
+INSERT INTO `control` (`name`, `description`, `control_type`, `implementation_status`, `priority`) VALUES
+('Access Control', 'Implement role-based access controls to limit access to personal data based on business need-to-know', 'Technical', 'Implemented', 'High'),
+('Data Encryption', 'Encrypt sensitive personal data both at rest and in transit using industry-standard encryption algorithms', 'Technical', 'Implemented', 'High'),
+('Data Minimization', 'Collect and retain only the minimum amount of personal data necessary for the specified purpose', 'Administrative', 'Partially Implemented', 'Medium'),
+('Audit Logging', 'Maintain detailed logs of all access to and modifications of personal data', 'Technical', 'Implemented', 'Medium'),
+('Privacy Impact Assessment', 'Conduct privacy impact assessments for new processing activities or significant changes to existing ones', 'Administrative', 'Implemented', 'High'),
+('Data Subject Rights Management', 'Implement processes to handle data subject rights requests (access, deletion, portability, etc.)', 'Administrative', 'Implemented', 'High'),
+('Consent Management', 'Implement mechanisms to obtain, record, and manage valid consent for data processing activities', 'Administrative', 'Implemented', 'High'),
+('Security Awareness Training', 'Provide regular security and privacy awareness training to all employees', 'Administrative', 'Implemented', 'Medium'),
+('Vulnerability Management', 'Regularly scan for and remediate security vulnerabilities in systems processing personal data', 'Technical', 'Implemented', 'High'),
+('Incident Response Plan', 'Develop and maintain an incident response plan for data breaches and security incidents', 'Administrative', 'Implemented', 'High'),
+('Data Loss Prevention', 'Implement technical controls to prevent unauthorized exfiltration of sensitive data', 'Technical', 'Partially Implemented', 'High'),
+('Multi-Factor Authentication', 'Require multiple forms of authentication for access to systems containing sensitive data', 'Technical', 'Implemented', 'High'),
+('Network Segmentation', 'Segment networks to isolate systems processing sensitive data from the general network', 'Technical', 'Partially Implemented', 'Medium'),
+('Data Backup', 'Regularly backup data and test restoration procedures', 'Technical', 'Implemented', 'Medium'),
+('Disaster Recovery', 'Develop and maintain a disaster recovery plan for systems processing personal data', 'Administrative', 'Implemented', 'Medium');
+
 -- Create Policy Purpose table
 CREATE TABLE IF NOT EXISTS `policy_purpose` (
     `policy_id` INT NOT NULL,
@@ -1595,6 +1647,42 @@ CREATE TABLE IF NOT EXISTS `obligation_risk` (
     UNIQUE KEY `unique_obligation_risk` (`obligation_id`, `risk_id`)
 );
 
+-- Create Framework Control mapping table
+CREATE TABLE IF NOT EXISTS `framework_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `framework_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`framework_id`) REFERENCES `framework`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_framework_control` (`framework_id`, `control_id`)
+);
+
+-- Create Policy Control mapping table
+CREATE TABLE IF NOT EXISTS `policy_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `policy_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_policy_control` (`policy_id`, `control_id`)
+);
+
+-- Create Risk Control mapping table
+CREATE TABLE IF NOT EXISTS `risk_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `risk_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `mitigation_level` VARCHAR(50) DEFAULT 'Medium',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_risk_control` (`risk_id`, `control_id`)
+);
+
 -- =============================================
 -- SEED SENSITIVITY OBLIGATIONS
 -- =============================================
@@ -1746,3 +1834,114 @@ VALUES
 
 -- Conduct Regular Security Assessments risk mappings
 ((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls'));
+
+-- =============================================
+-- SEED FRAMEWORK-CONTROL MAPPINGS
+-- =============================================
+
+-- Insert sample framework-control mappings
+INSERT INTO `framework_control` (`framework_id`, `control_id`, `relevance_score`)
+VALUES
+-- NIST CSF mappings
+((SELECT id FROM framework WHERE name = 'NIST CSF'), (SELECT id FROM control WHERE name = 'Access Control'), 1.0),
+((SELECT id FROM framework WHERE name = 'NIST CSF'), (SELECT id FROM control WHERE name = 'Data Encryption'), 1.0),
+((SELECT id FROM framework WHERE name = 'NIST CSF'), (SELECT id FROM control WHERE name = 'Audit Logging'), 0.9),
+((SELECT id FROM framework WHERE name = 'NIST CSF'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 1.0),
+((SELECT id FROM framework WHERE name = 'NIST CSF'), (SELECT id FROM control WHERE name = 'Incident Response Plan'), 1.0),
+
+-- ISO 27001 mappings
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Access Control'), 1.0),
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Data Encryption'), 1.0),
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Security Awareness Training'), 0.9),
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 1.0),
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Incident Response Plan'), 1.0),
+((SELECT id FROM framework WHERE name = 'ISO 27001'), (SELECT id FROM control WHERE name = 'Audit Logging'), 0.9),
+
+-- GDPR Controls mappings
+((SELECT id FROM framework WHERE name = 'GDPR Controls'), (SELECT id FROM control WHERE name = 'Data Encryption'), 1.0),
+((SELECT id FROM framework WHERE name = 'GDPR Controls'), (SELECT id FROM control WHERE name = 'Data Minimization'), 1.0),
+((SELECT id FROM framework WHERE name = 'GDPR Controls'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 1.0),
+((SELECT id FROM framework WHERE name = 'GDPR Controls'), (SELECT id FROM control WHERE name = 'Data Subject Rights Management'), 1.0),
+((SELECT id FROM framework WHERE name = 'GDPR Controls'), (SELECT id FROM control WHERE name = 'Consent Management'), 1.0),
+
+-- PCI DSS mappings
+((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Data Encryption'), 1.0),
+((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Access Control'), 1.0),
+((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 1.0),
+((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Audit Logging'), 1.0),
+((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Network Segmentation'), 1.0);
+
+-- =============================================
+-- SEED POLICY-CONTROL MAPPINGS
+-- =============================================
+
+-- Insert sample policy-control mappings
+INSERT INTO `policy_control` (`policy_id`, `control_id`, `relevance_score`)
+VALUES
+-- Data Security Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Data Encryption'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Access Control'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 0.9),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Audit Logging'), 0.8),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Data Loss Prevention'), 1.0),
+
+-- Data Retention Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM control WHERE name = 'Data Minimization'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM control WHERE name = 'Data Backup'), 0.8),
+
+-- Data Sharing Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Sharing Policy'), (SELECT id FROM control WHERE name = 'Consent Management'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Sharing Policy'), (SELECT id FROM control WHERE name = 'Data Subject Rights Management'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Sharing Policy'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 0.9),
+((SELECT id FROM policy WHERE name = 'Data Sharing Policy'), (SELECT id FROM control WHERE name = 'Data Minimization'), 0.8),
+
+-- Data Minimization Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Minimization Policy'), (SELECT id FROM control WHERE name = 'Data Minimization'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Minimization Policy'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 0.9),
+
+-- Data Access Control Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM control WHERE name = 'Access Control'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM control WHERE name = 'Multi-Factor Authentication'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM control WHERE name = 'Audit Logging'), 0.9),
+
+-- Additional Data Security Policy mappings
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Incident Response Plan'), 1.0),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Disaster Recovery'), 0.9);
+
+-- =============================================
+-- SEED RISK-CONTROL MAPPINGS
+-- =============================================
+
+-- Insert sample risk-control mappings
+INSERT INTO `risk_control` (`risk_id`, `control_id`, `mitigation_level`)
+VALUES
+-- Data Breach risk mappings
+((SELECT id FROM risk WHERE name = 'Data Breach'), (SELECT id FROM control WHERE name = 'Data Encryption'), 'High'),
+((SELECT id FROM risk WHERE name = 'Data Breach'), (SELECT id FROM control WHERE name = 'Access Control'), 'High'),
+((SELECT id FROM risk WHERE name = 'Data Breach'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 'High'),
+((SELECT id FROM risk WHERE name = 'Data Breach'), (SELECT id FROM control WHERE name = 'Security Awareness Training'), 'Medium'),
+((SELECT id FROM risk WHERE name = 'Data Breach'), (SELECT id FROM control WHERE name = 'Data Loss Prevention'), 'High'),
+
+-- Unauthorized Data Access risk mappings
+((SELECT id FROM risk WHERE name = 'Unauthorized Data Access'), (SELECT id FROM control WHERE name = 'Access Control'), 'High'),
+((SELECT id FROM risk WHERE name = 'Unauthorized Data Access'), (SELECT id FROM control WHERE name = 'Multi-Factor Authentication'), 'High'),
+((SELECT id FROM risk WHERE name = 'Unauthorized Data Access'), (SELECT id FROM control WHERE name = 'Audit Logging'), 'Medium'),
+((SELECT id FROM risk WHERE name = 'Unauthorized Data Access'), (SELECT id FROM control WHERE name = 'Network Segmentation'), 'Medium'),
+
+-- Excessive Data Collection risk mappings
+((SELECT id FROM risk WHERE name = 'Excessive Data Collection'), (SELECT id FROM control WHERE name = 'Data Minimization'), 'High'),
+((SELECT id FROM risk WHERE name = 'Excessive Data Collection'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 'Medium'),
+
+-- Improper Data Retention risk mappings
+((SELECT id FROM risk WHERE name = 'Improper Data Retention'), (SELECT id FROM control WHERE name = 'Data Minimization'), 'High'),
+
+-- Inadequate Consent Management risk mappings
+((SELECT id FROM risk WHERE name = 'Inadequate Consent Management'), (SELECT id FROM control WHERE name = 'Consent Management'), 'High'),
+
+-- Insufficient Data Subject Rights Management risk mappings
+((SELECT id FROM risk WHERE name = 'Insufficient Data Subject Rights Management'), (SELECT id FROM control WHERE name = 'Data Subject Rights Management'), 'High'),
+
+-- Inadequate Security Controls risk mappings
+((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 'High'),
+((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 'High'),
+((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Security Awareness Training'), 'Medium');
