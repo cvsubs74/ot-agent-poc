@@ -10,11 +10,10 @@ DROP TABLE IF EXISTS obligation_policy;
 DROP TABLE IF EXISTS risk;
 DROP TABLE IF EXISTS sensitivity_obligation;
 DROP TABLE IF EXISTS obligation;
+DROP TABLE IF EXISTS policy_purpose_data_retention;
 DROP TABLE IF EXISTS policy_purpose_data_usage;
 DROP TABLE IF EXISTS policy_purpose_data_element;
 DROP TABLE IF EXISTS policy_purpose;
-DROP TABLE IF EXISTS policy_purpose_data_element;
-DROP TABLE IF EXISTS policy_purpose_data_usage;
 DROP TABLE IF EXISTS data_subject_right_exemptions;
 DROP TABLE IF EXISTS data_subject_right_implementation_steps;
 DROP TABLE IF EXISTS legal_basis_requirements;
@@ -1031,6 +1030,20 @@ CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
         REFERENCES `policy_purpose_data_element`(`policy_id`, `purpose_id`, `data_element_id`) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_retention` (
+    `policy_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    `data_element_id` INT NOT NULL,
+    `retention_period` VARCHAR(100) NOT NULL,
+    `retention_trigger` VARCHAR(100) NOT NULL DEFAULT 'Collection',
+    `retention_basis` VARCHAR(255),
+    `exceptions` TEXT,
+    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
 -- Insert policies
 INSERT INTO policy (name, description, policy_type, status, effective_date) VALUES
 ('Data Access Control Policy', 'Defines rules for accessing data based on purpose limitation principles', 'Access Control', 'Active', '2025-01-01'),
@@ -1592,6 +1605,86 @@ INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, o
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Research and Development'),
  (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, 'Anonymized data only');
+
+-- Insert policy-purpose-data retention rules
+INSERT INTO policy_purpose_data_retention (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES
+-- Customer Support purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), '2 years', 'Last Interaction', 'Customer service quality', 'Retain longer if required for warranty purposes'),
+
+-- Marketing Campaigns purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+
+-- Fraud Detection purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+
+-- Payment Processing purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), '7 years', 'Transaction Completion', 'Financial regulations', NULL),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
+
+-- Product Analytics purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
+
+-- Employee Management purpose
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), '7 years', 'Employment End', 'Employment regulations', 'Retain longer if required by law'),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law');
 
 -- =============================================
 -- REGULATORY INTELLIGENCE TABLES

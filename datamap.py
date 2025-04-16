@@ -3879,7 +3879,7 @@ class DataMap:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage"])
+        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention"])
         
         # Policies tab
         with tabs[0]:
@@ -4132,6 +4132,89 @@ class DataMap:
                     st.warning("No policy-purpose-data usage rules match the selected filters.")
             else:
                 st.warning("No policy-purpose-data usage rules available in the database.")
+        
+        # Policy Purpose Data Retention tab
+        with tabs[4]:
+            # Get policy purpose data retentions from repository
+            policy_purpose_data_retentions = self.regulatory_metadata_repository.get_policy_purpose_data_retentions()
+            
+            if policy_purpose_data_retentions:
+                # Create a DataFrame for display
+                ppdr_data = {
+                    "Policy": [],
+                    "Purpose": [],
+                    "Data Element": [],
+                    "Retention Period": [],
+                    "Retention Trigger": [],
+                    "Retention Basis": [],
+                    "Exceptions": []
+                }
+                
+                for rule in policy_purpose_data_retentions:
+                    ppdr_data["Policy"].append(rule["policy_name"])
+                    ppdr_data["Purpose"].append(rule["purpose_name"])
+                    ppdr_data["Data Element"].append(rule["data_element_name"])
+                    ppdr_data["Retention Period"].append(rule["retention_period"])
+                    ppdr_data["Retention Trigger"].append(rule["retention_trigger"])
+                    ppdr_data["Retention Basis"].append(rule["retention_basis"] if rule["retention_basis"] else "Not specified")
+                    ppdr_data["Exceptions"].append(rule["exceptions"] if rule["exceptions"] else "None")
+                
+                # Convert to DataFrame
+                df = pd.DataFrame(ppdr_data)
+                
+                # Add filters
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Get unique policies
+                    policies = sorted(list(set(df["Policy"].tolist())))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="ppdr_policy")
+                
+                with col2:
+                    # Get unique purposes
+                    purposes = sorted(list(set(df["Purpose"].tolist())))
+                    selected_purpose = st.selectbox("Filter by Purpose", ["All"] + purposes, key="ppdr_purpose")
+                
+                # Second row of filters
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    # Get unique retention triggers
+                    triggers = sorted(list(set(df["Retention Trigger"].tolist())))
+                    selected_trigger = st.selectbox("Filter by Retention Trigger", ["All"] + triggers, key="ppdr_trigger")
+                
+                with col4:
+                    # Get unique retention periods
+                    periods = sorted(list(set(df["Retention Period"].tolist())))
+                    selected_period = st.selectbox("Filter by Retention Period", ["All"] + periods, key="ppdr_period")
+                
+                # Add data element search
+                data_element_search = st.text_input("Search Data Elements", "", key="ppdr_search")
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_policy != "All":
+                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                
+                if selected_purpose != "All":
+                    filtered_df = filtered_df[filtered_df["Purpose"] == selected_purpose]
+                
+                if selected_trigger != "All":
+                    filtered_df = filtered_df[filtered_df["Retention Trigger"] == selected_trigger]
+                
+                if selected_period != "All":
+                    filtered_df = filtered_df[filtered_df["Retention Period"] == selected_period]
+                
+                if data_element_search:
+                    filtered_df = filtered_df[filtered_df["Data Element"].str.contains(data_element_search, case=False)]
+                
+                # Display filtered data
+                if not filtered_df.empty:
+                    st.dataframe(filtered_df, use_container_width=True)
+                else:
+                    st.warning("No policy-purpose-data retention rules match the selected filters.")
+            else:
+                st.warning("No policy-purpose-data retention rules available in the database.")
     
         # Add a section for defining new policies on purposes
         st.markdown("<hr>", unsafe_allow_html=True)

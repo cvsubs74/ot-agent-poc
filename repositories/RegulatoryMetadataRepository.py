@@ -26,6 +26,7 @@ class RegulatoryMetadataRepository:
         self.create_policy_purpose_table()
         self.create_policy_purpose_data_element_table()
         self.create_policy_purpose_data_usage_table()
+        self.create_policy_purpose_data_retention_table()
         self.create_framework_control_table()
         self.create_policy_control_table()
         self.create_risk_control_table()
@@ -1270,11 +1271,12 @@ class RegulatoryMetadataRepository:
         self.seed_law_jurisdictions()
         self.seed_law_legal_bases()
         self.seed_law_incident_breach_guidances()
-        self.seed_law_purpose_category_legal_bases()
         self.seed_law_transfers()
         self.seed_law_data_subject_access_request_notification_requirements()
+        self.seed_law_purpose_category_legal_bases()
         self.seed_data_subject_right_implementation_steps()
         self.seed_data_subject_right_exemptions()
+        self.seed_policy_purpose_data_retentions()
         
     # Law Purpose Category Legal Basis methods
     def add_law_purpose_category_legal_basis(self, law_id, purpose_category_id, legal_basis_id, preference_order=1, description=None):
@@ -2177,6 +2179,28 @@ class RegulatoryMetadataRepository:
         self.connection.commit()
         cursor.close()
         
+    def create_policy_purpose_data_retention_table(self):
+        """Create the Policy Purpose Data Retention table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_purpose_data_retention` (
+            `policy_id` INT NOT NULL,
+            `purpose_id` INT NOT NULL,
+            `data_element_id` INT NOT NULL,
+            `retention_period` VARCHAR(100) NOT NULL,
+            `retention_trigger` VARCHAR(100) NOT NULL DEFAULT 'Collection',
+            `retention_basis` VARCHAR(255),
+            `exceptions` TEXT,
+            PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+            FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+        
     def add_policy_purpose(self, policy_id, purpose_id):
         """Add a new policy-purpose relationship to the database.
         
@@ -2708,5 +2732,254 @@ class RegulatoryMetadataRepository:
         except Exception as e:
             print(f"Error getting risk controls: {e}")
             return []
+        finally:
+            cursor.close()
+            
+    def add_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id, retention_period, retention_trigger='Collection', retention_basis=None, exceptions=None):
+        """Add a new policy-purpose-data element retention rule to the database.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            retention_period (str): The retention period (e.g., '30 days', '1 year', '7 years')
+            retention_trigger (str, optional): What triggers the retention period (e.g., 'Collection', 'Last Use', 'End of Contract')
+            retention_basis (str, optional): The basis for the retention period (e.g., 'Legal requirement', 'Business need')
+            exceptions (str, optional): Any exceptions to the retention rule
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO policy_purpose_data_retention (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES (%s, %s, %s, %s, %s, %s, %s);",
+                (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions)
+            )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy-purpose-data retention rule: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def get_policy_purpose_data_retentions(self, policy_id=None, purpose_id=None, data_element_id=None):
+        """Get all policy-purpose-data element retention rules from the database.
+        
+        Args:
+            policy_id (int, optional): The ID of the policy to filter by. Defaults to None.
+            purpose_id (int, optional): The ID of the purpose to filter by. Defaults to None.
+            data_element_id (int, optional): The ID of the data element to filter by. Defaults to None.
+            
+        Returns:
+            list: A list of dictionaries containing policy-purpose-data element retention rule information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT ppdr.policy_id, p.name as policy_name, p.policy_type,
+                       ppdr.purpose_id, pu.name as purpose_name,
+                       ppdr.data_element_id, de.name as data_element_name,
+                       ppdr.retention_period, ppdr.retention_trigger, ppdr.retention_basis, ppdr.exceptions
+                FROM policy_purpose_data_retention ppdr
+                JOIN policy p ON ppdr.policy_id = p.id
+                JOIN purpose pu ON ppdr.purpose_id = pu.id
+                JOIN data_element de ON ppdr.data_element_id = de.id
+            """
+            
+            conditions = []
+            params = []
+            
+            if policy_id:
+                conditions.append("ppdr.policy_id = %s")
+                params.append(policy_id)
+            
+            if purpose_id:
+                conditions.append("ppdr.purpose_id = %s")
+                params.append(purpose_id)
+            
+            if data_element_id:
+                conditions.append("ppdr.data_element_id = %s")
+                params.append(data_element_id)
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            
+            cursor.execute(query, params)
+            
+            retentions = []
+            for row in cursor.fetchall():
+                retentions.append({
+                    "policy_id": row[0],
+                    "policy_name": row[1],
+                    "policy_type": row[2],
+                    "purpose_id": row[3],
+                    "purpose_name": row[4],
+                    "data_element_id": row[5],
+                    "data_element_name": row[6],
+                    "retention_period": row[7],
+                    "retention_trigger": row[8],
+                    "retention_basis": row[9],
+                    "exceptions": row[10]
+                })
+            return retentions
+        except Exception as e:
+            print(f"Error getting policy-purpose-data element retention rules: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def update_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id, retention_period, retention_trigger=None, retention_basis=None, exceptions=None):
+        """Update an existing policy-purpose-data element retention rule.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            retention_period (str): The retention period (e.g., '30 days', '1 year', '7 years')
+            retention_trigger (str, optional): What triggers the retention period (e.g., 'Collection', 'Last Use', 'End of Contract')
+            retention_basis (str, optional): The basis for the retention period
+            exceptions (str, optional): Any exceptions to the retention rule
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            # Build the update query dynamically based on which fields are provided
+            update_parts = ["retention_period = %s"]
+            params = [retention_period]
+            
+            if retention_trigger is not None:
+                update_parts.append("retention_trigger = %s")
+                params.append(retention_trigger)
+                
+            if retention_basis is not None:
+                update_parts.append("retention_basis = %s")
+                params.append(retention_basis)
+                
+            if exceptions is not None:
+                update_parts.append("exceptions = %s")
+                params.append(exceptions)
+                
+            # Add the WHERE clause parameters
+            params.extend([policy_id, purpose_id, data_element_id])
+            
+            query = f"""UPDATE policy_purpose_data_retention 
+                      SET {', '.join(update_parts)} 
+                      WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s;"""
+                      
+            cursor.execute(query, params)
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating policy-purpose-data retention rule: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def delete_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id):
+        """Delete a policy-purpose-data element retention rule from the database.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "DELETE FROM policy_purpose_data_retention WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s;",
+                (policy_id, purpose_id, data_element_id)
+            )
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting policy-purpose-data retention rule: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def seed_policy_purpose_data_retentions(self):
+        """Seed the database with initial policy-purpose-data retention rules."""
+        # Get existing policy purpose data element relationships
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                """SELECT policy_id, purpose_id, data_element_id FROM policy_purpose_data_element
+                   WHERE (policy_id, purpose_id) IN (SELECT policy_id, purpose_id FROM policy_purpose)"""
+            )
+            
+            for row in cursor.fetchall():
+                policy_id, purpose_id, data_element_id = row
+                
+                # Define retention periods based on purpose and data element
+                retention_period = "1 year"  # Default
+                retention_trigger = "Collection"  # Default
+                retention_basis = "Business need"
+                exceptions = None
+                
+                # Get purpose name
+                purpose_cursor = self.connection.cursor()
+                purpose_cursor.execute("SELECT name FROM purpose WHERE id = %s", (purpose_id,))
+                purpose_name = purpose_cursor.fetchone()[0]
+                purpose_cursor.close()
+                
+                # Get data element name
+                data_element_cursor = self.connection.cursor()
+                data_element_cursor.execute("SELECT name FROM data_element WHERE id = %s", (data_element_id,))
+                data_element_name = data_element_cursor.fetchone()[0]
+                data_element_cursor.close()
+                
+                # Set retention periods based on purpose and data element
+                if purpose_name == "Customer Support":
+                    retention_period = "2 years"
+                    retention_trigger = "Last Interaction"
+                    retention_basis = "Customer service quality"
+                elif purpose_name == "Fraud Detection":
+                    retention_period = "5 years"
+                    retention_trigger = "Incident Resolution"
+                    retention_basis = "Legal requirement"
+                elif purpose_name == "Marketing Campaigns":
+                    retention_period = "1 year"
+                    retention_trigger = "Campaign End"
+                    retention_basis = "Marketing effectiveness"
+                elif purpose_name == "Payment Processing":
+                    retention_period = "7 years"
+                    retention_trigger = "Transaction Completion"
+                    retention_basis = "Financial regulations"
+                elif purpose_name == "Product Analytics":
+                    retention_period = "90 days"
+                    retention_trigger = "Collection"
+                    retention_basis = "Business need"
+                elif purpose_name == "Employee Management":
+                    retention_period = "7 years"
+                    retention_trigger = "Employment End"
+                    retention_basis = "Employment regulations"
+                    
+                # Adjust based on sensitive data elements
+                if data_element_name in ["Credit Card Number", "Social Security Number", "Bank Account Number"]:
+                    retention_period = "Minimum required"
+                    retention_trigger = "Purpose Fulfillment"
+                    retention_basis = "Data minimization principle"
+                    exceptions = "Retain longer only if required by law"
+                
+                # Add the retention rule
+                self.add_policy_purpose_data_retention(
+                    policy_id, purpose_id, data_element_id, 
+                    retention_period, retention_trigger, retention_basis, exceptions
+                )
+                
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error seeding policy-purpose-data retention rules: {e}")
+            self.connection.rollback()
         finally:
             cursor.close()
