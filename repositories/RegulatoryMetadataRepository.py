@@ -978,14 +978,15 @@ class RegulatoryMetadataRepository:
             category_id: If provided, only get elements for that category.
             
         Returns:
-            A list of dictionaries containing data_category_id and data_element_id.
+            A list of dictionaries containing data_category_id, data_category_name, data_element_id, and data_element_name.
         """
         cursor = self.connection.cursor()
         try:
             query = """
-            SELECT dcde.data_category_id, dcde.data_element_id, de.name as data_element_name
+            SELECT dcde.data_category_id, dc.name as data_category_name, dcde.data_element_id, de.name as data_element_name
             FROM data_category_data_element dcde
             JOIN data_element de ON dcde.data_element_id = de.id
+            JOIN data_category dc ON dcde.data_category_id = dc.id
             """
             
             params = []
@@ -999,8 +1000,9 @@ class RegulatoryMetadataRepository:
             for row in cursor.fetchall():
                 results.append({
                     "data_category_id": row[0],
-                    "data_element_id": row[1],
-                    "data_element_name": row[2]
+                    "data_category_name": row[1],
+                    "data_element_id": row[2],
+                    "data_element_name": row[3]
                 })
                 
             return results
