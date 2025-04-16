@@ -970,21 +970,41 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
     
-    def get_data_category_data_elements(self):
-        """Get all data category data element relationships from the database."""
-        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+    def get_data_category_data_elements(self, category_id=None):
+        """Get all data category data element relationships from the database.
+        
+        Args:
+            category_id: If provided, only get elements for that category.
+            
+        Returns:
+            A list of dictionaries containing data_category_id and data_element_id.
+        """
+        cursor = self.connection.cursor()
         try:
             query = """
-            SELECT dcde.data_category_id, dc.name as data_category_name, 
-                   dcde.data_element_id, de.name as data_element_name
+            SELECT dcde.data_category_id, dcde.data_element_id, de.name as data_element_name
             FROM data_category_data_element dcde
-            JOIN data_category dc ON dcde.data_category_id = dc.id
-            JOIN data_element de ON dcde.data_element_id = de.id;
+            JOIN data_element de ON dcde.data_element_id = de.id
             """
-            cursor.execute(query)
-            return cursor.fetchall()
+            
+            params = []
+            if category_id:
+                query += " WHERE dcde.data_category_id = %s"
+                params.append(category_id)
+                
+            cursor.execute(query, params)
+            
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "data_category_id": row[0],
+                    "data_element_id": row[1],
+                    "data_element_name": row[2]
+                })
+                
+            return results
         except Exception as e:
-            print(f"Error retrieving data category data element relationships: {e}")
+            print(f"Error getting data category data elements: {e}")
             return []
         finally:
             cursor.close()
@@ -2349,50 +2369,94 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             query = """
-                SELECT ppdu.policy_id, p.name as policy_name, ppdu.purpose_id, pu.name as purpose_name,
-                       ppdu.data_element_id, de.name as data_element_name, ppdu.operation, ppdu.allowed, ppdu.restrictions
+                SELECT ppdu.policy_id, p.name as policy_name, p.policy_type,
+                       ppdu.purpose_id, pu.name as purpose_name,
+                       ppdu.data_element_id, de.name as data_element_name,
+                       ppdu.operation, ppdu.allowed, ppdu.restrictions
                 FROM policy_purpose_data_usage ppdu
                 JOIN policy p ON ppdu.policy_id = p.id
                 JOIN purpose pu ON ppdu.purpose_id = pu.id
                 JOIN data_element de ON ppdu.data_element_id = de.id
             """
             
+            conditions = []
             params = []
-            where_clauses = []
             
             if policy_id:
-                where_clauses.append("ppdu.policy_id = %s")
+                conditions.append("ppdu.policy_id = %s")
                 params.append(policy_id)
             
             if purpose_id:
-                where_clauses.append("ppdu.purpose_id = %s")
+                conditions.append("ppdu.purpose_id = %s")
                 params.append(purpose_id)
             
             if data_element_id:
-                where_clauses.append("ppdu.data_element_id = %s")
+                conditions.append("ppdu.data_element_id = %s")
                 params.append(data_element_id)
             
-            if where_clauses:
-                query += " WHERE " + " AND ".join(where_clauses)
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
             
             cursor.execute(query, params)
             
-            rules = []
+            usages = []
             for row in cursor.fetchall():
-                rules.append({
+                usages.append({
                     "policy_id": row[0],
                     "policy_name": row[1],
-                    "purpose_id": row[2],
-                    "purpose_name": row[3],
-                    "data_element_id": row[4],
-                    "data_element_name": row[5],
-                    "operation": row[6],
-                    "allowed": row[7],
-                    "restrictions": row[8]
+                    "policy_type": row[2],
+                    "purpose_id": row[3],
+                    "purpose_name": row[4],
+                    "data_element_id": row[5],
+                    "data_element_name": row[6],
+                    "operation": row[7],
+                    "allowed": bool(row[8]),
+                    "restrictions": row[9]
                 })
-            return rules
+            return usages
         except Exception as e:
             print(f"Error getting policy-purpose-data element usage rules: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def get_policies(self, policy_type=None):
+        """Get all policies from the database.
+        
+        Args:
+            policy_type (str, optional): The type of policy to filter by. Defaults to None.
+            
+        Returns:
+            list: A list of dictionaries containing policy information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT p.id, p.name, p.description, p.policy_type, p.status, p.effective_date, p.expiration_date
+                FROM policy p
+            """
+            
+            params = []
+            if policy_type:
+                query += " WHERE p.policy_type = %s"
+                params.append(policy_type)
+            
+            cursor.execute(query, params)
+            
+            policies = []
+            for row in cursor.fetchall():
+                policies.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "policy_type": row[3],
+                    "status": row[4],
+                    "effective_date": row[5],
+                    "expiration_date": row[6]
+                })
+            return policies
+        except Exception as e:
+            print(f"Error getting policies: {e}")
             return []
         finally:
             cursor.close()

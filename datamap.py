@@ -4133,6 +4133,253 @@ class DataMap:
             else:
                 st.warning("No policy-purpose-data usage rules available in the database.")
     
+        # Add a section for defining new policies on purposes
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.subheader("Define New Policy on Purpose")
+        st.markdown("Create a new policy that defines rules for data access and usage based on specific purposes.")
+        
+        # Get existing policy-purpose relationships
+        existing_policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
+        existing_purpose_ids = set()
+        if existing_policy_purposes:
+            for pp in existing_policy_purposes:
+                existing_purpose_ids.add(pp["purpose_id"])
+        
+        # Get all purposes for selection
+        purposes = self.glossary_repository.get_purposes()
+        
+        # Filter out purposes that already have policies defined
+        available_purposes = [p for p in purposes if p["id"] not in existing_purpose_ids] if purposes else []
+        purpose_options = {p["id"]: p["name"] for p in available_purposes}
+        
+        # Get all data elements for selection
+        data_elements = self.glossary_repository.get_data_elements()
+        data_element_options = {de["id"]: de["name"] for de in data_elements} if data_elements else {}
+        
+        # Get data categories for selection
+        data_categories = self.glossary_repository.get_data_categories()
+        data_category_options = {dc["id"]: dc["name"] for dc in data_categories} if data_categories else {}
+        
+        # Selection mode (outside the form)
+        st.markdown("Select how you want to define the policy:")
+        selection_mode = st.radio(
+            "Selection Mode", 
+            ["By Data Category", "By Individual Data Elements"]
+        )
+        
+        # Create a form for defining a new policy on a purpose
+        with st.form(key="define_policy_form"):
+            # Purpose selection (first step)
+            if purpose_options:
+                selected_purpose_id = st.selectbox(
+                    "Select Purpose", 
+                    options=list(purpose_options.keys()),
+                    format_func=lambda x: purpose_options[x]
+                )
+                if selected_purpose_id:
+                    purpose_name = purpose_options[selected_purpose_id]
+            else:
+                st.warning("No available purposes found in the database. All purposes already have policies defined.")
+                selected_purpose_id = None
+                
+            # Get policies of the selected type from the RegulatoryMetadataRepository
+            filtered_policies = self.glossary_repository.get_policies()
+            
+            # Create a dictionary of filtered policies for the selectbox
+            filtered_policy_options = {p["id"]: p["name"] for p in filtered_policies}
+            
+            # Select an existing policy
+            if filtered_policy_options:
+                selected_policy_id = st.selectbox(
+                    "Select Policy", 
+                    options=list(filtered_policy_options.keys()),
+                    format_func=lambda x: filtered_policy_options[x]
+                )
+                
+            # Data selection based on the selection mode
+            selected_data_element_ids = []
+            
+            if selection_mode == "By Data Category":
+                # Data category selection
+                if data_category_options:
+                    selected_category_ids = st.multiselect(
+                        "Select Data Categories",
+                        options=list(data_category_options.keys()),
+                        format_func=lambda x: data_category_options[x]
+                    )
+                    
+                    # Get all data elements in the selected categories
+                    if selected_category_ids:
+                        # Map to show which category each element belongs to
+                        element_category_map = {}
+                        
+                        # For each selected category, get its data elements
+                        for category_id in selected_category_ids:
+                            category_elements = self.regulatory_metadata_repository.get_data_category_data_elements(category_id=category_id)
+                            if category_elements:
+                                for element in category_elements:
+                                    element_id = element["data_element_id"]
+                                    if element_id not in selected_data_element_ids:  # Avoid duplicates
+                                        selected_data_element_ids.append(element_id)
+                                    element_category_map[element_id] = data_category_options[category_id]
+                        
+                        # Show the count of data elements in each category
+                        if element_category_map:
+                            st.info(f"Selected {len(selected_data_element_ids)} data elements from {len(selected_category_ids)} categories")
+                            
+                            # Show a sample of the selected data elements
+                            with st.expander("View Selected Data Elements"):
+                                for category_id in selected_category_ids:
+                                    category_name = data_category_options[category_id]
+                                    category_elements = [de_id for de_id, cat in element_category_map.items() if cat == category_name]
+                                    if category_elements:
+                                        st.markdown(f"**{category_name}:** {len(category_elements)} elements")
+                else:
+                    st.warning("No data categories found in the database.")
+            else:  # By Individual Data Elements
+                # Show all data elements in a multiselect
+                if data_elements:
+                    # Create a multiselect for all data elements
+                    selected_data_element_ids = st.multiselect(
+                        "Select Data Elements",
+                        options=list(data_element_options.keys()),
+                        format_func=lambda x: data_element_options[x]
+                    )
+                    
+                    # Show count of selected elements
+                    if selected_data_element_ids:
+                        st.info(f"Selected {len(selected_data_element_ids)} data elements")
+                else:
+                    st.warning("No data elements found in the database.")
+                    selected_data_element_ids = []
+            
+            # Create a multiselect for operations
+            operations = ["read", "write", "share"]
+            selected_operations = st.multiselect(
+                    "Select allowed operations",
+                    options=operations,
+                    default=operations,  # Default to all operations selected
+                    format_func=lambda x: x.capitalize()
+                )
+                
+            # Optional restrictions for selected operations
+            operation_restrictions = {}
+            if selected_operations:
+                with st.expander("Add restrictions for operations (optional)"):
+                    for operation in selected_operations:
+                        operation_restrictions[operation] = st.text_input(
+                            f"Restrictions for {operation.capitalize()}",
+                            placeholder=f"Enter any restrictions for {operation} operation",
+                            key=f"rest_{operation}"
+                        )
+            
+            # Create a dictionary to store permissions
+            permissions = {}
+                
+            # Set the same permissions for all selected data elements
+            for data_element_id in selected_data_element_ids:
+                permissions[data_element_id] = {}
+                
+                # Set permissions based on selected operations
+                for operation in operations:
+                    permissions[data_element_id][operation] = operation in selected_operations
+                    if operation in selected_operations and operation_restrictions.get(operation):
+                        permissions[data_element_id][f"{operation}_restrictions"] = operation_restrictions[operation]
+                    else:
+                        permissions[data_element_id][f"{operation}_restrictions"] = None
+            
+            # Show a summary of the selected operations
+            if selected_operations:
+                st.info(f"Selected operations: {', '.join(op.capitalize() for op in selected_operations)}")
+            else:
+                st.warning("No operations selected. All operations will be denied.")
+        
+            # Submit button
+            submit_button = st.form_submit_button("Create Policy Definition")
+        
+        if submit_button:
+            # Validate inputs
+            if not selected_purpose_id:
+                st.error("Please select a purpose.")
+                return
+            
+            if not selected_data_element_ids:
+                st.error("Please select at least one data element.")
+                return
+            
+            if not selected_policy_id:
+                st.error("Please select an existing policy.")
+                return
+            
+            # Create policy-purpose relationship
+            success = self.regulatory_metadata_repository.add_policy_purpose(
+                policy_id=selected_policy_id,
+                purpose_id=selected_purpose_id
+            )
+            
+            if not success:
+                st.error("Failed to create the policy-purpose relationship. Please try again.")
+                return
+            
+            # Create policy-purpose-data element relationships and usage rules
+            progress_bar = st.progress(0)
+            progress_text = st.empty()
+            
+            total_operations = len(selected_data_element_ids) * (1 + (3 if selected_policy_id else 0))
+            completed_operations = 0
+            
+            all_success = True
+            for data_element_id in selected_data_element_ids:
+                data_element_name = data_element_options[data_element_id]
+                progress_text.text(f"Processing: {data_element_name}")
+                
+                # Add policy-purpose-data element relationship
+                success = self.regulatory_metadata_repository.add_policy_purpose_data_element(
+                    policy_id=selected_policy_id,
+                    purpose_id=selected_purpose_id,
+                    data_element_id=data_element_id,
+                    access_allowed=True  # Default to allowed, operations will be controlled by usage rules
+                )
+                
+                completed_operations += 1
+                progress_bar.progress(completed_operations / total_operations)
+                        
+                if not success:
+                    all_success = False
+                    continue
+                
+                # Add operation permissions based on selected operations
+                for operation in ["read", "write", "share"]:
+                    progress_text.text(f"Processing: {data_element_name} - {operation}")
+                    
+                    # Add policy-purpose-data-element-usage relationship
+                    # The operation is allowed only if it was selected in the multiselect
+                    is_allowed = operation in selected_operations
+                    restrictions = operation_restrictions.get(operation) if is_allowed else None
+                    
+                    success = self.regulatory_metadata_repository.add_policy_purpose_data_usage(
+                        policy_id=selected_policy_id,
+                        purpose_id=selected_purpose_id,
+                        data_element_id=data_element_id,
+                        operation=operation,
+                        allowed=is_allowed,
+                        restrictions=restrictions
+                    )
+                    
+                    if not success:
+                        all_success = False
+                    
+                    completed_operations += 1
+                    progress_bar.progress(completed_operations / total_operations)
+            
+            progress_text.empty()
+            progress_bar.empty()
+            
+            if all_success:
+                st.success("Successfully created policy for purpose: {}".format(purpose_name))
+            else:
+                st.error("Failed to create policy for purpose: {}".format(purpose_name))
+
     def policy_compliance_page(self):
         """Display the Policy Compliance page with the policy compliance analysis tool."""
         st.markdown("<div class='page-header'><i class='fas fa-balance-scale'></i> &nbsp;Policy Compliance</div>", unsafe_allow_html=True)
@@ -5006,65 +5253,37 @@ class DataMap:
                     st.info("Select a framework and click 'Recommend Controls' to get results.")
                 
     def decision_tree_section(self):
-        """Visualize the regulatory metadata as a decision tree using PyVis with physics.
-        Initially the network stabilizes (nodes become static) but if you drag a node the physics
-        simulation restarts and nodes bounce. A legend is shown below the graph.
+        """Visualize the regulatory ontology and association rules as a decision tree using PyVis.
+        This shows the relationships between entity types rather than specific instances.
         """
         import tempfile
         from pyvis.network import Network
         import streamlit.components.v1 as components
 
-        st.markdown("<div class='page-header'><i class='fas fa-sitemap'></i> &nbsp;Decision Tree</div>", unsafe_allow_html=True)
+        st.markdown("<div class='page-header'><i class='fas fa-sitemap'></i> &nbsp;Ontology Visualization</div>", unsafe_allow_html=True)
         st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-            <p>This section visualizes the regulatory metadata as an interactive decision tree.</p>
+            <p>This section visualizes the regulatory ontology and association rules as an interactive graph.</p>
             <ul>
-                <li>Visualizes complex relationships between regulatory components in a hierarchical structure</li>
-                <li>Uses directed graph with the selected law as the root node</li>
-                <li>Connects related entities based on their relationships in the regulatory framework</li>
+                <li>Shows the conceptual relationships between different entity types in the regulatory framework</li>
+                <li>Displays association rules that define how entities relate to each other</li>
+                <li>Provides a high-level view of the data model without showing specific instances</li>
             </ul>
         </div>''', unsafe_allow_html=True)
 
-        # Get laws for dropdown selection
-        laws = self.glossary_repository.get_laws()
-        if not laws:
-            st.warning("No laws available in the database.")
-            return
-
-        law_options = [law["name"] for law in laws]
-        selected_law = st.selectbox("Select a Law", options=law_options)
-        
         # Visualization options
         st.subheader("Visualization Options")
         col1, col2 = st.columns(2)
         with col1:
-            show_jurisdictions = st.checkbox("Show Jurisdictions", value=True)
-            show_legal_bases = st.checkbox("Show Legal Bases", value=True)
-            show_data_subject_types = st.checkbox("Show Data Subject Types", value=True)
+            show_core_entities = st.checkbox("Show Core Entities", value=True)
+            show_regulatory_metadata = st.checkbox("Show Regulatory Metadata", value=True)
+            show_inference_rules = st.checkbox("Show Inference Rules", value=True)
         with col2:
-            show_data_elements = st.checkbox("Show Data Elements", value=True)
-            show_data_categories = st.checkbox("Show Data Categories", value=True)
-
-
-        if not selected_law:
-            return
-
-        # Retrieve and filter metadata for the selected law
-        law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-        law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
-        law_dst_de_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
-        law_dst_dc_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
-
-
-        filtered_law_jurisdictions = [item for item in law_jurisdictions if item["law_name"] == selected_law]
-        filtered_law_legal_bases = [item for item in law_legal_bases if item["law_name"] == selected_law]
-        filtered_law_dst_de_sensitivities = [item for item in law_dst_de_sensitivities if item["law_name"] == selected_law]
-        filtered_law_dst_dc_sensitivities = [item for item in law_dst_dc_sensitivities if item["law_name"] == selected_law]
-
+            show_compliance_entities = st.checkbox("Show Compliance Entities", value=True)
+            show_inventory_entities = st.checkbox("Show Inventory Entities", value=True)
 
         # Create a PyVis network instance with physics enabled
         net = Network(height="800px", width="100%", directed=True)
-        # Set physics options: physics runs initially until stabilization.
-        # Then, if you drag a node, physics restarts so nodes bounce.
+        # Set physics options for better visualization
         net.set_options("""
         var options = {
         "physics": {
@@ -5078,65 +5297,138 @@ class DataMap:
             "barnesHut": {
             "gravitationalConstant": -2000,
             "centralGravity": 0.3,
-            "springLength": 95,
+            "springLength": 150,
             "springConstant": 0.04,
             "damping": 0.09,
-            "avoidOverlap": 0.1
+            "avoidOverlap": 0.2
             }
         },
         "interaction": {
             "dragNodes": true,
             "zoomView": true
+        },
+        "edges": {
+            "arrows": {
+                "to": {
+                    "enabled": true,
+                    "scaleFactor": 0.5
+                }
+            },
+            "smooth": {
+                "enabled": true,
+                "type": "dynamic"
+            }
+        },
+        "nodes": {
+            "shape": "box",
+            "font": {
+                "size": 14,
+                "face": "Arial"
+            }
         }
         }
         """)
 
-        # Add the law as the root node
-        net.add_node(selected_law, label=selected_law, size=25, color="#3498db")
+        # Define entity types and their relationships (ontology)
+        # Core entities
+        if show_core_entities:
+            # Add core entity nodes
+            net.add_node("Law", label="Law", size=30, color="#3498db", shape="box")
+            net.add_node("Jurisdiction", label="Jurisdiction", size=25, color="#2ecc71", shape="box")
+            net.add_node("Legal Basis", label="Legal Basis", size=25, color="#e74c3c", shape="box")
+            net.add_node("Data Subject Type", label="Data Subject Type", size=25, color="#f39c12", shape="box")
+            net.add_node("Data Element", label="Data Element", size=25, color="#9b59b6", shape="box")
+            net.add_node("Data Category", label="Data Category", size=25, color="#1abc9c", shape="box")
+            net.add_node("Sensitivity", label="Sensitivity", size=25, color="#e67e22", shape="box")
+            net.add_node("Purpose", label="Purpose", size=25, color="#34495e", shape="box")
+            
+            # Add core entity relationships
+            net.add_edge("Law", "Jurisdiction", title="applies to", label="applies to")
+            net.add_edge("Law", "Legal Basis", title="defines", label="defines")
+            net.add_edge("Law", "Data Subject Type", title="protects", label="protects")
+            net.add_edge("Data Subject Type", "Data Element", title="has", label="has")
+            net.add_edge("Data Element", "Data Category", title="belongs to", label="belongs to")
+            net.add_edge("Data Element", "Sensitivity", title="has level", label="has level")
+            net.add_edge("Data Category", "Sensitivity", title="has level", label="has level")
+            net.add_edge("Purpose", "Legal Basis", title="requires", label="requires")
 
-        # Add jurisdictions
-        if show_jurisdictions:
-            for item in filtered_law_jurisdictions:
-                jurisdiction = item["jurisdiction_name"]
-                net.add_node(jurisdiction, label=jurisdiction, size=20, color="#2ecc71")
-                net.add_edge(selected_law, jurisdiction)
+        # Regulatory metadata entities
+        if show_regulatory_metadata:
+            net.add_node("Obligation", label="Obligation", size=25, color="#8e44ad", shape="box")
+            net.add_node("Risk", label="Risk", size=25, color="#c0392b", shape="box")
+            net.add_node("Control", label="Control", size=25, color="#16a085", shape="box")
+            net.add_node("Framework", label="Framework", size=25, color="#2980b9", shape="box")
+            net.add_node("Policy", label="Policy", size=25, color="#27ae60", shape="box")
+            
+            # Add regulatory metadata relationships
+            net.add_edge("Law", "Obligation", title="imposes", label="imposes")
+            net.add_edge("Obligation", "Risk", title="mitigates", label="mitigates")
+            net.add_edge("Control", "Risk", title="mitigates", label="mitigates")
+            net.add_edge("Framework", "Control", title="includes", label="includes")
+            net.add_edge("Policy", "Control", title="implements", label="implements")
+            net.add_edge("Law", "Policy", title="requires", label="requires")
 
-        # Add legal bases
-        if show_legal_bases:
-            for item in filtered_law_legal_bases:
-                legal_basis = item["legal_basis_name"]
-                net.add_node(legal_basis, label=legal_basis, size=20, color="#e74c3c")
-                net.add_edge(selected_law, legal_basis)
+        # Compliance entities
+        if show_compliance_entities:
+            net.add_node("Compliance Status", label="Compliance Status", size=25, color="#f1c40f", shape="box")
+            net.add_node("Breach Notification", label="Breach Notification", size=25, color="#d35400", shape="box")
+            net.add_node("Data Subject Right", label="Data Subject Right", size=25, color="#7f8c8d", shape="box")
+            net.add_node("Transfer Mechanism", label="Transfer Mechanism", size=25, color="#3498db", shape="box")
+            
+            # Add compliance relationships
+            net.add_edge("Law", "Compliance Status", title="measures", label="measures")
+            net.add_edge("Law", "Breach Notification", title="requires", label="requires")
+            net.add_edge("Law", "Data Subject Right", title="grants", label="grants")
+            net.add_edge("Law", "Transfer Mechanism", title="permits", label="permits")
+            net.add_edge("Data Subject Type", "Data Subject Right", title="has", label="has")
 
-        # Add Data Subject Types, Data Elements, and Sensitivity levels
-        if show_data_subject_types and show_data_elements:
-            for item in filtered_law_dst_de_sensitivities:
-                dst = f"DST: {item['data_subject_type_name']}"
-                de = f"DE: {item['data_element_name']}"
-                sensitivity = f"Sensitivity: {item['sensitivity_name']}"
-                net.add_node(dst, label=dst, size=15, color="#f39c12")
-                net.add_node(de, label=de, size=15, color="#9b59b6")
-                net.add_node(sensitivity, label=sensitivity, size=15, color="#e67e22")
-                net.add_edge(selected_law, dst)
-                net.add_edge(dst, de)
-                net.add_edge(de, sensitivity)
+        # Inventory entities
+        if show_inventory_entities:
+            net.add_node("Asset", label="Asset", size=25, color="#95a5a6", shape="box")
+            net.add_node("Processing Activity", label="Processing Activity", size=25, color="#bdc3c7", shape="box")
+            net.add_node("Legal Entity", label="Legal Entity", size=25, color="#7f8c8d", shape="box")
+            net.add_node("Vendor", label="Vendor", size=25, color="#34495e", shape="box")
+            
+            # Add inventory relationships
+            net.add_edge("Asset", "Data Element", title="contains", label="contains")
+            net.add_edge("Processing Activity", "Purpose", title="has", label="has")
+            net.add_edge("Processing Activity", "Legal Basis", title="requires", label="requires")
+            net.add_edge("Legal Entity", "Processing Activity", title="performs", label="performs")
+            net.add_edge("Vendor", "Processing Activity", title="supports", label="supports")
+            net.add_edge("Legal Entity", "Jurisdiction", title="subject to", label="subject to")
 
-        # Add Data Subject Types, Data Categories, and Sensitivity levels
-        if show_data_subject_types and show_data_categories:
-            for item in filtered_law_dst_dc_sensitivities:
-                dst = f"DST: {item['data_subject_type_name']}"
-                dc = f"DC: {item['data_category_name']}"
-                sensitivity = f"Sensitivity: {item['sensitivity_name']}"
-                if dst not in net.get_nodes():
-                    net.add_node(dst, label=dst, size=15, color="#f39c12")
-                net.add_node(dc, label=dc, size=15, color="#1abc9c")
-                if sensitivity not in net.get_nodes():
-                    net.add_node(sensitivity, label=sensitivity, size=15, color="#e67e22")
-                net.add_edge(selected_law, dst)
-                net.add_edge(dst, dc)
-                net.add_edge(dc, sensitivity)
-
-
+        # Inference rules
+        if show_inference_rules:
+            net.add_node("Sensitivity Inference", label="Sensitivity Inference", size=25, color="#e74c3c", shape="ellipse")
+            net.add_node("Legal Basis Inference", label="Legal Basis Inference", size=25, color="#e74c3c", shape="ellipse")
+            net.add_node("Breach Notification Inference", label="Breach Notification Inference", size=25, color="#e74c3c", shape="ellipse")
+            net.add_node("Transfer Mechanism Inference", label="Transfer Mechanism Inference", size=25, color="#e74c3c", shape="ellipse")
+            net.add_node("Control Inference", label="Control Inference", size=25, color="#e74c3c", shape="ellipse")
+            net.add_node("Risk Inference", label="Risk Inference", size=25, color="#e74c3c", shape="ellipse")
+            
+            # Add inference rule relationships
+            net.add_edge("Sensitivity Inference", "Data Element", title="analyzes", label="analyzes")
+            net.add_edge("Sensitivity Inference", "Data Category", title="analyzes", label="analyzes")
+            net.add_edge("Sensitivity Inference", "Sensitivity", title="determines", label="determines")
+            
+            net.add_edge("Legal Basis Inference", "Purpose", title="analyzes", label="analyzes")
+            net.add_edge("Legal Basis Inference", "Data Category", title="analyzes", label="analyzes")
+            net.add_edge("Legal Basis Inference", "Legal Basis", title="determines", label="determines")
+            
+            net.add_edge("Breach Notification Inference", "Sensitivity", title="analyzes", label="analyzes")
+            net.add_edge("Breach Notification Inference", "Jurisdiction", title="analyzes", label="analyzes")
+            net.add_edge("Breach Notification Inference", "Breach Notification", title="determines", label="determines")
+            
+            net.add_edge("Transfer Mechanism Inference", "Jurisdiction", title="analyzes", label="analyzes")
+            net.add_edge("Transfer Mechanism Inference", "Transfer Mechanism", title="determines", label="determines")
+            
+            net.add_edge("Control Inference", "Risk", title="analyzes", label="analyzes")
+            net.add_edge("Control Inference", "Policy", title="analyzes", label="analyzes")
+            net.add_edge("Control Inference", "Framework", title="analyzes", label="analyzes")
+            net.add_edge("Control Inference", "Control", title="recommends", label="recommends")
+            
+            net.add_edge("Risk Inference", "Obligation", title="analyzes", label="analyzes")
+            net.add_edge("Risk Inference", "Risk", title="identifies", label="identifies")
 
         # Save the network to a temporary HTML file and display it in Streamlit
         tmp_dir = tempfile.gettempdir()
@@ -5148,37 +5440,63 @@ class DataMap:
         # Legend HTML
         legend_html = """
         <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
+            <h3 style="width: 100%;">Entity Types</h3>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #3498db; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #3498db; border-radius: 0; margin-right: 5px;"></div>
                 <span>Law</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #2ecc71; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #2ecc71; border-radius: 0; margin-right: 5px;"></div>
                 <span>Jurisdiction</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #e74c3c; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #e74c3c; border-radius: 0; margin-right: 5px;"></div>
                 <span>Legal Basis</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #f39c12; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #f39c12; border-radius: 0; margin-right: 5px;"></div>
                 <span>Data Subject Type</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #9b59b6; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #9b59b6; border-radius: 0; margin-right: 5px;"></div>
                 <span>Data Element</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #1abc9c; border-radius: 50%; margin-right: 5px;"></div>
+                <div style="width: 20px; height: 20px; background-color: #1abc9c; border-radius: 0; margin-right: 5px;"></div>
                 <span>Data Category</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #34495e; border-radius: 50%; margin-right: 5px;"></div>
-                <span>Context</span>
+                <div style="width: 20px; height: 20px; background-color: #e67e22; border-radius: 0; margin-right: 5px;"></div>
+                <span>Sensitivity</span>
             </div>
             <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background-color: #e67e22; border-radius: 50%; margin-right: 5px;"></div>
-                <span>Sensitivity</span>
+                <div style="width: 20px; height: 20px; background-color: #34495e; border-radius: 0; margin-right: 5px;"></div>
+                <span>Purpose</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #8e44ad; border-radius: 0; margin-right: 5px;"></div>
+                <span>Obligation</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #c0392b; border-radius: 0; margin-right: 5px;"></div>
+                <span>Risk</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #16a085; border-radius: 0; margin-right: 5px;"></div>
+                <span>Control</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #2980b9; border-radius: 0; margin-right: 5px;"></div>
+                <span>Framework</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #27ae60; border-radius: 0; margin-right: 5px;"></div>
+                <span>Policy</span>
+            </div>
+            <h3 style="width: 100%; margin-top: 15px;">Inference Rules</h3>
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: #e74c3c; border-radius: 50%; margin-right: 5px;"></div>
+                <span>Inference Rules (shown as ellipses)</span>
             </div>
         </div>
         """
