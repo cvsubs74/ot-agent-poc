@@ -4564,59 +4564,13 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "request", "label": "Access Request", "color": "#3498db", "shape": "ellipse", "size": 30},
-                {"id": "purpose", "label": "Business Purpose", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "policy", "label": "Applicable Policy", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "data_elements", "label": "Data Elements", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "operation", "label": "Operation Type", "color": "#2ecc71", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Policy Lookup", "color": "#1abc9c", "shape": "box", "size": 25,
-                 "title": {"html": """
-                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #1abc9c;'>
-                        <h3>Policy Compliance Lookup Process</h3>
-                        <p>This lookup process determines data access permissions by:</p>
-                        <ol>
-                            <li>Identifying the applicable <b>Access Control Policy</b></li>
-                            <li>Checking if the purpose is allowed under the policy</li>
-                            <li>Verifying if each data element is accessible for the purpose</li>
-                            <li>Confirming if the requested operation is permitted</li>
-                            <li>Applying any restrictions or conditions</li>
-                        </ol>
-                        <p>The algorithm uses the policy_purpose_data_usage table to determine specific access rules.</p>
-                    </div>
-                """}},
-                {"id": "decision", "label": "Access Decision", "color": "#e67e22", "shape": "box", "size": 25}
-            ]
-            
-            # Define edges for the decision tree
-            edges = [
-                {"source": "request", "target": "purpose", "label": "For"},
-                {"source": "request", "target": "data_elements", "label": "Requests"},
-                {"source": "request", "target": "operation", "label": "With"},
-                {"source": "purpose", "target": "policy", "label": "Governed by"},
-                {"source": "policy", "target": "lookup", "label": ""},
-                {"source": "data_elements", "target": "lookup", "label": ""},
-                {"source": "operation", "target": "lookup", "label": ""},
-                {"source": "lookup", "target": "decision", "label": "Results in"}
-            ]
-            
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Policy Compliance Decision Process", height=500)
-        
+
         with col2:
-            st.subheader("Policy Compliance Analysis")
-            
-            if analyze_button:
-                if not selected_purpose or not selected_data_elements:
-                    st.warning("Please select both Purpose and at least one Data Element")
-                else:
-                    self._analyze_policy_compliance(
-                        selected_purpose, 
-                        selected_data_elements,
-                        selected_operation
-                    )
+            st.subheader("Compliance Results")
+            if analyze_button and selected_purpose and selected_data_elements and selected_operation:
+                self._analyze_policy_compliance(selected_purpose, selected_data_elements, selected_operation)
+            elif analyze_button:
+                st.warning("Please select a purpose, at least one data element, and an operation to analyze compliance.")
             else:
                 st.markdown("""
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
@@ -7321,166 +7275,152 @@ class DataMap:
             """, unsafe_allow_html=True)
     
     def _analyze_policy_compliance(self, purpose, data_elements, operation, jurisdiction=None):
-        """Analyze policy compliance based on purpose, data elements, and operation.
-        
-        Args:
-            purpose (str): The business purpose for data access
-            data_elements (list): List of data elements being accessed
-            operation (str): The operation type (read, write, share)
-            jurisdiction (str, optional): The applicable jurisdiction. Defaults to None.
-        """
-        # Get policies from the database
+        """Analyze policy compliance for Access Control, Data Security, and Data Retention policies."""
+        import pandas as pd
+        st = __import__('streamlit')
+        # Get all policies
         policies = self.glossary_repository.get_policies()
-        
-        # Find the access control policy
         access_control_policy = None
+        data_security_policy = None
+        data_retention_policy = None
         for policy in policies:
             if policy["policy_type"] == "Access Control":
                 access_control_policy = policy
-                break
-        
-        if not access_control_policy:
-            st.error("No Access Control Policy found in the database.")
-            return
-        
+            elif policy["policy_type"] == "Security":
+                data_security_policy = policy
+            elif policy["policy_type"] == "Retention":
+                data_retention_policy = policy
+
         # Get purpose ID
-        purpose_id = None
         purposes = self.glossary_repository.get_purposes()
+        purpose_id = None
         for p in purposes:
             if p["name"] == purpose:
                 purpose_id = p["id"]
                 break
-        
         if not purpose_id:
             st.error(f"Purpose '{purpose}' not found in the database.")
             return
-        
+
         # Get data element IDs
-        data_element_ids = {}
         all_data_elements = self.glossary_repository.get_data_elements()
-        for data_element in data_elements:
-            for de in all_data_elements:
-                if de["name"] == data_element:
-                    data_element_ids[data_element] = de["id"]
-                    break
-                
-        # Display applicable policy
-        st.markdown(f"""
-        <div style="margin-bottom: 15px;">
-            <h4 style="color: #3498db;">Applicable Policy</h4>
-            <p><strong>Policy:</strong> {access_control_policy['name']}</p>
-            <p><strong>Type:</strong> {access_control_policy['policy_type']}</p>
-            <p><strong>Status:</strong> {access_control_policy['status']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Get policy purpose data elements
-        policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
-            policy_id=access_control_policy['id'], 
-            purpose_id=purpose_id
-        )
-        
-        # Get policy purpose data usages
-        policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages(
-            policy_id=access_control_policy['id'], 
-            purpose_id=purpose_id
-        )
-        
-        # Prepare data for the decisions table
-        st.subheader("Data Access Decisions")
-        
-        # Create a DataFrame to hold the decisions
-        decisions_data = {
-            "Data Element": [],
-            "Operation": [],
-            "Decision": [],
-            "Restrictions": []
-        }
-        
-        # Process each data element using the policy data from the repository
+        data_element_ids = {de["name"]: de["id"] for de in all_data_elements}
+
         denied_operations = False
-        for data_element in data_elements:
-            data_element_id = data_element_ids.get(data_element)
-            
-            # Default values if no specific rules found
-            decision = "Denied"
-            restrictions = "No explicit permission in policy"
-            decision_color = "#e74c3c"
-            
-            # Check if there's a usage rule for this data element, purpose, and operation
-            for usage in policy_purpose_data_usages:
-                if (usage["data_element_name"] == data_element and 
-                    usage["operation"] == operation):
-                    
-                    if usage["allowed"]:
-                        if usage["restrictions"]:
-                            decision = "Allowed with Restrictions"
-                            restrictions = usage["restrictions"]
-                            decision_color = "#f39c12"
-                        else:
-                            decision = "Allowed"
-                            restrictions = "None"
-                            decision_color = "#2ecc71"
-                    else:
-                        decision = "Denied"
-                        restrictions = usage["restrictions"] if usage["restrictions"] else "Operation not allowed for this purpose"
-                        decision_color = "#e74c3c"
-                        denied_operations = True
-                    break
-            
-            # If no specific usage rule found, check if the data element is allowed for this purpose
-            if decision == "Denied" and restrictions == "No explicit permission in policy":
-                for element in policy_purpose_data_elements:
-                    if element["data_element_name"] == data_element:
-                        if element["access_allowed"]:
-                            # Default to allowed for read operations if no specific rule exists
-                            if operation == "read":
+
+        # --- Access Control Policy Compliance ---
+        access_decisions = {"Data Element": [], "Operation": [], "Decision": [], "Restrictions": []}
+        if access_control_policy:
+            policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+                policy_id=access_control_policy['id'], purpose_id=purpose_id)
+            policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages(
+                policy_id=access_control_policy['id'], purpose_id=purpose_id)
+            for data_element in data_elements:
+                decision = "Denied"
+                restrictions = "No explicit permission in policy"
+                for usage in policy_purpose_data_usages:
+                    if usage["data_element_name"] == data_element and usage["operation"] == operation:
+                        if usage["allowed"]:
+                            if usage["restrictions"]:
+                                decision = "Allowed with Restrictions"
+                                restrictions = usage["restrictions"]
+                            else:
                                 decision = "Allowed"
                                 restrictions = "None"
-                                decision_color = "#2ecc71"
-                            else:
-                                # For write/share, still require explicit permission
-                                denied_operations = True
                         else:
+                            decision = "Denied"
+                            restrictions = usage["restrictions"] or "Operation not allowed for this purpose"
                             denied_operations = True
                         break
-            
-            # Add row to the DataFrame
-            decisions_data["Data Element"].append(data_element)
-            decisions_data["Operation"].append(operation)
-            decisions_data["Decision"].append(decision)
-            decisions_data["Restrictions"].append(restrictions)
-        
-        # Create and display the DataFrame
-        decisions_df = pd.DataFrame(decisions_data)
-        
-        # Apply styling to the Decision column based on the decision
-        def highlight_decision(val):
-            if val == "Allowed":
-                return 'background-color: #d4edda; color: #155724'
-            elif val == "Allowed with Restrictions":
-                return 'background-color: #fff3cd; color: #856404'
-            else:  # Denied
-                return 'background-color: #f8d7da; color: #721c24'
-        
-        # Display the styled DataFrame
-        st.dataframe(decisions_df.style.applymap(highlight_decision, subset=['Decision']), use_container_width=True)
-        
-        # Add decision rationale
+                if decision == "Denied" and restrictions == "No explicit permission in policy":
+                    for element in policy_purpose_data_elements:
+                        if element["data_element_name"] == data_element:
+                            if element.get("access_allowed") and operation == "read":
+                                decision = "Allowed"
+                                restrictions = "None"
+                            else:
+                                denied_operations = True
+                            break
+                access_decisions["Data Element"].append(data_element)
+                access_decisions["Operation"].append(operation)
+                access_decisions["Decision"].append(decision)
+                access_decisions["Restrictions"].append(restrictions)
+            st.markdown("<h5>Access Control Policy Decisions</h5>", unsafe_allow_html=True)
+            access_df = pd.DataFrame(access_decisions)
+            def highlight_decision(val):
+                if val == "Allowed":
+                    return 'background-color: #d4edda; color: #155724'
+                elif val == "Denied":
+                    return 'background-color: #f8d7da; color: #721c24'
+                elif val == "Allowed with Restrictions":
+                    return 'background-color: #fff3cd; color: #856404'
+                return ''
+            st.dataframe(access_df.style.applymap(highlight_decision, subset=["Decision"]))
+        else:
+            st.warning("No Access Control Policy found in the database.")
+
+        # --- Data Security Policy Compliance ---
+        security_decisions = {"Data Element": [], "Encryption Required": [], "Encryption Algorithm": [], "Masking Required": [], "Masking Format": [], "Access Logging": []}
+        if data_security_policy:
+            policy_purpose_data_security = self.regulatory_metadata_repository.get_policy_purpose_data_security(
+                policy_id=data_security_policy['id'], purpose_id=purpose_id)
+            for data_element in data_elements:
+                sec = next((s for s in policy_purpose_data_security if s["data_element_name"] == data_element), None)
+                security_decisions["Data Element"].append(data_element)
+                if sec:
+                    security_decisions["Encryption Required"].append("Yes" if sec["encryption_required"] else "No")
+                    security_decisions["Encryption Algorithm"].append(sec["encryption_algorithm"] or "-")
+                    security_decisions["Masking Required"].append("Yes" if sec["masking_required"] else "No")
+                    security_decisions["Masking Format"].append(sec["masking_format"] or "-")
+                    security_decisions["Access Logging"].append("Yes" if sec["access_logging"] else "No")
+                else:
+                    security_decisions["Encryption Required"].append("-")
+                    security_decisions["Encryption Algorithm"].append("-")
+                    security_decisions["Masking Required"].append("-")
+                    security_decisions["Masking Format"].append("-")
+                    security_decisions["Access Logging"].append("-")
+            st.markdown("<h5>Data Security Policy Decisions</h5>", unsafe_allow_html=True)
+            st.dataframe(pd.DataFrame(security_decisions))
+        else:
+            st.warning("No Data Security Policy found in the database.")
+
+        # --- Data Retention Policy Compliance ---
+        retention_decisions = {"Data Element": [], "Retention Period": [], "Retention Trigger": [], "Retention Basis": [], "Exceptions": []}
+        if data_retention_policy:
+            policy_purpose_data_retentions = self.regulatory_metadata_repository.get_policy_purpose_data_retentions(
+                policy_id=data_retention_policy['id'], purpose_id=purpose_id)
+            for data_element in data_elements:
+                ret = next((r for r in policy_purpose_data_retentions if r["data_element_name"] == data_element), None)
+                retention_decisions["Data Element"].append(data_element)
+                if ret:
+                    retention_decisions["Retention Period"].append(ret["retention_period"] or "-")
+                    retention_decisions["Retention Trigger"].append(ret["retention_trigger"] or "-")
+                    retention_decisions["Retention Basis"].append(ret["retention_basis"] or "-")
+                    retention_decisions["Exceptions"].append(ret["exceptions"] or "-")
+                else:
+                    retention_decisions["Retention Period"].append("-")
+                    retention_decisions["Retention Trigger"].append("-")
+                    retention_decisions["Retention Basis"].append("-")
+                    retention_decisions["Exceptions"].append("-")
+            st.markdown("<h5>Data Retention Policy Decisions</h5>", unsafe_allow_html=True)
+            st.dataframe(pd.DataFrame(retention_decisions))
+        else:
+            st.warning("No Data Retention Policy found in the database.")
+
+        # --- Decision Rationale and Recommendations ---
         st.markdown("""
         <div style="margin-top: 20px;">
             <h4 style="color: #3498db;">Decision Rationale</h4>
             <p>The policy compliance decision is based on:</p>
             <ul>
-                <li>Purpose limitation principles defined in the Data Access Control Policy</li>
-                <li>Data element sensitivity classification</li>
+                <li>Purpose limitation principles defined in the Access Control Policy</li>
+                <li>Data security requirements for each data element</li>
+                <li>Retention rules for each data element</li>
                 <li>Operation type and associated risks</li>
                 <li>Purpose-specific data access rules</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Add compliance recommendations if there are denied operations
         if denied_operations:
             st.markdown("""
             <div style="margin-top: 20px; background-color: #fef9e7; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12;">
@@ -7494,8 +7434,8 @@ class DataMap:
                 </ul>
             </div>
             """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
+
 
     def _get_rights_guidance(self, law, right_type):
         """Internal method to get guidance for data subject rights based on regulatory metadata.
