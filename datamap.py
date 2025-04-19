@@ -3879,7 +3879,7 @@ class DataMap:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention"])
+        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention", "Policy Purpose Data Security"])
         
         # Policies tab
         with tabs[0]:
@@ -4216,6 +4216,36 @@ class DataMap:
             else:
                 st.warning("No policy-purpose-data retention rules available in the database.")
     
+        # Policy Purpose Data Security tab
+        with tabs[5]:
+            st.markdown("### Policy Purpose Data Security")
+            security_rules = self.regulatory_metadata_repository.get_policy_purpose_data_security()
+            if security_rules:
+                df = pd.DataFrame(security_rules)
+                # Add filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    policies = sorted(df["policy_name"].unique())
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="ppds_policy")
+                with col2:
+                    purposes = sorted(df["purpose_name"].unique())
+                    selected_purpose = st.selectbox("Filter by Purpose", ["All"] + purposes, key="ppds_purpose")
+                with col3:
+                    elements = sorted(df["data_element_name"].unique())
+                    selected_element = st.selectbox("Filter by Data Element", ["All"] + elements, key="ppds_element")
+
+                filtered_df = df.copy()
+                if selected_policy != "All":
+                    filtered_df = filtered_df[filtered_df["policy_name"] == selected_policy]
+                if selected_purpose != "All":
+                    filtered_df = filtered_df[filtered_df["purpose_name"] == selected_purpose]
+                if selected_element != "All":
+                    filtered_df = filtered_df[filtered_df["data_element_name"] == selected_element]
+
+                st.dataframe(filtered_df, use_container_width=True)
+            else:
+                st.warning("No policy purpose data security rules available.")
+
         # Add a section for defining new policies on purposes
         st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader("Define New Policy on Purpose")

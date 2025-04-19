@@ -2002,6 +2002,83 @@ VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Disaster Recovery'), 0.9);
 
 -- =============================================
+-- POLICY PURPOSE DATA SECURITY TABLE
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
+    `policy_id`            INT         NOT NULL,
+    `purpose_id`           INT         NOT NULL,
+    `data_element_id`      INT         NOT NULL,
+    `encryption_required`  BOOLEAN     NOT NULL DEFAULT FALSE,
+    `encryption_algorithm` VARCHAR(100),
+    `masking_required`     BOOLEAN     NOT NULL DEFAULT FALSE,
+    `masking_format`       VARCHAR(100),
+    `access_logging`       BOOLEAN     NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (`policy_id`,`purpose_id`,`data_element_id`),
+    FOREIGN KEY (`policy_id`)       REFERENCES `policy`(`id`)            ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`)      REFERENCES `purpose`(`id`)           ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)       ON DELETE CASCADE
+);
+
+-- Insert policy-purpose relationships for Data Security Policy
+DELETE FROM policy_purpose WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy');
+INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'));
+
+-- Seed Policy Purpose Data Security
+DELETE FROM policy_purpose_data_security;
+INSERT INTO policy_purpose_data_security
+    (`policy_id`, `purpose_id`, `data_element_id`, `encryption_required`, `encryption_algorithm`, `masking_required`, `masking_format`, `access_logging`)
+VALUES
+-- Customer Support
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+
+-- Fraud Detection
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection'), (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+
+-- Marketing Campaigns
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), (SELECT id FROM data_element WHERE name = 'Email Address'), FALSE, NULL, TRUE, 'xxxx@####.com', FALSE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), (SELECT id FROM data_element WHERE name = 'Customer ID'), FALSE, NULL, TRUE, '######', FALSE),
+
+-- Product Analytics
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+
+-- Payment Processing
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE, 'AES-256', TRUE, '####-XXXX-XXXX-####', TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+
+-- Service Delivery
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-128', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-128', TRUE, 'xxxx@####.com', TRUE),
+
+-- Research and Development
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development'), (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+
+-- Employee Management
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+
+-- User Authentication
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE),
+
+-- Legal Compliance
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'), (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE);
+
+
+-- =============================================
 -- SEED RISK-CONTROL MAPPINGS
 -- =============================================
 

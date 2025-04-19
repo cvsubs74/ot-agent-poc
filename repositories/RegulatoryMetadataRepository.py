@@ -27,6 +27,7 @@ class RegulatoryMetadataRepository:
         self.create_policy_purpose_data_element_table()
         self.create_policy_purpose_data_usage_table()
         self.create_policy_purpose_data_retention_table()
+        self.create_policy_purpose_data_security_table()
         self.create_framework_control_table()
         self.create_policy_control_table()
         self.create_risk_control_table()
@@ -281,6 +282,91 @@ class RegulatoryMetadataRepository:
         self.connection.commit()
         cursor.close()
         
+    def create_policy_purpose_data_security_table(self):
+        """Create the Policy Purpose Data Security table."""
+        cursor = self.connection.cursor()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
+            `policy_id`            INT         NOT NULL,
+            `purpose_id`           INT         NOT NULL,
+            `data_element_id`      INT         NOT NULL,
+            `encryption_required`  BOOLEAN     NOT NULL DEFAULT FALSE,
+            `encryption_algorithm` VARCHAR(100),
+            `masking_required`     BOOLEAN     NOT NULL DEFAULT FALSE,
+            `masking_format`       VARCHAR(100),
+            `access_logging`       BOOLEAN     NOT NULL DEFAULT FALSE,
+            PRIMARY KEY (`policy_id`,`purpose_id`,`data_element_id`),
+            FOREIGN KEY (`policy_id`)       REFERENCES `policy`(`id`)            ON DELETE CASCADE,
+            FOREIGN KEY (`purpose_id`)      REFERENCES `purpose`(`id`)           ON DELETE CASCADE,
+            FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)       ON DELETE CASCADE
+        );
+        """
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
+    def add_policy_purpose_data_security(self, policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging):
+        """Add a new policy purpose data security rule."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            INSERT INTO policy_purpose_data_security
+            (policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy purpose data security: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def get_policy_purpose_data_security(self, policy_id=None, purpose_id=None, data_element_id=None):
+        """Retrieve policy purpose data security rules with optional filters."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            SELECT p.name as policy_name, pu.name as purpose_name, de.name as data_element_name,
+                   s.encryption_required, s.encryption_algorithm, s.masking_required, s.masking_format, s.access_logging
+            FROM policy_purpose_data_security s
+            JOIN policy p ON s.policy_id = p.id
+            JOIN purpose pu ON s.purpose_id = pu.id
+            JOIN data_element de ON s.data_element_id = de.id
+            WHERE 1=1
+            """
+            params = []
+            if policy_id:
+                query += " AND s.policy_id = %s"
+                params.append(policy_id)
+            if purpose_id:
+                query += " AND s.purpose_id = %s"
+                params.append(purpose_id)
+            if data_element_id:
+                query += " AND s.data_element_id = %s"
+                params.append(data_element_id)
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "policy_name": row[0],
+                    "purpose_name": row[1],
+                    "data_element_name": row[2],
+                    "encryption_required": row[3],
+                    "encryption_algorithm": row[4],
+                    "masking_required": row[5],
+                    "masking_format": row[6],
+                    "access_logging": row[7]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting policy purpose data security: {e}")
+            return []
+        finally:
+            cursor.close()
+
     # Law Jurisdiction methods
     def add_law_jurisdiction(self, law_id, jurisdiction_id):
         """Add a new law-jurisdiction relationship to the database."""
