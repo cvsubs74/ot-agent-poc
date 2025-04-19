@@ -395,17 +395,40 @@ class DataMap:
             """, unsafe_allow_html=True)
             
             # Get data element data from repository
-            data_elements = self.glossary_repository.get_data_elements()
+            data_elements = self.glossary_repository.get_all_data_elements()
             if data_elements:
                 data_element_data = {
                     "Data Element": [],
-                    "Description": []
+                    "Description": [],
+                    "Default Masking Format": []
                 }
                 for data_element in data_elements:
                     data_element_data["Data Element"].append(data_element["name"])
                     data_element_data["Description"].append(data_element["description"])
+                    data_element_data["Default Masking Format"].append(data_element["default_masking_format"] if data_element["default_masking_format"] else "")
                 
-                st.dataframe(pd.DataFrame(data_element_data))
+                # Create DataFrame
+                df = pd.DataFrame(data_element_data)
+                
+                # Add filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    elements = sorted(df["Data Element"].unique())
+                    selected_element = st.selectbox("Filter by Data Element", ["All"] + list(elements), key="data_element_filter")
+                
+                with col2:
+                    formats = sorted(df["Default Masking Format"].unique())
+                    selected_format = st.selectbox("Filter by Masking Format", ["All"] + list(formats), key="masking_format_filter")
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_element != "All":
+                    filtered_df = filtered_df[filtered_df["Data Element"] == selected_element]
+                if selected_format != "All":
+                    filtered_df = filtered_df[filtered_df["Default Masking Format"] == selected_format]
+                
+                # Display the filtered data
+                st.dataframe(filtered_df)
             else:
                 st.warning("No data available in the database.")
         
@@ -7151,20 +7174,34 @@ class DataMap:
         if data_security_policy:
             policy_purpose_data_security = self.regulatory_metadata_repository.get_policy_purpose_data_security(
                 policy_id=data_security_policy['id'], purpose_id=purpose_id)
+            
+            # Get all data elements with their default masking formats
+            all_data_elements = self.glossary_repository.get_data_elements()
+            data_element_defaults = {de["name"]: de.get("default_masking_format") for de in all_data_elements}
+            
             for data_element in data_elements:
                 sec = next((s for s in policy_purpose_data_security if s["data_element_name"] == data_element), None)
                 security_decisions["Data Element"].append(data_element)
+                
                 if sec:
                     security_decisions["Encryption Required"].append("Yes" if sec["encryption_required"] else "No")
                     security_decisions["Encryption Algorithm"].append(sec["encryption_algorithm"] or "-")
                     security_decisions["Masking Required"].append("Yes" if sec["masking_required"] else "No")
-                    security_decisions["Masking Format"].append(sec["masking_format"] or "-")
+                    
+                    # Use policy masking format if specified, otherwise use data element default
+                    masking_format = sec["masking_format"] or data_element_defaults.get(data_element)
+                    security_decisions["Masking Format"].append(masking_format or "-")
+                    
                     security_decisions["Access Logging"].append("Yes" if sec["access_logging"] else "No")
                 else:
                     security_decisions["Encryption Required"].append("-")
                     security_decisions["Encryption Algorithm"].append("-")
                     security_decisions["Masking Required"].append("-")
-                    security_decisions["Masking Format"].append("-")
+                    
+                    # Use data element default masking format if no policy rule exists
+                    default_format = data_element_defaults.get(data_element)
+                    security_decisions["Masking Format"].append(default_format or "-")
+                    
                     security_decisions["Access Logging"].append("-")
             st.markdown("<h5>Data Security Policies</h5>", unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(security_decisions))

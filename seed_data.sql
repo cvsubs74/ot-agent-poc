@@ -78,8 +78,18 @@ CREATE TABLE IF NOT EXISTS `data_element` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT,
+    `default_masking_format` VARCHAR(100) NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Update default masking formats for sensitive data elements
+UPDATE data_element SET default_masking_format = 'XXXX-XXXX-XXXX-####' WHERE name = 'Credit Card Number';
+UPDATE data_element SET default_masking_format = 'XXXXXXXXXXXX####' WHERE name = 'Bank Account Number';
+UPDATE data_element SET default_masking_format = 'XXX-XX-XXXX' WHERE name = 'Social Security Number';
+UPDATE data_element SET default_masking_format = '****####' WHERE name = 'Phone Number';
+UPDATE data_element SET default_masking_format = '****@domain.com' WHERE name = 'Email Address';
+UPDATE data_element SET default_masking_format = 'IP: XXX.XXX.XXX.XXX' WHERE name = 'IP Address';
+UPDATE data_element SET default_masking_format = 'Device: XXXXXXXX' WHERE name = 'Device ID';
 
 -- Create Data Subject Type table
 CREATE TABLE IF NOT EXISTS `data_subject_type` (
@@ -436,20 +446,6 @@ INSERT INTO `purpose_category` (`name`, `description`) VALUES
 ('Analytics and Improvement', 'Processing for analytics, measurement, and service improvement'),
 ('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
 ('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
-
--- Seed Purpose data
-INSERT INTO `purpose` (`name`, `description`, `category_name`, `risk_level`) VALUES
-('Account Management', 'Managing customer accounts and providing account-related services', 'Service Provision', 'Low'),
-('Marketing', 'Sending marketing communications and promotional offers', 'Marketing and Advertising', 'Medium'),
-('HR Management', 'Managing employee data for HR purposes', 'Employment Management', 'Medium'),
-('Financial Operations', 'Processing financial data for accounting and business operations', 'Legitimate Business Interests', 'High'),
-('Analytics', 'Analyzing user behavior and preferences for service improvement', 'Analytics and Improvement', 'Medium'),
-('Security', 'Ensuring security of systems and data', 'Security and Fraud Prevention', 'Medium'),
-('Legal Compliance', 'Processing data to comply with legal obligations', 'Legal Compliance', 'Medium'),
-('Customer Support', 'Providing customer support and resolving issues', 'Service Provision', 'Low'),
-('Product Development', 'Improving products and services based on user feedback', 'Research and Development', 'Medium'),
-('Fraud Prevention', 'Detecting and preventing fraudulent activities', 'Security and Fraud Prevention', 'High'),
-('AI Model Generation', 'Financial Score Prediction', 'High');
 
 -- Seed Breach Type data
 INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
@@ -2002,6 +1998,20 @@ VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Disaster Recovery'), 0.9);
 
 -- =============================================
+-- DEFAULT SECURITY SETTINGS TABLE
+CREATE TABLE IF NOT EXISTS `default_security_settings` (
+    `id`                           INT PRIMARY KEY DEFAULT 1, -- Assuming a single row for global defaults
+    `default_encryption_algorithm` VARCHAR(100),
+    `created_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `pk_default_settings` CHECK (`id` = 1) -- Ensure only one row can exist
+);
+
+INSERT INTO default_security_settings (default_encryption_algorithm)
+VALUES ('AES-256-GCM')
+ON DUPLICATE KEY UPDATE
+   default_encryption_algorithm = VALUES(default_encryption_algorithm);
+
 -- POLICY PURPOSE DATA SECURITY TABLE
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
     `policy_id`            INT         NOT NULL,
@@ -2015,7 +2025,7 @@ CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
     PRIMARY KEY (`policy_id`,`purpose_id`,`data_element_id`),
     FOREIGN KEY (`policy_id`)       REFERENCES `policy`(`id`)            ON DELETE CASCADE,
     FOREIGN KEY (`purpose_id`)      REFERENCES `purpose`(`id`)           ON DELETE CASCADE,
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)       ON DELETE CASCADE
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)    ON DELETE CASCADE
 );
 
 -- Insert policy-purpose relationships for Data Security Policy
@@ -2029,8 +2039,7 @@ INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery')),
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development')),
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management')),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication')),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'));
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'));
 
 -- Seed Policy Purpose Data Security
 DELETE FROM policy_purpose_data_security;
@@ -2071,11 +2080,7 @@ VALUES
 
 -- User Authentication
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE),
-
--- Legal Compliance
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'), (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Legal Compliance'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE);
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE);
 
 
 -- =============================================

@@ -76,12 +76,52 @@ class GlossaryRepository:
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `name` VARCHAR(255) NOT NULL,
             `description` TEXT,
+            `default_masking_format` VARCHAR(100) NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
         cursor.execute(create_table_query)
         self.connection.commit()
         cursor.close()
+
+    def get_data_element_by_id(self, element_id):
+        """Get a data element by its ID."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+        SELECT id, name, description, default_masking_format 
+        FROM data_element 
+        WHERE id = %s
+        """
+        cursor.execute(query, (element_id,))
+        result = cursor.fetchone()
+        cursor.close()
+        return result
+
+    def get_data_element_by_name(self, element_name):
+        """Get a data element by its name."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+        SELECT id, name, description, default_masking_format 
+        FROM data_element 
+        WHERE name = %s
+        """
+        cursor.execute(query, (element_name,))
+        result = cursor.fetchone()
+        cursor.close()
+        return result
+
+    def get_all_data_elements(self):
+        """Get all data elements."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        query = """
+        SELECT id, name, description, default_masking_format 
+        FROM data_element 
+        ORDER BY name
+        """
+        cursor.execute(query)
+        results = cursor.fetchall()
+        cursor.close()
+        return results
         
     def create_data_subject_type_table(self):
         """Create the Data Subject Type table."""
