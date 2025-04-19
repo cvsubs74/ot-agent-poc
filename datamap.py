@@ -7132,7 +7132,7 @@ class DataMap:
                 access_decisions["Operation"].append(operation)
                 access_decisions["Decision"].append(decision)
                 access_decisions["Restrictions"].append(restrictions)
-            st.markdown("<h5>Access Control Policy Decisions</h5>", unsafe_allow_html=True)
+            st.markdown("<h5>Access Control Policies</h5>", unsafe_allow_html=True)
             access_df = pd.DataFrame(access_decisions)
             def highlight_decision(val):
                 if val == "Allowed":
@@ -7166,7 +7166,7 @@ class DataMap:
                     security_decisions["Masking Required"].append("-")
                     security_decisions["Masking Format"].append("-")
                     security_decisions["Access Logging"].append("-")
-            st.markdown("<h5>Data Security Policy Decisions</h5>", unsafe_allow_html=True)
+            st.markdown("<h5>Data Security Policies</h5>", unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(security_decisions))
         else:
             st.warning("No Data Security Policy found in the database.")
@@ -7189,7 +7189,7 @@ class DataMap:
                     retention_decisions["Retention Trigger"].append("-")
                     retention_decisions["Retention Basis"].append("-")
                     retention_decisions["Exceptions"].append("-")
-            st.markdown("<h5>Data Retention Policy Decisions</h5>", unsafe_allow_html=True)
+            st.markdown("<h5>Data Retention Policies</h5>", unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(retention_decisions))
         else:
             st.warning("No Data Retention Policy found in the database.")
