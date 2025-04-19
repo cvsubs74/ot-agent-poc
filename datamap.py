@@ -5054,10 +5054,7 @@ class DataMap:
                                     st.info(f"Obligation '{obligation['obligation_name']}' already exists")
                 else:
                     st.info(f"No standard obligations defined for {sensitivity_name} sensitivity level.")
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the parameters on the left and click 'Infer Obligations' to get results.")
-    
+            
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
         st.header("Control Inference API")
@@ -5068,220 +5065,169 @@ class DataMap:
         
         # Policy-Based Control Inference
         with source_tabs[0]:
-            st.subheader("Policy-Based Control Recommendations")
-            st.markdown("Recommend controls that help implement specific policies.")
-            
             # Get all policies from the repository
             policies = self.glossary_repository.get_policies()
             if not policies:
                 st.warning("No policies available in the database.")
                 return
             
-            # Create two columns for the form and results
-            col1, col2 = st.columns([1, 1])
+            selected_policy_id = st.selectbox(
+                "Select Policy",
+                options=[p["id"] for p in policies],
+                format_func=lambda x: next((p["name"] for p in policies if p["id"] == x), "Unknown"),
+                key="policy_control_inference"
+            )
             
-            with col1:
-                st.subheader("Input Parameters")
-                selected_policy_id = st.selectbox(
-                    "Select Policy",
-                    options=[p["id"] for p in policies],
-                    format_func=lambda x: next((p["name"] for p in policies if p["id"] == x), "Unknown"),
-                    key="policy_control_inference"
-                )
-                
-                analyze_button = st.button("Recommend Controls", key="policy_controls_button")
-                
-                # Render decision tree immediately below the button in the left column
-                if analyze_button and selected_policy_id:
-                    self.decision_tree_section()
+            analyze_button = st.button("Recommend Controls", key="policy_controls_button")
             
-            with col2:
-                st.subheader("Recommended Controls")
+            if analyze_button and selected_policy_id:
+                # Get the policy name for display
+                policy_name = next((p["name"] for p in policies if p["id"] == selected_policy_id), "Unknown")
                 
-                if analyze_button and selected_policy_id:
-                    # Get the policy name for display
-                    policy_name = next((p["name"] for p in policies if p["id"] == selected_policy_id), "Unknown")
+                # Get policy controls from the repository
+                policy_controls_list = self.regulatory_metadata_repository.get_policy_controls(policy_id=selected_policy_id)
+                
+                # Convert to a dictionary format for easier access
+                policy_controls = {}
+                if policy_controls_list:
+                    policy_controls[selected_policy_id] = policy_controls_list
+                
+                if selected_policy_id in policy_controls:
+                    controls = policy_controls[selected_policy_id]
                     
-                    # Get policy controls from the repository
-                    policy_controls_list = self.regulatory_metadata_repository.get_policy_controls(policy_id=selected_policy_id)
+                    # Group by control type for better organization
+                    control_types = set(c["control_type"] for c in controls)
                     
-                    # Convert to a dictionary format for easier access
-                    policy_controls = {}
-                    if policy_controls_list:
-                        policy_controls[selected_policy_id] = policy_controls_list
-                    
-                    if selected_policy_id in policy_controls:
-                        controls = policy_controls[selected_policy_id]
+                    for control_type in control_types:
+                        st.markdown(f"#### {control_type} Controls")
+                        type_controls = [c for c in controls if c["control_type"] == control_type]
                         
-                        st.markdown(f"### Recommended Controls for {policy_name}")
+                        # Sort by relevance score
+                        type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
                         
-                        # Group by control type for better organization
-                        control_types = set(c["control_type"] for c in controls)
-                        
-                        for control_type in control_types:
-                            st.markdown(f"#### {control_type} Controls")
-                            type_controls = [c for c in controls if c["control_type"] == control_type]
-                            
-                            # Sort by relevance score
-                            type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
-                            
-                            for control in type_controls:
-                                with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
-                                    # Use control_type and implementation_status instead of description
-                                    st.markdown(f"**Control Type:** {control['control_type']}")
-                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
-                                    st.markdown(f"**Priority:** {control['priority']}")
-                                    
-                                    # Add a button to implement this control
-                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_policy_{control['control_id']}"):
-                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
-                    else:
-                        st.info(f"No control recommendations available for {policy_name}.")
+                        for control in type_controls:
+                            with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
+                                # Use control_type and implementation_status instead of description
+                                st.markdown(f"**Control Type:** {control['control_type']}")
+                                st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                st.markdown(f"**Priority:** {control['priority']}")
+                                
+                                # Add a button to implement this control
+                                if st.button(f"Implement Control: {control['control_name']}", key=f"implement_policy_{control['control_id']}"):
+                                    st.success(f"Implementation of '{control['control_name']}' has been initiated.")
                 else:
-                    # Display instructions when the form hasn't been submitted yet
-                    st.info("Select a policy and click 'Recommend Controls' to get results.")
+                    st.info(f"No control recommendations available for {policy_name}.")
         
         # Risk-Based Control Inference
         with source_tabs[1]:
-            st.subheader("Risk-Based Control Recommendations")
-            st.markdown("Recommend controls that help mitigate specific risks.")
-            
             # Get all risks from the repository
             risks = self.glossary_repository.get_risks()
             if not risks:
                 st.warning("No risks available in the database.")
                 return
             
-            # Create two columns for the form and results
-            col1, col2 = st.columns([1, 1])
+            selected_risk_id = st.selectbox(
+                "Select Risk",
+                options=[r["id"] for r in risks],
+                format_func=lambda x: next((r["name"] for r in risks if r["id"] == x), "Unknown"),
+                key="risk_control_inference"
+            )
             
-            with col1:
-                st.subheader("Input Parameters")
-                selected_risk_id = st.selectbox(
-                    "Select Risk",
-                    options=[r["id"] for r in risks],
-                    format_func=lambda x: next((r["name"] for r in risks if r["id"] == x), "Unknown"),
-                    key="risk_control_inference"
-                )
+            analyze_button = st.button("Recommend Controls", key="risk_controls_button")
                 
-                analyze_button = st.button("Recommend Controls", key="risk_controls_button")
-            
-            with col2:
-                st.subheader("Recommended Controls")
+            if analyze_button and selected_risk_id:
+                # Get the risk name for display
+                risk_name = next((r["name"] for r in risks if r["id"] == selected_risk_id), "Unknown")
                 
-                if analyze_button and selected_risk_id:
-                    # Get the risk name for display
-                    risk_name = next((r["name"] for r in risks if r["id"] == selected_risk_id), "Unknown")
+                # Get risk controls from the repository
+                risk_controls_list = self.regulatory_metadata_repository.get_risk_controls(risk_id=selected_risk_id)
+                
+                # Convert to a dictionary format for easier access
+                risk_controls = {}
+                if risk_controls_list:
+                    risk_controls[selected_risk_id] = risk_controls_list
+                
+                if selected_risk_id in risk_controls:
+                    controls = risk_controls[selected_risk_id]
                     
-                    # Get risk controls from the repository
-                    risk_controls_list = self.regulatory_metadata_repository.get_risk_controls(risk_id=selected_risk_id)
+                    # Group by control type for better organization
+                    control_types = set(c["control_type"] for c in controls)
                     
-                    # Convert to a dictionary format for easier access
-                    risk_controls = {}
-                    if risk_controls_list:
-                        risk_controls[selected_risk_id] = risk_controls_list
-                    
-                    if selected_risk_id in risk_controls:
-                        controls = risk_controls[selected_risk_id]
+                    for control_type in control_types:
+                        st.markdown(f"#### {control_type} Controls")
+                        type_controls = [c for c in controls if c["control_type"] == control_type]
                         
-                        st.markdown(f"### Recommended Controls for {risk_name} Risk")
+                        # Sort by mitigation level
+                        mitigation_order = {"High": 0, "Medium": 1, "Low": 2}
+                        type_controls.sort(key=lambda x: mitigation_order.get(x["mitigation_level"], 99))
                         
-                        # Group by control type for better organization
-                        control_types = set(c["control_type"] for c in controls)
-                        
-                        for control_type in control_types:
-                            st.markdown(f"#### {control_type} Controls")
-                            type_controls = [c for c in controls if c["control_type"] == control_type]
-                            
-                            # Sort by mitigation level
-                            mitigation_order = {"High": 0, "Medium": 1, "Low": 2}
-                            type_controls.sort(key=lambda x: mitigation_order.get(x["mitigation_level"], 99))
-                            
-                            for control in type_controls:
-                                with st.expander(f"{control['control_name']} (Mitigation: {control['mitigation_level']})", expanded=True):
-                                    st.markdown(f"**Control Type:** {control['control_type']}")
-                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
-                                    st.markdown(f"**Priority:** {control['priority']}")
-                                    
-                                    # Add a button to implement this control
-                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_risk_{control['control_id']}"):
-                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
-                    else:
-                        st.info(f"No control recommendations available for {risk_name}.")
+                        for control in type_controls:
+                            with st.expander(f"{control['control_name']} (Mitigation: {control['mitigation_level']})", expanded=True):
+                                st.markdown(f"**Control Type:** {control['control_type']}")
+                                st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                st.markdown(f"**Priority:** {control['priority']}")
+                                
+                                # Add a button to implement this control
+                                if st.button(f"Implement Control: {control['control_name']}", key=f"implement_risk_{control['control_id']}"):
+                                    st.success(f"Implementation of '{control['control_name']}' has been initiated.")
                 else:
-                    # Display instructions when the form hasn't been submitted yet
-                    st.info("Select a risk and click 'Recommend Controls' to get results.")
+                    st.info(f"No control recommendations available for {risk_name}.")
         
         # Framework-Based Control Inference
         with source_tabs[2]:
-            st.subheader("Framework-Based Control Recommendations")
-            st.markdown("Recommend controls that help implement specific compliance frameworks.")
-            
             # Get all frameworks from the repository
             frameworks = self.glossary_repository.get_frameworks()
             if not frameworks:
                 st.warning("No frameworks available in the database.")
                 return
             
-            # Create two columns for the form and results
-            col1, col2 = st.columns([1, 1])
+            st.subheader("Input Parameters")
+            selected_framework_id = st.selectbox(
+                "Select Framework",
+                options=[f["id"] for f in frameworks],
+                format_func=lambda x: next((f["name"] for f in frameworks if f["id"] == x), "Unknown"),
+                key="framework_control_inference"
+            )
             
-            with col1:
-                st.subheader("Input Parameters")
-                selected_framework_id = st.selectbox(
-                    "Select Framework",
-                    options=[f["id"] for f in frameworks],
-                    format_func=lambda x: next((f["name"] for f in frameworks if f["id"] == x), "Unknown"),
-                    key="framework_control_inference"
-                )
-                
-                analyze_button = st.button("Recommend Controls", key="framework_controls_button")
+            analyze_button = st.button("Recommend Controls", key="framework_controls_button")
             
-            with col2:
-                st.subheader("Recommended Controls")
+            if analyze_button and selected_framework_id:
+                # Get the framework name for display
+                framework_name = next((f["name"] for f in frameworks if f["id"] == selected_framework_id), "Unknown")
                 
-                if analyze_button and selected_framework_id:
-                    # Get the framework name for display
-                    framework_name = next((f["name"] for f in frameworks if f["id"] == selected_framework_id), "Unknown")
+                # Get framework controls from the repository
+                framework_controls_list = self.regulatory_metadata_repository.get_framework_controls(framework_id=selected_framework_id)
+                
+                # Convert to a dictionary format for easier access
+                framework_controls = {}
+                if framework_controls_list:
+                    framework_controls[selected_framework_id] = framework_controls_list
+                
+                if selected_framework_id in framework_controls:
+                    controls = framework_controls[selected_framework_id]
                     
-                    # Get framework controls from the repository
-                    framework_controls_list = self.regulatory_metadata_repository.get_framework_controls(framework_id=selected_framework_id)
+                    # Group by control type for better organization
+                    control_types = set(c["control_type"] for c in controls)
                     
-                    # Convert to a dictionary format for easier access
-                    framework_controls = {}
-                    if framework_controls_list:
-                        framework_controls[selected_framework_id] = framework_controls_list
-                    
-                    if selected_framework_id in framework_controls:
-                        controls = framework_controls[selected_framework_id]
+                    for control_type in control_types:
+                        st.markdown(f"#### {control_type} Controls")
+                        type_controls = [c for c in controls if c["control_type"] == control_type]
                         
-                        st.markdown(f"### Recommended Controls for {framework_name}")
+                        # Sort by relevance score
+                        type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
                         
-                        # Group by control type for better organization
-                        control_types = set(c["control_type"] for c in controls)
-                        
-                        for control_type in control_types:
-                            st.markdown(f"#### {control_type} Controls")
-                            type_controls = [c for c in controls if c["control_type"] == control_type]
-                            
-                            # Sort by relevance score
-                            type_controls.sort(key=lambda x: x["relevance_score"], reverse=True)
-                            
-                            for control in type_controls:
-                                with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
-                                    st.markdown(f"**Control Type:** {control['control_type']}")
-                                    st.markdown(f"**Implementation Status:** {control['implementation_status']}")
-                                    st.markdown(f"**Priority:** {control['priority']}")
-                                    
-                                    # Add a button to implement this control
-                                    if st.button(f"Implement Control: {control['control_name']}", key=f"implement_framework_{control['control_id']}"):
-                                        st.success(f"Implementation of '{control['control_name']}' has been initiated.")
-                    else:
-                        st.info(f"No control recommendations available for {framework_name}.")
+                        for control in type_controls:
+                            with st.expander(f"{control['control_name']} (Relevance: {control['relevance_score']:.1f})", expanded=True):
+                                st.markdown(f"**Control Type:** {control['control_type']}")
+                                st.markdown(f"**Implementation Status:** {control['implementation_status']}")
+                                st.markdown(f"**Priority:** {control['priority']}")
+                                
+                                # Add a button to implement this control
+                                if st.button(f"Implement Control: {control['control_name']}", key=f"implement_framework_{control['control_id']}"):
+                                    st.success(f"Implementation of '{control['control_name']}' has been initiated.")
                 else:
-                    # Display instructions when the form hasn't been submitted yet
-                    st.info("Select a framework and click 'Recommend Controls' to get results.")
-                
+                    st.info(f"No control recommendations available for {framework_name}.")
+        
     def decision_tree_section(self):
         """Visualize the regulatory ontology and association rules as a decision tree using PyVis.
         This shows the relationships between entity types rather than specific instances.
@@ -5560,202 +5506,182 @@ class DataMap:
             </div>
             ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options)
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
-                
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options)
-            
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options)
+        # Get data subject types
+        data_subject_types = self.glossary_repository.get_data_subject_types()
+        if data_subject_types:
+            dst_options = [dst["name"] for dst in data_subject_types]
+            selected_dst = st.selectbox("Select Data Subject Type", options=dst_options)
+        else:
+            st.warning("No data subject types available.")
+            return
+        
+        # Option to select either data element or data category
+        data_type = st.radio("Select Data Type", ["Data Element", "Data Category"])
+        
+        if data_type == "Data Element":
+            data_elements = self.glossary_repository.get_data_elements()
+            if data_elements:
+                de_options = [de["name"] for de in data_elements]
+                selected_data = st.selectbox("Select Data Element", options=de_options)
             else:
-                st.warning("No data subject types available.")
+                st.warning("No data elements available.")
                 return
-            
-
-            
-            # Option to select either data element or data category
-            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"])
-            
-            if data_type == "Data Element":
-                data_elements = self.glossary_repository.get_data_elements()
-                if data_elements:
-                    de_options = [de["name"] for de in data_elements]
-                    selected_data = st.selectbox("Select Data Element", options=de_options)
-                else:
-                    st.warning("No data elements available.")
-                    return
-            else:  # Data Category
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    dc_options = [dc["name"] for dc in data_categories]
-                    selected_data = st.selectbox("Select Data Category", options=dc_options)
-                else:
-                    st.warning("No data categories available.")
-                    return
-            
-            # Add a button to trigger inference
-            infer_button = st.button("Infer Sensitivity")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "data", "label": "Data Element/Category", "color": "#3498db", "shape": "ellipse", "size": 30},
-                {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "dst", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
-
-                {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25, 
-                 "title": {"html": """
-                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
-                        <h3>Sensitivity Lookup Process</h3>
-                        <p>This lookup process determines data sensitivity by:</p>
-                        <ol>
-                            <li>Checking the <b>Law Data Subject Type Data Element Sensitivity</b> table for exact matches</li>
-                            <li>If no match, checking the <b>Law Data Subject Type Data Category Sensitivity</b> table</li>
-
-                            <li>Applying law-specific sensitivity rules and thresholds</li>
-                            <li>Returning the appropriate sensitivity level with confidence score</li>
-                        </ol>
-                        <p>The algorithm prioritizes specific element matches over category matches and considers the most restrictive interpretation when multiple laws apply.</p>
-                    </div>
-                """}},
-                {"id": "high", "label": "High Sensitivity", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "medium", "label": "Medium Sensitivity", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "low", "label": "Low Sensitivity", "color": "#2ecc71", "shape": "box", "size": 25}
-            ]
-            
-            # Define edges for the decision tree
-            edges = [
-                {"source": "data", "target": "law", "label": "Regulated by"},
-                {"source": "data", "target": "dst", "label": "Relates to"},
-
-                {"source": "law", "target": "lookup", "label": ""},
-                {"source": "dst", "target": "lookup", "label": ""},
-
-                {"source": "lookup", "target": "high", "label": "If sensitive PII"},
-                {"source": "lookup", "target": "medium", "label": "If general PII"},
-                {"source": "lookup", "target": "low", "label": "If non-PII"}
-            ]
-            
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        else:  # Data Category
+            data_categories = self.glossary_repository.get_data_categories()
+            if data_categories:
+                dc_options = [dc["name"] for dc in data_categories]
+                selected_data = st.selectbox("Select Data Category", options=dc_options)
+            else:
+                st.warning("No data categories available.")
+                return
         
-        with col2:
+        # Add a button to trigger inference
+        infer_button = st.button("Infer Sensitivity")
+        
+        # Show results below the button
+        if infer_button:
             st.subheader("Sensitivity Results")
+            # Display a spinner while "processing"
+            with st.spinner("Analyzing regulatory metadata..."):
+                # Get the sensitivity based on the selected parameters
+                sensitivity = self._infer_sensitivity(
+                    selected_law, 
+                    selected_dst, 
+                    selected_data, 
+                    data_type
+                )
             
-            if infer_button:
-                # Display a spinner while "processing"
-                with st.spinner("Analyzing regulatory metadata..."):
-                    # Get the sensitivity based on the selected parameters
-                    sensitivity = self._infer_sensitivity(
-                        selected_law, 
-                        selected_dst, 
-                        selected_data, 
-                        data_type
-                    )
+            if sensitivity:
+                # Display the result with appropriate styling based on sensitivity level
+                color = "#e74c3c" if sensitivity.lower() == "high" else \
+                       "#f39c12" if sensitivity.lower() == "medium" else \
+                       "#2ecc71"
                 
-                if sensitivity:
-                    # Display the result with appropriate styling based on sensitivity level
-                    color = "#e74c3c" if sensitivity.lower() == "high" else \
-                           "#f39c12" if sensitivity.lower() == "medium" else \
-                           "#2ecc71"
-                    
-                    st.markdown(f"""
-                    <div style="padding: 20px; border-radius: 10px; background-color: {color}25; border: 2px solid {color}; margin-top: 20px;">
-                        <h3 style="color: {color};">Sensitivity Level: {sensitivity}</h3>
-                        <p>Based on the selected parameters, the data is classified as <strong>{sensitivity} sensitivity</strong> 
-                        under {selected_law}.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display the reasoning
-                    st.markdown("### Reasoning")
-                    
-                    if data_type == "Data Element":
-                        st.markdown(f"""
-                        The sensitivity level was determined based on the following factors:
-                        - **Law**: {selected_law}
-                        - **Data Subject Type**: {selected_dst}
-                        - **Data Element**: {selected_data}
-                        
-                        According to the regulatory metadata, when processing the data element '{selected_data}' 
-                        for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
-                        """)
-                    else:
-                        st.markdown(f"""
-                        The sensitivity level was determined based on the following factors:
-                        - **Law**: {selected_law}
-                        - **Data Subject Type**: {selected_dst}
-                        - **Data Category**: {selected_data}
-                        
-                        According to the regulatory metadata, when processing data from the '{selected_data}' category 
-                        for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
-                        """)
-                    
-                    # Add compliance recommendations based on sensitivity
-                    st.markdown("### Compliance Recommendations")
-                    
-                    if sensitivity.lower() == "high":
-                        st.markdown("""
-                        #### High Sensitivity Data Handling Requirements:
-                        - Implement strong encryption for storage and transmission
-                        - Conduct a Data Protection Impact Assessment (DPIA)
-                        - Implement strict access controls and authentication
-                        - Ensure explicit consent is obtained where required
-                        - Maintain detailed processing records
-                        - Consider data minimization and pseudonymization techniques
-                        """)
-                    elif sensitivity.lower() == "medium":
-                        st.markdown("""
-                        #### Medium Sensitivity Data Handling Requirements:
-                        - Implement standard encryption for storage and transmission
-                        - Consider whether a DPIA is necessary
-                        - Implement appropriate access controls
-                        - Ensure appropriate legal basis for processing
-                        - Maintain processing records
-                        - Apply data minimization principles
-                        """)
-                    else:  # Low
-                        st.markdown("""
-                        #### Low Sensitivity Data Handling Requirements:
-                        - Follow standard security practices
-                        - Implement basic access controls
-                        - Ensure appropriate legal basis for processing
-                        - Apply data minimization principles
-                        - Maintain basic processing records
-                        """)
-                else:
-                    st.warning("No sensitivity classification found for the selected parameters.")
-                    st.markdown("""
-                    This could be because:
-                    1. The specific combination of parameters is not defined in the regulatory metadata
-                    2. The selected law does not regulate this specific data type for this subject type
-                    3. Additional context may be needed for proper classification
-                    
-                    Consider consulting with a privacy professional for further guidance.
-                    """)
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the parameters on the left and click 'Infer Sensitivity' to get results.")
-                
-                # Show a sample result visualization
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Results will appear here after inference...</p>
+                st.markdown(f"""
+                <div style="padding: 20px; border-radius: 10px; background-color: {color}25; border: 2px solid {color}; margin-top: 20px;">
+                    <h3 style="color: {color};">Sensitivity Level: {sensitivity}</h3>
+                    <p>Based on the selected parameters, the data is classified as <strong>{sensitivity} sensitivity</strong> 
+                    under {selected_law}.</p>
                 </div>
                 """, unsafe_allow_html=True)
+                    
+                # Display the reasoning
+                st.markdown("### Reasoning")
+                
+                if data_type == "Data Element":
+                    st.markdown(f"""
+                    The sensitivity level was determined based on the following factors:
+                    - **Law**: {selected_law}
+                    - **Data Subject Type**: {selected_dst}
+                    - **Data Element**: {selected_data}
+                    
+                    According to the regulatory metadata, when processing the data element '{selected_data}' 
+                    for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
+                    """)
+                else:
+                    st.markdown(f"""
+                    The sensitivity level was determined based on the following factors:
+                    - **Law**: {selected_law}
+                    - **Data Subject Type**: {selected_dst}
+                    - **Data Category**: {selected_data}
+                    
+                    According to the regulatory metadata, when processing data from the '{selected_data}' category 
+                    for a '{selected_dst}' under '{selected_law}', the appropriate sensitivity classification is '{sensitivity}'.
+                    """)
+                    
+                # Add compliance recommendations based on sensitivity
+                st.markdown("### Compliance Recommendations")
+                
+                if sensitivity.lower() == "high":
+                    st.markdown("""
+                    #### High Sensitivity Data Handling Requirements:
+                    - Implement strong encryption for storage and transmission
+                    - Conduct a Data Protection Impact Assessment (DPIA)
+                    - Implement strict access controls and authentication
+                    - Ensure explicit consent is obtained where required
+                    - Maintain detailed processing records
+                    - Consider data minimization and pseudonymization techniques
+                    """)
+                elif sensitivity.lower() == "medium":
+                    st.markdown("""
+                    #### Medium Sensitivity Data Handling Requirements:
+                    - Implement standard encryption for storage and transmission
+                    - Consider whether a DPIA is necessary
+                    - Implement appropriate access controls
+                    - Ensure appropriate legal basis for processing
+                    - Maintain processing records
+                    - Apply data minimization principles
+                    """)
+                else:  # Low
+                    st.markdown("""
+                    #### Low Sensitivity Data Handling Requirements:
+                    - Follow standard security practices
+                    - Implement basic access controls
+                    - Ensure appropriate legal basis for processing
+                    - Apply data minimization principles
+                    - Maintain basic processing records
+                    """)
+                    
+                # Define nodes for the decision tree
+                nodes = [
+                    {"id": "data", "label": "Data Element/Category", "color": "#3498db", "shape": "ellipse", "size": 30},
+                    {"id": "law", "label": "Law", "color": "#e74c3c", "shape": "box", "size": 25},
+                    {"id": "dst", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
+
+                    {"id": "lookup", "label": "Sensitivity Lookup", "color": "#2ecc71", "shape": "box", "size": 25, 
+                     "title": {"html": """
+                        <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
+                            <h3>Sensitivity Lookup Process</h3>
+                            <p>This lookup process determines data sensitivity by:</p>
+                            <ol>
+                                <li>Checking the <b>Law Data Subject Type Data Element Sensitivity</b> table for exact matches</li>
+                                <li>If no match, checking the <b>Law Data Subject Type Data Category Sensitivity</b> table</li>
+
+                                <li>Applying law-specific sensitivity rules and thresholds</li>
+                                <li>Returning the appropriate sensitivity level with confidence score</li>
+                            </ol>
+                            <p>The algorithm prioritizes specific element matches over category matches and considers the most restrictive interpretation when multiple laws apply.</p>
+                        </div>
+                    """}},
+                    {"id": "high", "label": "High Sensitivity", "color": "#e74c3c", "shape": "box", "size": 25},
+                    {"id": "medium", "label": "Medium Sensitivity", "color": "#f39c12", "shape": "box", "size": 25},
+                    {"id": "low", "label": "Low Sensitivity", "color": "#2ecc71", "shape": "box", "size": 25}
+                ]
+                
+                # Define edges for the decision tree
+                edges = [
+                    {"source": "data", "target": "law", "label": "Regulated by"},
+                    {"source": "data", "target": "dst", "label": "Relates to"},
+
+                    {"source": "law", "target": "lookup", "label": ""},
+                    {"source": "dst", "target": "lookup", "label": ""},
+
+                    {"source": "lookup", "target": "high", "label": "If sensitive PII"},
+                    {"source": "lookup", "target": "medium", "label": "If general PII"},
+                    {"source": "lookup", "target": "low", "label": "If non-PII"}
+                ]
+                
+                # Render the decision tree
+                self._render_decision_tree(nodes, edges, "Sensitivity Inference Process", 700)
+            else:
+                st.warning("No sensitivity classification found for the selected parameters.")
+                st.markdown("""
+                This could be because:
+                1. The specific combination of parameters is not defined in the regulatory metadata
+                2. The selected law does not regulate this specific data type for this subject type
+                3. Additional context may be needed for proper classification
+                
+                Consider consulting with a privacy professional for further guidance.
+                """)
     
     def _infer_sensitivity(self, law, data_subject_type, data_value, data_type):
         """Internal method to infer sensitivity based on regulatory metadata.
@@ -5817,50 +5743,134 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options)
         
-        with col1:
-            st.subheader("Input Parameters")
+        # Get jurisdictions
+        jurisdictions = self.glossary_repository.get_jurisdictions()
+        if jurisdictions:
+            jurisdiction_options = [j["name"] for j in jurisdictions]
+            selected_jurisdiction = st.selectbox("Select Jurisdiction", options=jurisdiction_options)
+        else:
+            selected_jurisdiction = None
+        
+        # Get purpose categories (new)
+        purpose_categories = self.glossary_repository.get_purpose_categories()
+        if purpose_categories:
+            purpose_category_options = [pc["name"] for pc in purpose_categories]
+            selected_purpose_category = st.selectbox("Select Purpose Category", options=purpose_category_options)
+        else:
+            st.warning("No purpose categories available.")
+            return
+                                
+        # Add sensitivity level selection
+        sensitivities = self.glossary_repository.get_sensitivities()
+        if sensitivities:
+            sensitivity_options = [s["name"] for s in sensitivities]
+            selected_sensitivity = st.selectbox("Select Data Sensitivity", options=sensitivity_options)
+        else:
+            sensitivity_options = ["Low", "Medium", "High"]
+            selected_sensitivity = st.selectbox("Select Data Sensitivity", options=sensitivity_options)
+        
+        # Add a button to trigger inference
+        infer_button = st.button("Recommend Legal Basis")
+        
+        if infer_button:
+            # Display a spinner while "processing"
+            with st.spinner("Analyzing regulatory metadata..."):
+                # Get legal bases based on the selected parameters
+                legal_bases = self._infer_legal_basis(
+                    selected_law, 
+                    selected_jurisdiction,
+                    selected_sensitivity,
+                    selected_purpose_category
+                )
             
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
+            if legal_bases:
+                # Display the recommended legal bases with appropriate styling
+                st.markdown(f"""
+                <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                    <h3 style="color: #3498db;">Recommended Legal Bases</h3>
+                    <p>Based on the selected parameters, the following legal bases are recommended for processing under {selected_law}:</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options)
-            
-            # Get jurisdictions
-            jurisdictions = self.glossary_repository.get_jurisdictions()
-            if jurisdictions:
-                jurisdiction_options = [j["name"] for j in jurisdictions]
-                selected_jurisdiction = st.selectbox("Select Jurisdiction", options=jurisdiction_options)
+                # Display each legal basis with its description and compliance requirements
+                for i, legal_basis in enumerate(legal_bases):
+                    with st.expander(f"{i+1}. {legal_basis['name']}", expanded=True if i == 0 else False):
+                        st.markdown(f"**Description**: {legal_basis.get('description', 'No description available')}")
+                        
+                        # Add compliance requirements from the repository
+                        st.markdown("#### Compliance Requirements:")
+                        
+                        if "compliance_requirements" in legal_basis and legal_basis["compliance_requirements"]:
+                            requirements_list = "\n".join([f"- {req}" for req in legal_basis["compliance_requirements"]])
+                            st.markdown(requirements_list)
+                        else:
+                            st.markdown("No specific compliance requirements available for this legal basis.")
+                        
+                        # Add compatibility with sensitivity level
+                        compatibility = "High" if selected_sensitivity.lower() == "low" else \
+                                        "Medium" if selected_sensitivity.lower() == "medium" else \
+                                        "Low"
+                        
+                        st.markdown(f"**Compatibility with {selected_sensitivity} sensitivity data**: {compatibility}")
+                
+                # Display the reasoning
+                st.markdown("### Reasoning")
+                st.markdown(f"""
+                The legal basis recommendations were determined based on the following factors:
+                - **Law**: {selected_law}
+                - **Jurisdiction**: {selected_jurisdiction if selected_jurisdiction else 'Not specified'}
+                - **Purpose Category**: {selected_purpose_category}
+                - **Sensitivity Level**: {selected_sensitivity}
+                
+                According to the regulatory metadata, when processing {selected_sensitivity} data under {selected_law} for the purpose category of {selected_purpose_category}, 
+                the recommended legal bases are listed above in order of preference.
+                """)
+                
+                # Add general compliance notes
+                st.markdown("### General Compliance Notes")
+                st.markdown("""
+                1. **Documentation**: Always document your legal basis assessment and decision process.
+                2. **Transparency**: Clearly communicate the legal basis to data subjects in your privacy notice.
+                3. **Purpose Limitation**: Only use the data for the purpose specified under the chosen legal basis.
+                4. **Data Minimization**: Only process the data necessary for the specified purpose.
+                5. **Regular Review**: Periodically review your legal basis to ensure it remains appropriate.
+                6. **Special Categories**: For sensitive data, ensure you also have an appropriate condition for processing.
+                """)
             else:
-                selected_jurisdiction = None
-            
-            # Get purpose categories (new)
-            purpose_categories = self.glossary_repository.get_purpose_categories()
-            if purpose_categories:
-                purpose_category_options = [pc["name"] for pc in purpose_categories]
-                selected_purpose_category = st.selectbox("Select Purpose Category", options=purpose_category_options)
-            else:
-                st.warning("No purpose categories available.")
-                return
-                                    
-            # Add sensitivity level selection
-            sensitivities = self.glossary_repository.get_sensitivities()
-            if sensitivities:
-                sensitivity_options = [s["name"] for s in sensitivities]
-                selected_sensitivity = st.selectbox("Select Data Sensitivity", options=sensitivity_options)
-            else:
-                sensitivity_options = ["Low", "Medium", "High"]
-                selected_sensitivity = st.selectbox("Select Data Sensitivity", options=sensitivity_options)
-            
-            # Add a button to trigger inference
-            infer_button = st.button("Recommend Legal Basis")
-            
+                st.warning("No specific legal basis recommendations found for the selected parameters.")
+                st.markdown("""
+                This could be because:
+                1. The specific combination of parameters is not defined in the regulatory metadata
+                2. The selected law does not specify legal bases for this scenario
+                3. Additional context may be needed for proper recommendations
+                
+                Consider consulting with a privacy professional for further guidance.
+                """)
+                
+                # Provide general legal basis information
+                st.markdown("### General Legal Basis Information")
+                st.markdown("""
+                Here are the common legal bases for processing personal data under major privacy regulations:
+                
+                1. **Consent**: The data subject has given clear consent for processing their personal data for a specific purpose.
+                2. **Contract**: Processing is necessary for a contract with the data subject or to take steps at their request before entering a contract.
+                3. **Legal Obligation**: Processing is necessary to comply with a legal obligation.
+                4. **Vital Interests**: Processing is necessary to protect someone's life or vital interests.
+                5. **Public Task**: Processing is necessary for a task carried out in the public interest or in the exercise of official authority.
+                6. **Legitimate Interests**: Processing is necessary for legitimate interests pursued by the controller or a third party, except where overridden by the interests or rights of the data subject.
+                
+                The appropriate legal basis depends on your specific circumstances, the nature of the data, and the purpose of processing.
+                """)
+                
             # Define nodes for the decision tree
             nodes = [
                 {"id": "processing", "label": "Processing Activity", "color": "#3498db", "shape": "ellipse", "size": 30},
@@ -5868,7 +5878,7 @@ class DataMap:
                 {"id": "purpose", "label": "Purpose Category", "color": "#f39c12", "shape": "box", "size": 25},
                 {"id": "sensitivity", "label": "Data Sensitivity", "color": "#9b59b6", "shape": "box", "size": 25},
                 {"id": "lookup", "label": "Legal Basis Lookup", "color": "#2ecc71", "shape": "box", "size": 25,
-                 "title": {"html": """
+                    "title": {"html": """
                     <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
                         <h3>Legal Basis Lookup Process</h3>
                         <p>This lookup process determines appropriate legal bases by:</p>
@@ -5901,113 +5911,9 @@ class DataMap:
                 {"source": "lookup", "target": "legitimate", "label": "Medium sensitivity"},
                 {"source": "lookup", "target": "legal", "label": "Compliance"}
             ]
-            
+                
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
-        
-        with col2:
-            st.subheader("Legal Basis Recommendations")
-            
-            if infer_button:
-                # Display a spinner while "processing"
-                with st.spinner("Analyzing regulatory metadata..."):
-                    # Get legal bases based on the selected parameters
-                    legal_bases = self._infer_legal_basis(
-                        selected_law, 
-                        selected_jurisdiction,
-                        selected_sensitivity,
-                        selected_purpose_category
-                    )
-                
-                if legal_bases:
-                    # Display the recommended legal bases with appropriate styling
-                    st.markdown(f"""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
-                        <h3 style="color: #3498db;">Recommended Legal Bases</h3>
-                        <p>Based on the selected parameters, the following legal bases are recommended for processing under {selected_law}:</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display each legal basis with its description and compliance requirements
-                    for i, legal_basis in enumerate(legal_bases):
-                        with st.expander(f"{i+1}. {legal_basis['name']}", expanded=True if i == 0 else False):
-                            st.markdown(f"**Description**: {legal_basis.get('description', 'No description available')}")
-                            
-                            # Add compliance requirements from the repository
-                            st.markdown("#### Compliance Requirements:")
-                            
-                            if "compliance_requirements" in legal_basis and legal_basis["compliance_requirements"]:
-                                requirements_list = "\n".join([f"- {req}" for req in legal_basis["compliance_requirements"]])
-                                st.markdown(requirements_list)
-                            else:
-                                st.markdown("No specific compliance requirements available for this legal basis.")
-                            
-                            # Add compatibility with sensitivity level
-                            compatibility = "High" if selected_sensitivity.lower() == "low" else \
-                                          "Medium" if selected_sensitivity.lower() == "medium" else \
-                                          "Low"
-                            
-                            st.markdown(f"**Compatibility with {selected_sensitivity} sensitivity data**: {compatibility}")
-                    
-                    # Display the reasoning
-                    st.markdown("### Reasoning")
-                    st.markdown(f"""
-                    The legal basis recommendations were determined based on the following factors:
-                    - **Law**: {selected_law}
-                    - **Jurisdiction**: {selected_jurisdiction if selected_jurisdiction else 'Not specified'}
-                    - **Purpose Category**: {selected_purpose_category}
-                    - **Sensitivity Level**: {selected_sensitivity}
-                    
-                    According to the regulatory metadata, when processing {selected_sensitivity} data under {selected_law} for the purpose category of {selected_purpose_category}, 
-                    the recommended legal bases are listed above in order of preference.
-                    """)
-                    
-                    # Add general compliance notes
-                    st.markdown("### General Compliance Notes")
-                    st.markdown("""
-                    1. **Documentation**: Always document your legal basis assessment and decision process.
-                    2. **Transparency**: Clearly communicate the legal basis to data subjects in your privacy notice.
-                    3. **Purpose Limitation**: Only use the data for the purpose specified under the chosen legal basis.
-                    4. **Data Minimization**: Only process the data necessary for the specified purpose.
-                    5. **Regular Review**: Periodically review your legal basis to ensure it remains appropriate.
-                    6. **Special Categories**: For sensitive data, ensure you also have an appropriate condition for processing.
-                    """)
-                else:
-                    st.warning("No specific legal basis recommendations found for the selected parameters.")
-                    st.markdown("""
-                    This could be because:
-                    1. The specific combination of parameters is not defined in the regulatory metadata
-                    2. The selected law does not specify legal bases for this scenario
-                    3. Additional context may be needed for proper recommendations
-                    
-                    Consider consulting with a privacy professional for further guidance.
-                    """)
-                    
-                    # Provide general legal basis information
-                    st.markdown("### General Legal Basis Information")
-                    st.markdown("""
-                    Here are the common legal bases for processing personal data under major privacy regulations:
-                    
-                    1. **Consent**: The data subject has given clear consent for processing their personal data for a specific purpose.
-                    2. **Contract**: Processing is necessary for a contract with the data subject or to take steps at their request before entering a contract.
-                    3. **Legal Obligation**: Processing is necessary to comply with a legal obligation.
-                    4. **Vital Interests**: Processing is necessary to protect someone's life or vital interests.
-                    5. **Public Task**: Processing is necessary for a task carried out in the public interest or in the exercise of official authority.
-                    6. **Legitimate Interests**: Processing is necessary for legitimate interests pursued by the controller or a third party, except where overridden by the interests or rights of the data subject.
-                    
-                    The appropriate legal basis depends on your specific circumstances, the nature of the data, and the purpose of processing.
-                    """)
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the parameters on the left and click 'Recommend Legal Basis' to get results.")
-                
-                # Show a sample result visualization
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Legal basis recommendations will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
+            self._render_decision_tree(nodes, edges, "Legal Basis Inference Process", 700)
     
     def _infer_legal_basis(self, law, jurisdiction, sensitivity, purpose_category=None):
         """Internal method to infer appropriate legal bases based on regulatory metadata.
@@ -6150,141 +6056,90 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        st.subheader("Breach Incident Details")
         
-        with col1:
-            st.subheader("Breach Incident Details")
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
             
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
-                
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options)
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options)
+        
+        # Get jurisdictions
+        jurisdictions = self.glossary_repository.get_jurisdictions()
+        if jurisdictions:
+            jurisdiction_options = [j["name"] for j in jurisdictions]
+            selected_jurisdiction = st.selectbox("Select Jurisdiction", options=jurisdiction_options)
+        else:
+            selected_jurisdiction = None
             
-            # Get jurisdictions
-            jurisdictions = self.glossary_repository.get_jurisdictions()
-            if jurisdictions:
-                jurisdiction_options = [j["name"] for j in jurisdictions]
-                selected_jurisdiction = st.selectbox("Select Jurisdiction", options=jurisdiction_options)
-            else:
-                selected_jurisdiction = None
-            
-            # Breach details
-            breach_type = st.selectbox(
-                "Type of Breach", 
-                options=[
-                    "Unauthorized Access", 
-                    "Data Disclosure", 
-                    "Data Alteration", 
+        # Breach details
+        breach_type = st.selectbox(
+            "Type of Breach", 
+            options=[
+                "Unauthorized Access", 
+                "Data Disclosure", 
+                "Data Alteration", 
                     "Data Loss", 
                     "Ransomware Attack", 
                     "Phishing Attack", 
                     "Insider Threat", 
-                    "Physical Breach", 
-                    "Other"
-                ]
-            )
-            
-            # Get data categories
-            data_categories = self.glossary_repository.get_data_categories()
-            if data_categories:
-                dc_options = [dc["name"] for dc in data_categories]
-                affected_data_categories = st.multiselect("Affected Data Categories", options=dc_options, key="breach_data_categories")
-            else:
-                st.warning("No data categories available.")
-                return
-            
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                affected_data_subjects = st.multiselect("Affected Data Subject Types", options=dst_options, key="breach_data_subject_types")
-            else:
-                st.warning("No data subject types available.")
-                return
-            
-            # Number of affected individuals
-            num_affected = st.number_input("Number of Affected Individuals", min_value=0, value=100)
-            
-            # Risk assessment
-            risk_level = st.select_slider(
-                "Risk Level to Individuals",
-                options=["Minimal", "Low", "Medium", "High", "Severe"],
-                value="Medium"
-            )
-            
-            # Containment status
-            containment_status = st.radio(
-                "Breach Containment Status",
-                options=["Contained", "Partially Contained", "Not Contained"],
-                horizontal=True
-            )
-            
-            # Discovery date
-            col_dates1, col_dates2 = st.columns(2)
-            with col_dates1:
-                discovery_date = st.date_input("Date Breach Discovered", value=None)
-            with col_dates2:
-                occurrence_date = st.date_input("Date Breach Occurred (if known)", value=None)
-            
-            analyze_button = st.button("Analyze Notification Requirements")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "breach", "label": "Data Breach", "color": "#e74c3c", "shape": "ellipse", "size": 30},
-                {"id": "jurisdiction", "label": "Affected Jurisdiction", "color": "#3498db", "shape": "box", "size": 25},
-                {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "data_types", "label": "Data Types Affected", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "severity", "label": "Breach Severity", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Notification Requirements Lookup", "color": "#2ecc71", "shape": "box", "size": 25,
-                 "title": {"html": """
-                    <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
-                        <h3>Breach Notification Lookup Process</h3>
-                        <p>This lookup process determines notification requirements by:</p>
-                        <ol>
-                            <li>Querying the <b>Law Incident Breach Notification</b> table for the applicable law</li>
-                            <li>Evaluating breach severity based on data types affected and number of individuals</li>
-                            <li>Determining authority notification requirements and deadlines</li>
-                            <li>Assessing individual notification thresholds and exemptions</li>
-                            <li>Calculating notification timeframes based on discovery date</li>
-                        </ol>
-                        <p>The algorithm considers risk level, containment status, and jurisdiction-specific requirements to provide comprehensive notification guidance.</p>
-                    </div>
-                """}},
-                {"id": "authority", "label": "Authority Notification", "color": "#3498db", "shape": "box", "size": 25},
-                {"id": "individual", "label": "Individual Notification", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "timeframe", "label": "Notification Timeframe", "color": "#9b59b6", "shape": "box", "size": 25}
+                "Physical Breach", 
+                "Other"
             ]
+        )
             
-            # Define edges for the decision tree
-            edges = [
-                {"source": "breach", "target": "jurisdiction", "label": "Occurs in"},
-                {"source": "jurisdiction", "target": "law", "label": "Governed by"},
-                {"source": "breach", "target": "data_types", "label": "Involves"},
-                {"source": "breach", "target": "severity", "label": "Has"},
-                {"source": "law", "target": "lookup", "label": ""},
-                {"source": "data_types", "target": "lookup", "label": ""},
-                {"source": "severity", "target": "lookup", "label": ""},
-                {"source": "lookup", "target": "authority", "label": "Requires"},
-                {"source": "lookup", "target": "individual", "label": "May require"},
-                {"source": "lookup", "target": "timeframe", "label": "Specifies"}
-            ]
+        # Get data categories
+        data_categories = self.glossary_repository.get_data_categories()
+        if data_categories:
+            dc_options = [dc["name"] for dc in data_categories]
+            affected_data_categories = st.multiselect("Affected Data Categories", options=dc_options, key="breach_data_categories")
+        else:
+            st.warning("No data categories available.")
+            return
             
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        # Get data subject types
+        data_subject_types = self.glossary_repository.get_data_subject_types()
+        if data_subject_types:
+            dst_options = [dst["name"] for dst in data_subject_types]
+            affected_data_subjects = st.multiselect("Affected Data Subject Types", options=dst_options, key="breach_data_subject_types")
+        else:
+            st.warning("No data subject types available.")
+            return
+            
+        # Number of affected individuals
+        num_affected = st.number_input("Number of Affected Individuals", min_value=0, value=100)
+            
+        # Risk assessment
+        risk_level = st.select_slider(
+            "Risk Level to Individuals",
+            options=["Minimal", "Low", "Medium", "High", "Severe"],
+            value="Medium"
+        )
+            
+        # Containment status
+        containment_status = st.radio(
+            "Breach Containment Status",
+            options=["Contained", "Partially Contained", "Not Contained"],
+            horizontal=True
+        )
+            
+        # Discovery date
+        col_dates1, col_dates2 = st.columns(2)
+        with col_dates1:
+            discovery_date = st.date_input("Date Breach Discovered", value=None)
+        with col_dates2:
+            occurrence_date = st.date_input("Date Breach Occurred (if known)", value=None)
+            
+        analyze_button = st.button("Analyze Notification Requirements")
         
-        with col2:
-            st.subheader("Notification Requirements")
-            
-            if analyze_button:
-                # Display a spinner while "processing"
-                with st.spinner("Analyzing breach notification requirements..."):
-                    # Get breach notification guidance based on the selected law
-                    guidance = self._get_breach_notification_guidance(selected_law)
+        if analyze_button:
+            # Display a spinner while "processing"
+            with st.spinner("Analyzing breach notification requirements..."):
+                # Get breach notification guidance based on the selected law
+                guidance = self._get_breach_notification_guidance(selected_law)
                 
                 if guidance:
                     # Display the notification requirements with appropriate styling
@@ -6424,6 +6279,50 @@ class DataMap:
                         4. Description of measures taken or proposed to address the breach
                         5. Specific recommendations for individuals to protect themselves
                         """, unsafe_allow_html=True)
+                        
+                    # Define nodes for the decision tree
+                    nodes = [
+                        {"id": "breach", "label": "Data Breach", "color": "#e74c3c", "shape": "ellipse", "size": 30},
+                        {"id": "jurisdiction", "label": "Affected Jurisdiction", "color": "#3498db", "shape": "box", "size": 25},
+                        {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
+                        {"id": "data_types", "label": "Data Types Affected", "color": "#f39c12", "shape": "box", "size": 25},
+                        {"id": "severity", "label": "Breach Severity", "color": "#e74c3c", "shape": "box", "size": 25},
+                        {"id": "lookup", "label": "Notification Requirements Lookup", "color": "#2ecc71", "shape": "box", "size": 25,
+                         "title": {"html": """
+                            <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #2ecc71;'>
+                                <h3>Breach Notification Lookup Process</h3>
+                                <p>This lookup process determines notification requirements by:</p>
+                                <ol>
+                                    <li>Querying the <b>Law Incident Breach Notification</b> table for the applicable law</li>
+                                    <li>Evaluating breach severity based on data types affected and number of individuals</li>
+                                    <li>Determining authority notification requirements and deadlines</li>
+                                    <li>Assessing individual notification thresholds and exemptions</li>
+                                    <li>Calculating notification timeframes based on discovery date</li>
+                                </ol>
+                                <p>The algorithm considers risk level, containment status, and jurisdiction-specific requirements to provide comprehensive notification guidance.</p>
+                            </div>
+                        """}},
+                        {"id": "authority", "label": "Authority Notification", "color": "#3498db", "shape": "box", "size": 25},
+                        {"id": "individual", "label": "Individual Notification", "color": "#f39c12", "shape": "box", "size": 25},
+                        {"id": "timeframe", "label": "Notification Timeframe", "color": "#9b59b6", "shape": "box", "size": 25}
+                    ]
+                    
+                    # Define edges for the decision tree
+                    edges = [
+                        {"source": "breach", "target": "jurisdiction", "label": "Occurs in"},
+                        {"source": "jurisdiction", "target": "law", "label": "Governed by"},
+                        {"source": "breach", "target": "data_types", "label": "Involves"},
+                        {"source": "breach", "target": "severity", "label": "Has"},
+                        {"source": "law", "target": "lookup", "label": ""},
+                        {"source": "data_types", "target": "lookup", "label": ""},
+                        {"source": "severity", "target": "lookup", "label": ""},
+                        {"source": "lookup", "target": "authority", "label": "Requires"},
+                        {"source": "lookup", "target": "individual", "label": "May require"},
+                        {"source": "lookup", "target": "timeframe", "label": "Specifies"}
+                    ]
+                    
+                    # Render the decision tree
+                    self._render_decision_tree(nodes, edges, "Breach Notification Process", 700)
                 else:
                     st.warning(f"No breach notification guidance found for {selected_law}.")
                     st.markdown("""
@@ -6447,17 +6346,6 @@ class DataMap:
                     
                     Many jurisdictions have mandatory breach notification requirements with specific timeframes and thresholds.
                     """)
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the breach details on the left and click 'Analyze Notification Requirements' to get results.")
-                
-                # Show a sample result visualization
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Breach notification requirements will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
     
     def _get_breach_notification_guidance(self, law_name):
         """Internal method to get breach notification guidance for a specific law.
@@ -6515,57 +6403,102 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options, key="transfer_law")
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
+        # Get jurisdictions for source and destination
+        jurisdictions = self.glossary_repository.get_jurisdictions()
+        if jurisdictions:
+            jurisdiction_options = [j["name"] for j in jurisdictions]
+            source_jurisdiction = st.selectbox("Select Source Jurisdiction", options=jurisdiction_options, key="transfer_source")
+            destination_jurisdiction = st.selectbox("Select Destination Jurisdiction", options=jurisdiction_options, key="transfer_destination")
+        else:
+            st.warning("No jurisdictions available.")
+            return
+        
+        # Get data categories
+        data_categories = self.glossary_repository.get_data_categories()
+        if data_categories:
+            dc_options = [dc["name"] for dc in data_categories]
+            selected_data_categories = st.multiselect("Select Data Categories to Transfer", options=dc_options, key="transfer_data_categories")
+        else:
+            selected_data_categories = []
+        
+        # Add transfer volume/frequency options
+        transfer_volume = st.select_slider(
+            "Transfer Volume",
+            options=["Low", "Medium", "High"],
+            value="Medium",
+            key="transfer_volume"
+        )
+        
+        transfer_frequency = st.select_slider(
+            "Transfer Frequency",
+            options=["One-time", "Occasional", "Regular", "Continuous"],
+            value="Regular",
+            key="transfer_frequency"
+        )
+        
+        # Add a button to trigger inference
+        analyze_button = st.button("Recommend Transfer Mechanisms")
+        
+        if analyze_button:
+            # Display a spinner while "processing"
+            with st.spinner("Analyzing transfer requirements..."):
+                # Simulate processing time
+                time.sleep(1)
                 
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="transfer_law")
+                # Determine if this is an adequate jurisdiction
+                is_adequate = False
+                if destination_jurisdiction in ["United Kingdom", "Canada", "Switzerland", "Japan", "New Zealand"]:
+                    is_adequate = True
+                
+                # Get transfer mechanisms based on the selected parameters
+                transfer_mechanisms = self._get_transfer_mechanisms(selected_law, source_jurisdiction, destination_jurisdiction, is_adequate)
             
-            # Get jurisdictions for source and destination
-            jurisdictions = self.glossary_repository.get_jurisdictions()
-            if jurisdictions:
-                jurisdiction_options = [j["name"] for j in jurisdictions]
-                source_jurisdiction = st.selectbox("Select Source Jurisdiction", options=jurisdiction_options, key="transfer_source")
-                destination_jurisdiction = st.selectbox("Select Destination Jurisdiction", options=jurisdiction_options, key="transfer_destination")
+            if transfer_mechanisms:
+                # Display the recommended transfer mechanisms with appropriate styling
+                st.markdown(f"""
+                <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                    <h3 style="color: #3498db;">Recommended Transfer Mechanisms</h3>
+                    <p>Based on the selected parameters, the following transfer mechanisms are recommended for transfers from <strong>{source_jurisdiction}</strong> to <strong>{destination_jurisdiction}</strong> under {selected_law}:</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display each transfer mechanism with its description and requirements
+                for i, mechanism in enumerate(transfer_mechanisms):
+                    with st.expander(f"{i+1}. {mechanism['name']}"):
+                        st.markdown(f"""
+                        <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa;">
+                            <h4>{mechanism['name']}</h4>
+                            <p><strong>Description:</strong> {mechanism['description']}</p>
+                            <p><strong>Implementation Requirements:</strong></p>
+                            <ul>
+                                {' '.join([f'<li>{req}</li>' for req in mechanism['requirements']])}
+                            </ul>
+                            <p><strong>Risk Level:</strong> <span style="color: {mechanism['risk_color']};">{mechanism['risk_level']}</span></p>
+                        </div>
+                        """, unsafe_allow_html=True)
             else:
-                st.warning("No jurisdictions available.")
-                return
-            
-            # Get data categories
-            data_categories = self.glossary_repository.get_data_categories()
-            if data_categories:
-                dc_options = [dc["name"] for dc in data_categories]
-                selected_data_categories = st.multiselect("Select Data Categories to Transfer", options=dc_options, key="transfer_data_categories")
-            else:
-                selected_data_categories = []
-            
-            # Add transfer volume/frequency options
-            transfer_volume = st.select_slider(
-                "Transfer Volume",
-                options=["Low", "Medium", "High"],
-                value="Medium",
-                key="transfer_volume"
-            )
-            
-            transfer_frequency = st.select_slider(
-                "Transfer Frequency",
-                options=["One-time", "Occasional", "Regular", "Continuous"],
-                value="Regular",
-                key="transfer_frequency"
-            )
-            
-            # Add a button to trigger inference
-            analyze_button = st.button("Recommend Transfer Mechanisms")
-            
+                # Display a message if no transfer mechanisms are found
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">No Transfer Mechanisms Found</h3>
+                    <p>No suitable transfer mechanisms were found for the selected parameters. This may be due to:</p>
+                    <ul>
+                        <li>The destination jurisdiction may have an adequacy decision, making additional safeguards unnecessary</li>
+                        <li>The selected law may not have specific transfer mechanism requirements for these jurisdictions</li>
+                        <li>The combination of parameters may not match any defined transfer scenarios</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
             # Define nodes for the decision tree
             nodes = [
                 {"id": "transfer", "label": "Data Transfer", "color": "#3498db", "shape": "ellipse", "size": 30},
@@ -6575,7 +6508,7 @@ class DataMap:
                 {"id": "data_categories", "label": "Data Categories", "color": "#2ecc71", "shape": "box", "size": 25},
                 {"id": "adequacy", "label": "Adequacy Decision", "color": "#1abc9c", "shape": "box", "size": 25},
                 {"id": "lookup", "label": "Transfer Mechanism Lookup", "color": "#3498db", "shape": "box", "size": 25,
-                 "title": {"html": """
+                    "title": {"html": """
                     <div style='max-width: 400px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 5px solid #3498db;'>
                         <h3>Transfer Mechanism Lookup Process</h3>
                         <p>This lookup process determines appropriate transfer mechanisms by:</p>
@@ -6612,69 +6545,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
-        
-        with col2:
-            st.subheader("Transfer Mechanism Recommendations")
-            
-            if analyze_button:
-                # Display a spinner while "processing"
-                with st.spinner("Analyzing transfer requirements..."):
-                    # Simulate processing time
-                    time.sleep(1)
-                    
-                    # Determine if this is an adequate jurisdiction
-                    is_adequate = False
-                    if destination_jurisdiction in ["United Kingdom", "Canada", "Switzerland", "Japan", "New Zealand"]:
-                        is_adequate = True
-                    
-                    # Get transfer mechanisms based on the selected parameters
-                    transfer_mechanisms = self._get_transfer_mechanisms(selected_law, source_jurisdiction, destination_jurisdiction, is_adequate)
-                
-                if transfer_mechanisms:
-                    # Display the recommended transfer mechanisms with appropriate styling
-                    st.markdown(f"""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
-                        <h3 style="color: #3498db;">Recommended Transfer Mechanisms</h3>
-                        <p>Based on the selected parameters, the following transfer mechanisms are recommended for transfers from <strong>{source_jurisdiction}</strong> to <strong>{destination_jurisdiction}</strong> under {selected_law}:</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display each transfer mechanism with its description and requirements
-                    for i, mechanism in enumerate(transfer_mechanisms):
-                        with st.expander(f"{i+1}. {mechanism['name']}"):
-                            st.markdown(f"""
-                            <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa;">
-                                <h4>{mechanism['name']}</h4>
-                                <p><strong>Description:</strong> {mechanism['description']}</p>
-                                <p><strong>Implementation Requirements:</strong></p>
-                                <ul>
-                                    {' '.join([f'<li>{req}</li>' for req in mechanism['requirements']])}
-                                </ul>
-                                <p><strong>Risk Level:</strong> <span style="color: {mechanism['risk_color']};">{mechanism['risk_level']}</span></p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                else:
-                    # Display a message if no transfer mechanisms are found
-                    st.markdown("""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                        <h3 style="color: #7F8C8D;">No Transfer Mechanisms Found</h3>
-                        <p>No suitable transfer mechanisms were found for the selected parameters. This may be due to:</p>
-                        <ul>
-                            <li>The destination jurisdiction may have an adequacy decision, making additional safeguards unnecessary</li>
-                            <li>The selected law may not have specific transfer mechanism requirements for these jurisdictions</li>
-                            <li>The combination of parameters may not match any defined transfer scenarios</li>
-                        </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                # Display a placeholder message when no analysis has been performed
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Transfer mechanism recommendations will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
+            self._render_decision_tree(nodes, edges, "Transfer Mechanism Process", 700)
 
     def _get_transfer_mechanisms(self, law, source_jurisdiction, destination_jurisdiction, is_adequate):
         """Internal method to get appropriate transfer mechanisms based on regulatory metadata.
@@ -6769,182 +6640,166 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options, key="dsr_law")
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
-                
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="dsr_law")
-            
-            # Get jurisdictions
-            jurisdictions = self.glossary_repository.get_jurisdictions()
-            if jurisdictions:
-                jurisdiction_options = [j["name"] for j in jurisdictions]
-                selected_jurisdiction = st.selectbox("Select Data Subject's Jurisdiction", options=jurisdiction_options, key="dsr_jurisdiction")
-            else:
-                selected_jurisdiction = None
-            
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="dsr_subject_type")
-            else:
-                st.warning("No data subject types available.")
-                return
-            
-            # Add right type selection
-            right_types = [
-                "Access",
-                "Rectification",
-                "Erasure",
-                "Restriction of Processing",
-                "Data Portability",
-                "Objection",
-                "Automated Decision Making",
-                "Withdraw Consent"
-            ]
-            selected_right = st.selectbox("Select Requested Right", options=right_types, key="dsr_right_type")
-            
-            # Add request complexity
-            request_complexity = st.select_slider(
-                "Request Complexity",
-                options=["Simple", "Moderate", "Complex"],
-                value="Moderate",
-                key="dsr_complexity"
-            )
-            
-            # Add a button to trigger inference
-            analyze_button = st.button("Analyze Rights Request")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "request", "label": "DSR Request", "color": "#3498db", "shape": "ellipse", "size": 30},
-                {"id": "jurisdiction", "label": "Jurisdiction", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "subject_type", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "right_type", "label": "Right Type", "color": "#2ecc71", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Rights Requirements Lookup", "color": "#1abc9c", "shape": "box", "size": 25},
-                {"id": "timeframe", "label": "Response Timeframe", "color": "#3498db", "shape": "box", "size": 25},
-                {"id": "steps", "label": "Implementation Steps", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "exemptions", "label": "Potential Exemptions", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "verification", "label": "Verification Requirements", "color": "#9b59b6", "shape": "box", "size": 25}
-            ]
-            
-            # Define edges for the decision tree
-            edges = [
-                {"source": "request", "target": "jurisdiction", "label": "From"},
-                {"source": "jurisdiction", "target": "law", "label": "Governed by"},
-                {"source": "request", "target": "subject_type", "label": "Made by"},
-                {"source": "request", "target": "right_type", "label": "Requests"},
-                {"source": "law", "target": "lookup", "label": ""},
-                {"source": "subject_type", "target": "lookup", "label": ""},
-                {"source": "right_type", "target": "lookup", "label": ""},
-                {"source": "lookup", "target": "timeframe", "label": "Determines"},
-                {"source": "lookup", "target": "steps", "label": "Provides"},
-                {"source": "lookup", "target": "exemptions", "label": "Identifies"},
-                {"source": "lookup", "target": "verification", "label": "Requires"}
-            ]
-            
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        # Get jurisdictions
+        jurisdictions = self.glossary_repository.get_jurisdictions()
+        if jurisdictions:
+            jurisdiction_options = [j["name"] for j in jurisdictions]
+            selected_jurisdiction = st.selectbox("Select Data Subject's Jurisdiction", options=jurisdiction_options, key="dsr_jurisdiction")
+        else:
+            selected_jurisdiction = None
         
-        with col2:
-            st.subheader("Rights Response Guidance")
-            
-            if analyze_button:
-                # Display a spinner while "processing"
-                with st.spinner("Analyzing rights requirements..."):
-                    # Simulate processing time
-                    time.sleep(1)
-                    
-                    # Get rights guidance based on the selected parameters
-                    rights_guidance = self._get_rights_guidance(selected_law, selected_right)
+        # Get data subject types
+        data_subject_types = self.glossary_repository.get_data_subject_types()
+        if data_subject_types:
+            dst_options = [dst["name"] for dst in data_subject_types]
+            selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="dsr_subject_type")
+        else:
+            st.warning("No data subject types available.")
+            return
+        
+        # Add right type selection
+        right_types = [
+            "Access",
+            "Rectification",
+            "Erasure",
+            "Restriction of Processing",
+            "Data Portability",
+            "Objection",
+            "Automated Decision Making",
+            "Withdraw Consent"
+        ]
+        selected_right = st.selectbox("Select Requested Right", options=right_types, key="dsr_right_type")
+        
+        # Add request complexity
+        request_complexity = st.select_slider(
+            "Request Complexity",
+            options=["Simple", "Moderate", "Complex"],
+            value="Moderate",
+            key="dsr_complexity"
+        )
+        
+        # Add a button to trigger inference
+        analyze_button = st.button("Analyze Rights Request")
+        
+        # Define nodes for the decision tree
+        nodes = [
+            {"id": "request", "label": "DSR Request", "color": "#3498db", "shape": "ellipse", "size": 30},
+            {"id": "jurisdiction", "label": "Jurisdiction", "color": "#e74c3c", "shape": "box", "size": 25},
+            {"id": "law", "label": "Applicable Law", "color": "#9b59b6", "shape": "box", "size": 25},
+            {"id": "subject_type", "label": "Data Subject Type", "color": "#f39c12", "shape": "box", "size": 25},
+            {"id": "right_type", "label": "Right Type", "color": "#2ecc71", "shape": "box", "size": 25},
+            {"id": "lookup", "label": "Rights Requirements Lookup", "color": "#1abc9c", "shape": "box", "size": 25},
+            {"id": "timeframe", "label": "Response Timeframe", "color": "#3498db", "shape": "box", "size": 25},
+            {"id": "steps", "label": "Implementation Steps", "color": "#f39c12", "shape": "box", "size": 25},
+            {"id": "exemptions", "label": "Potential Exemptions", "color": "#e74c3c", "shape": "box", "size": 25},
+            {"id": "verification", "label": "Verification Requirements", "color": "#9b59b6", "shape": "box", "size": 25}
+        ]
+        
+        # Define edges for the decision tree
+        edges = [
+            {"source": "request", "target": "jurisdiction", "label": "From"},
+            {"source": "jurisdiction", "target": "law", "label": "Governed by"},
+            {"source": "request", "target": "subject_type", "label": "Made by"},
+            {"source": "request", "target": "right_type", "label": "Requests"},
+            {"source": "law", "target": "lookup", "label": ""},
+            {"source": "subject_type", "target": "lookup", "label": ""},
+            {"source": "right_type", "target": "lookup", "label": ""},
+            {"source": "lookup", "target": "timeframe", "label": "Determines"},
+            {"source": "lookup", "target": "steps", "label": "Provides"},
+            {"source": "lookup", "target": "exemptions", "label": "Identifies"},
+            {"source": "lookup", "target": "verification", "label": "Requires"}
+        ]
+        
+        if analyze_button:
+            # Display a spinner while "processing"
+            with st.spinner("Analyzing rights requirements..."):
+                # Simulate processing time
+                time.sleep(1)
                 
-                if rights_guidance:
-                    # Display the rights guidance with appropriate styling
-                    st.markdown(f"""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
-                        <h3 style="color: #3498db;">Right to {selected_right} under {selected_law}</h3>
-                        <p>The following guidance applies to {selected_dst}s in {selected_jurisdiction} making a {selected_right} request:</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display the response timeframe
-                    st.markdown(f"""
-                    <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
-                        <h4>Response Timeframe</h4>
-                        <p><strong>Standard timeframe:</strong> {rights_guidance['timeframe']} days</p>
-                        <p><strong>Extension possible:</strong> {rights_guidance['extension_possible']}</p>
-                        {f'<p><strong>Extension conditions:</strong> {rights_guidance["extension_conditions"]}</p>' if rights_guidance['extension_possible'] == 'Yes' else ''}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display verification requirements
-                    st.markdown(f"""
-                    <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
-                        <h4>Verification Requirements</h4>
-                        <p>{rights_guidance['verification_requirements']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display implementation steps
+                # Get rights guidance based on the selected parameters
+                rights_guidance = self._get_rights_guidance(selected_law, selected_right)
+            
+            if rights_guidance:
+                # Display the rights guidance with appropriate styling
+                st.markdown(f"""
+                <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                    <h3 style="color: #3498db;">Right to {selected_right} under {selected_law}</h3>
+                    <p>The following guidance applies to {selected_dst}s in {selected_jurisdiction} making a {selected_right} request:</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display the response timeframe
+                st.markdown(f"""
+                <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                    <h4>Response Timeframe</h4>
+                    <p><strong>Standard timeframe:</strong> {rights_guidance['timeframe']} days</p>
+                    <p><strong>Extension possible:</strong> {rights_guidance['extension_possible']}</p>
+                    {f'<p><strong>Extension conditions:</strong> {rights_guidance["extension_conditions"]}</p>' if rights_guidance['extension_possible'] == 'Yes' else ''}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display verification requirements
+                st.markdown(f"""
+                <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                    <h4>Verification Requirements</h4>
+                    <p>{rights_guidance['verification_requirements']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display implementation steps
+                st.markdown("""
+                <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
+                    <h4>Implementation Steps</h4>
+                    <ol>
+                """, unsafe_allow_html=True)
+                
+                for step in rights_guidance['implementation_steps']:
+                    st.markdown(f"<li>{step}</li>", unsafe_allow_html=True)
+                
+                st.markdown("""
+                    </ol>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display potential exemptions
+                if rights_guidance['exemptions']:
                     st.markdown("""
                     <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
-                        <h4>Implementation Steps</h4>
-                        <ol>
-                    """, unsafe_allow_html=True)
-                    
-                    for step in rights_guidance['implementation_steps']:
-                        st.markdown(f"<li>{step}</li>", unsafe_allow_html=True)
-                    
-                    st.markdown("""
-                        </ol>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display potential exemptions
-                    if rights_guidance['exemptions']:
-                        st.markdown("""
-                        <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin: 10px 0;">
-                            <h4>Potential Exemptions</h4>
-                            <ul>
-                        """, unsafe_allow_html=True)
-                        
-                        for exemption in rights_guidance['exemptions']:
-                            st.markdown(f"<li>{exemption}</li>", unsafe_allow_html=True)
-                        
-                        st.markdown("""
-                            </ul>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    # Display a message if no rights guidance is found
-                    st.markdown("""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                        <h3 style="color: #7F8C8D;">No Rights Guidance Found</h3>
-                        <p>No specific guidance was found for the selected parameters. This may be due to:</p>
+                        <h4>Potential Exemptions</h4>
                         <ul>
-                            <li>The selected right may not be explicitly recognized under the chosen law</li>
-                            <li>The combination of parameters may not match any defined rights scenarios</li>
-                            <li>The data subject type may have special considerations not covered in the database</li>
+                    """, unsafe_allow_html=True)
+                    
+                    for exemption in rights_guidance['exemptions']:
+                        st.markdown(f"<li>{exemption}</li>", unsafe_allow_html=True)
+                    
+                    st.markdown("""
                         </ul>
                     </div>
                     """, unsafe_allow_html=True)
+
+                # Render the decision tree
+                self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        
             else:
-                # Display a placeholder message when no analysis has been performed
+                # Display a message if no rights guidance is found
                 st.markdown("""
                 <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Rights response guidance will appear here after analysis...</p>
+                    <h3 style="color: #7F8C8D;">No Rights Guidance Found</h3>
+                    <p>No specific guidance was found for the selected parameters. This may be due to:</p>
+                    <ul>
+                        <li>The selected right may not be explicitly recognized under the chosen law</li>
+                        <li>The combination of parameters may not match any defined rights scenarios</li>
+                        <li>The data subject type may have special considerations not covered in the database</li>
+                    </ul>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -6969,97 +6824,88 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get purposes for dropdown selection
+        try:
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+        except Exception as e:
+            st.warning(f"Error loading purposes: {e}")
+            purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+            
+        selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
         
-        with col1:
-            st.subheader("Input Parameters")
+        # Get data elements for multiselect
+        try:
+            data_elements = self.glossary_repository.get_data_elements()
+            data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+        except Exception as e:
+            st.warning(f"Error loading data elements: {e}")
+            data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
             
-            # Get purposes for dropdown selection
-            try:
-                purposes = self.glossary_repository.get_purposes()
-                purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
-            except Exception as e:
-                st.warning(f"Error loading purposes: {e}")
-                purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
-                
-            selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
-            
-            # Get data elements for multiselect
-            try:
-                data_elements = self.glossary_repository.get_data_elements()
-                data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
-            except Exception as e:
-                st.warning(f"Error loading data elements: {e}")
-                data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
-                
-            selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
-            
-            # Operation selection
-            operations = ["read", "write", "share"]
-            selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
-            
-            try:
-                jurisdictions = self.glossary_repository.get_jurisdictions()
-                jurisdiction_options = ["Any"] + [j["name"] for j in jurisdictions] if jurisdictions else ["Any", "California", "European Union", "United Kingdom", "Canada"]
-            except Exception as e:
-                jurisdiction_options = ["Any", "California", "European Union", "United Kingdom", "Canada"]
-                
-            selected_jurisdiction = st.selectbox("Select Jurisdiction (Optional)", options=jurisdiction_options, key="policy_jurisdiction")
-            
-            analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "request", "label": "Access Request", "color": "#3498db", "shape": "ellipse", "size": 30},
-                {"id": "purpose", "label": "Business Purpose", "color": "#e74c3c", "shape": "box", "size": 25},
-                {"id": "policy", "label": "Applicable Policy", "color": "#9b59b6", "shape": "box", "size": 25},
-                {"id": "data_elements", "label": "Data Elements", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "operation", "label": "Operation Type", "color": "#2ecc71", "shape": "box", "size": 25},
-                {"id": "lookup", "label": "Policy Compliance Check", "color": "#1abc9c", "shape": "box", "size": 25},
-                {"id": "allowed", "label": "Access Decision", "color": "#3498db", "shape": "box", "size": 25},
-                {"id": "restrictions", "label": "Usage Restrictions", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "rationale", "label": "Decision Rationale", "color": "#e74c3c", "shape": "box", "size": 25}
-            ]
-            
-            # Define edges for the decision tree
-            edges = [
-                {"source": "request", "target": "purpose", "arrows": "to", "label": "has"},
-                {"source": "purpose", "target": "policy", "arrows": "to", "label": "governed by"},
-                {"source": "request", "target": "data_elements", "arrows": "to", "label": "requests"},
-                {"source": "request", "target": "operation", "arrows": "to", "label": "performs"},
-                {"source": "purpose", "target": "lookup", "arrows": "to"},
-                {"source": "data_elements", "target": "lookup", "arrows": "to"},
-                {"source": "operation", "target": "lookup", "arrows": "to"},
-                {"source": "policy", "target": "lookup", "arrows": "to"},
-                {"source": "lookup", "target": "allowed", "arrows": "to"},
-                {"source": "lookup", "target": "restrictions", "arrows": "to"},
-                {"source": "lookup", "target": "rationale", "arrows": "to"}
-            ]
-            
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, title="Policy Decision Tree")
+        selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
         
-        with col2:
-            st.subheader("Policy Compliance Analysis")
+        # Operation selection
+        operations = ["read", "write", "share"]
+        selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
+        
+        try:
+            jurisdictions = self.glossary_repository.get_jurisdictions()
+            jurisdiction_options = ["Any"] + [j["name"] for j in jurisdictions] if jurisdictions else ["Any", "California", "European Union", "United Kingdom", "Canada"]
+        except Exception as e:
+            jurisdiction_options = ["Any", "California", "European Union", "United Kingdom", "Canada"]
             
-            if analyze_button:
-                if not selected_purpose or not selected_data_elements:
-                    st.warning("Please select both Purpose and at least one Data Element")
-                else:
-                    self._analyze_policy_compliance(
-                        selected_purpose, 
-                        selected_data_elements,
-                        selected_operation,
-                        selected_jurisdiction if selected_jurisdiction != "Any" else None
-                    )
+        selected_jurisdiction = st.selectbox("Select Jurisdiction (Optional)", options=jurisdiction_options, key="policy_jurisdiction")
+        
+        analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
+        
+        # Define nodes for the decision tree
+        nodes = [
+            {"id": "request", "label": "Access Request", "color": "#3498db", "shape": "ellipse", "size": 30},
+            {"id": "purpose", "label": "Business Purpose", "color": "#e74c3c", "shape": "box", "size": 25},
+            {"id": "policy", "label": "Applicable Policy", "color": "#9b59b6", "shape": "box", "size": 25},
+            {"id": "data_elements", "label": "Data Elements", "color": "#f39c12", "shape": "box", "size": 25},
+            {"id": "operation", "label": "Operation Type", "color": "#2ecc71", "shape": "box", "size": 25},
+            {"id": "lookup", "label": "Policy Compliance Check", "color": "#1abc9c", "shape": "box", "size": 25},
+            {"id": "allowed", "label": "Access Decision", "color": "#3498db", "shape": "box", "size": 25},
+            {"id": "restrictions", "label": "Usage Restrictions", "color": "#f39c12", "shape": "box", "size": 25},
+            {"id": "rationale", "label": "Decision Rationale", "color": "#e74c3c", "shape": "box", "size": 25}
+        ]
+        
+        # Define edges for the decision tree
+        edges = [
+            {"source": "request", "target": "purpose", "arrows": "to", "label": "has"},
+            {"source": "purpose", "target": "policy", "arrows": "to", "label": "governed by"},
+            {"source": "request", "target": "data_elements", "arrows": "to", "label": "requests"},
+            {"source": "request", "target": "operation", "arrows": "to", "label": "performs"},
+            {"source": "purpose", "target": "lookup", "arrows": "to"},
+            {"source": "data_elements", "target": "lookup", "arrows": "to"},
+            {"source": "operation", "target": "lookup", "arrows": "to"},
+            {"source": "policy", "target": "lookup", "arrows": "to"},
+            {"source": "lookup", "target": "allowed", "arrows": "to"},
+            {"source": "lookup", "target": "restrictions", "arrows": "to"},
+            {"source": "lookup", "target": "rationale", "arrows": "to"}
+        ]
+                
+        if analyze_button:
+            if not selected_purpose or not selected_data_elements:
+                st.warning("Please select both Purpose and at least one Data Element")
             else:
-                st.markdown("""
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Policy compliance analysis will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
+                self._analyze_policy_compliance(
+                    selected_purpose, 
+                    selected_data_elements,
+                    selected_operation,
+                    selected_jurisdiction if selected_jurisdiction != "Any" else None
+                )
+
+                # Render the decision tree
+                self._render_decision_tree(nodes, edges, title="Policy Decision Tree")
+        else:
+            st.markdown("""
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                <h3 style="color: #7F8C8D;">Sample Result</h3>
+                <p>Policy compliance analysis will appear here after analysis...</p>
+            </div>
+            """, unsafe_allow_html=True)
 
     def _analyze_policy_compliance_for_activity(self, purpose, data_elements, operation):
         """Analyze policy compliance for a processing activity.
@@ -7668,108 +7514,89 @@ class DataMap:
         
         st.markdown('''
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
-            <h3 style="margin-top: 0;">Law Inference API</h3>
             <p>This API helps determine which data protection laws apply to specific jurisdictions based on regulatory metadata.</p>
             <p>The Law Inference API uses the Law Jurisdiction mapping table to identify applicable laws for a given jurisdiction, helping organizations understand their compliance obligations.</p>
         </div>''', unsafe_allow_html=True)
         
-        # Create a two-column layout
-        col1, col2 = st.columns([1, 1])
+        # Get all jurisdictions from the repository
+        law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
+        jurisdictions = sorted(list(set([lj["jurisdiction_name"] for lj in law_jurisdictions])))
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get all jurisdictions from the repository
-            law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-            jurisdictions = sorted(list(set([lj["jurisdiction_name"] for lj in law_jurisdictions])))
-            
-            # Jurisdiction selection
-            selected_jurisdiction = st.selectbox(
-                "Select Jurisdiction",
-                jurisdictions,
-                index=0 if jurisdictions else None
-            )
-            
-            # Add a button to trigger analysis
-            analyze_button = st.button("Determine Applicable Laws")
-            
-            # Define nodes for the decision tree
-            nodes = [
-                {"id": "jurisdiction", "label": "Jurisdiction Selection", "color": "#3498db", "shape": "ellipse", "size": 30},
-                {"id": "mapping", "label": "Law Jurisdiction Mapping", "color": "#f39c12", "shape": "box", "size": 25},
-                {"id": "laws", "label": "Applicable Laws", "color": "#27ae60", "shape": "box", "size": 25},
-                {"id": "details", "label": "Law Details", "color": "#9b59b6", "shape": "box", "size": 25}
-            ]
-            
-            # Define edges for the decision tree
-            edges = [
-                {"source": "jurisdiction", "target": "mapping", "label": "Lookup"},
-                {"source": "mapping", "target": "laws", "label": "Identify"},
-                {"source": "laws", "target": "details", "label": "Retrieve"}
-            ]
-            
-            # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        # Jurisdiction selection
+        selected_jurisdiction = st.selectbox(
+            "Select Jurisdiction",
+            jurisdictions,
+            index=0 if jurisdictions else None
+        )
         
-        with col2:
-            st.subheader("Applicable Laws")
+        # Add a button to trigger analysis
+        analyze_button = st.button("Determine Applicable Laws")
+        
+        # Define nodes for the decision tree
+        nodes = [
+            {"id": "jurisdiction", "label": "Jurisdiction Selection", "color": "#3498db", "shape": "ellipse", "size": 30},
+            {"id": "mapping", "label": "Law Jurisdiction Mapping", "color": "#f39c12", "shape": "box", "size": 25},
+            {"id": "laws", "label": "Applicable Laws", "color": "#27ae60", "shape": "box", "size": 25},
+            {"id": "details", "label": "Law Details", "color": "#9b59b6", "shape": "box", "size": 25}
+        ]
+        
+        # Define edges for the decision tree
+        edges = [
+            {"source": "jurisdiction", "target": "mapping", "label": "Lookup"},
+            {"source": "mapping", "target": "laws", "label": "Identify"},
+            {"source": "laws", "target": "details", "label": "Retrieve"}
+        ]
+        
+        if analyze_button and selected_jurisdiction:
+            # Get all laws that apply to the selected jurisdiction
+            applicable_laws = []
+            for lj in law_jurisdictions:
+                if lj["jurisdiction_name"] == selected_jurisdiction:
+                    applicable_laws.append(lj["law_name"])
             
-            if analyze_button and selected_jurisdiction:
-                # Get all laws that apply to the selected jurisdiction
-                applicable_laws = []
-                for lj in law_jurisdictions:
-                    if lj["jurisdiction_name"] == selected_jurisdiction:
-                        applicable_laws.append(lj["law_name"])
-                
-                if applicable_laws:
-                    # Display the applicable laws with appropriate styling
-                    st.markdown(f"""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
-                        <h3 style="color: #3498db;">Laws Applicable to {selected_jurisdiction}</h3>
-                        <p>The following laws apply to activities in this jurisdiction:</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Display each applicable law with its description
-                    for i, law_name in enumerate(applicable_laws):
-                        # Get law details from the glossary repository
-                        laws = self.glossary_repository.get_laws()
-                        law_details = next((law for law in laws if law["name"] == law_name), None)
-                        
-                        if law_details:
-                            with st.expander(f"{i+1}. {law_name}", expanded=True):
-                                st.markdown(f"**Full Name:** {law_details.get('full_name', 'Not available')}")
-                                st.markdown(f"**Description:** {law_details.get('description', 'No description available')}")
-                                st.markdown(f"**Effective Date:** {law_details.get('effective_date', 'Not specified')}")
-                else:
-                    # Display a message if no laws apply to the selected jurisdiction
-                    st.markdown("""
-                    <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                        <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
-                        <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
-                        <p>This may be due to:</p>
-                        <ul>
-                            <li>The jurisdiction may not have comprehensive data protection legislation</li>
-                            <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
-                            <li>The database may need to be updated with the latest regulatory information</li>
-                        </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                # Display a placeholder message when no analysis has been performed
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Applicable laws will appear here after analysis...</p>
+            if applicable_laws:
+                # Display the applicable laws with appropriate styling
+                st.markdown(f"""
+                <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                    <h3 style="color: #3498db;">Laws Applicable to {selected_jurisdiction}</h3>
+                    <p>The following laws apply to activities in this jurisdiction:</p>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # Display each applicable law with its description
+                for i, law_name in enumerate(applicable_laws):
+                    # Get law details from the glossary repository
+                    laws = self.glossary_repository.get_laws()
+                    law_details = next((law for law in laws if law["name"] == law_name), None)
+                    
+                    if law_details:
+                        with st.expander(f"{i+1}. {law_name}", expanded=True):
+                            st.markdown(f"**Full Name:** {law_details.get('full_name', 'Not available')}")
+                            st.markdown(f"**Description:** {law_details.get('description', 'No description available')}")
+                            st.markdown(f"**Effective Date:** {law_details.get('effective_date', 'Not specified')}")
 
+                # Render the decision tree
+                self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+            else:
+                # Display a message if no laws apply to the selected jurisdiction
+                st.markdown("""
+                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                    <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
+                    <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
+                    <p>This may be due to:</p>
+                    <ul>
+                        <li>The jurisdiction may not have comprehensive data protection legislation</li>
+                        <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
+                        <li>The database may need to be updated with the latest regulatory information</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
 
     def obligation_inference_api(self):
         """Implement an obligation inference API based on data sensitivity.
         This allows users to input data elements and get obligation recommendations.
         """
-        st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Obligation Inference API</div>", unsafe_allow_html=True)
+        st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Obligation Inference</div>", unsafe_allow_html=True)
         
         st.markdown('''
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
@@ -7915,17 +7742,6 @@ class DataMap:
                     """, unsafe_allow_html=True)
                 else:
                     st.info(f"No obligations defined for {sensitivity} sensitivity level.")
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the details on the left and click 'Infer Obligations' to get results.")
-                
-                # Display a placeholder message when no analysis has been performed
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Obligation recommendations will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
             
     def policy_recommendation_api(self):
         """Implement a policy recommendation API based on data sensitivity and obligations.
@@ -7945,196 +7761,178 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options, key="policy_law")
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
-                
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="policy_law")
-            
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="policy_dst")
+        # Get data subject types
+        data_subject_types = self.glossary_repository.get_data_subject_types()
+        if data_subject_types:
+            dst_options = [dst["name"] for dst in data_subject_types]
+            selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="policy_dst")
+        else:
+            st.warning("No data subject types available.")
+            return
+        
+        # Option to select either data element or data category
+        data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="policy_data_type")
+        
+        if data_type == "Data Element":
+            data_elements = self.glossary_repository.get_data_elements()
+            if data_elements:
+                de_options = [de["name"] for de in data_elements]
+                selected_data = st.selectbox("Select Data Element", options=de_options, key="policy_data_element")
             else:
-                st.warning("No data subject types available.")
+                st.warning("No data elements available.")
                 return
-            
-            # Option to select either data element or data category
-            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="policy_data_type")
-            
-            if data_type == "Data Element":
-                data_elements = self.glossary_repository.get_data_elements()
-                if data_elements:
-                    de_options = [de["name"] for de in data_elements]
-                    selected_data = st.selectbox("Select Data Element", options=de_options, key="policy_data_element")
-                else:
-                    st.warning("No data elements available.")
-                    return
-            else:  # Data Category
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    dc_options = [dc["name"] for dc in data_categories]
-                    selected_data = st.selectbox("Select Data Category", options=dc_options, key="policy_data_category")
-                else:
-                    st.warning("No data categories available.")
-                    return
-            
-            # Add a button to trigger inference
-            infer_button = st.button("Infer Policies", key="recommend_policies_button")
+        else:  # Data Category
+            data_categories = self.glossary_repository.get_data_categories()
+            if data_categories:
+                dc_options = [dc["name"] for dc in data_categories]
+                selected_data = st.selectbox("Select Data Category", options=dc_options, key="policy_data_category")
+            else:
+                st.warning("No data categories available.")
+                return
         
-        with col2:
+        # Add a button to trigger inference
+        infer_button = st.button("Infer Policies", key="recommend_policies_button")
+        
+        # Show results below the button
+        if infer_button:
             st.subheader("Policy Recommendations")
+            # First, infer the sensitivity of the data
+            sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
             
-            if infer_button:
-                # First, infer the sensitivity of the data
-                sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+            if sensitivity:
+                st.success(f"Data sensitivity inferred: **{sensitivity}**")
                 
-                if sensitivity:
-                    st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                # Get sensitivity ID
+                all_sensitivities = self.glossary_repository.get_sensitivities()
+                sensitivity_id = None
+                for s in all_sensitivities:
+                    if s["name"] == sensitivity:
+                        sensitivity_id = s["id"]
+                        break
+                
+                if sensitivity_id:
+                    # Get obligations for this sensitivity
+                    sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
                     
-                    # Get sensitivity ID
-                    all_sensitivities = self.glossary_repository.get_sensitivities()
-                    sensitivity_id = None
-                    for s in all_sensitivities:
-                        if s["name"] == sensitivity:
-                            sensitivity_id = s["id"]
-                            break
-                    
-                    if sensitivity_id:
-                        # Get obligations for this sensitivity
-                        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                    if sensitivity_obligations:
+                        # Create a list of obligations for policy lookup
+                        all_obligations = []
+                        for so in sensitivity_obligations:
+                            all_obligations.append({
+                                "id": so["obligation_id"],
+                                "name": so["obligation_name"],
+                                "control_type": so["control_type"],
+                                "priority": so["priority"]
+                            })
                         
-                        if sensitivity_obligations:
-                            # Create a list of obligations for policy lookup
-                            all_obligations = []
-                            for so in sensitivity_obligations:
-                                all_obligations.append({
-                                    "id": so["obligation_id"],
-                                    "name": so["obligation_name"],
-                                    "control_type": so["control_type"],
-                                    "priority": so["priority"]
+                        # Get policies for these obligations
+                        st.subheader("Recommended Policies")
+                        
+                        # Get policies for the given obligations from the repository
+                        all_policies = []
+                        obligation_ids = [o["id"] for o in all_obligations]
+                        
+                        # Get policies for each obligation using the repository
+                        for obligation_id in obligation_ids:
+                            policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
+                            obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
+                            
+                            for policy in policies:
+                                all_policies.append({
+                                    "Obligation": obligation_name,
+                                    "Policy": policy["name"],
+                                    "Description": policy["description"],
+                                    "Status": policy["status"],
+                                    "Relevance Score": policy["relevance_score"]
                                 })
+                        
+                        if all_policies:
+                            # Create a DataFrame
+                            df = pd.DataFrame(all_policies)
                             
-                            # Get policies for these obligations
-                            st.subheader("Recommended Policies")
+                            # Add filters
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                policy_names = ["All"] + sorted(list(set(df["Policy"])))
+                                selected_policy = st.selectbox(
+                                    "Filter by Policy",
+                                    policy_names,
+                                    key="policy_api_name_filter"
+                                )
                             
-                            # Get policies for the given obligations from the repository
-                            all_policies = []
-                            obligation_ids = [o["id"] for o in all_obligations]
+                            with col2:
+                                statuses = ["All"] + sorted(list(set(df["Status"])))
+                                selected_status = st.selectbox(
+                                    "Filter by Status",
+                                    statuses,
+                                    key="policy_api_status_filter"
+                                )
                             
-                            # Get policies for each obligation using the repository
-                            for obligation_id in obligation_ids:
-                                policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
-                                obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
-                                
-                                for policy in policies:
-                                    all_policies.append({
-                                        "Obligation": obligation_name,
-                                        "Policy": policy["name"],
-                                        "Description": policy["description"],
-                                        "Status": policy["status"],
-                                        "Relevance Score": policy["relevance_score"]
-                                    })
+                            # Apply filters
+                            filtered_df = df.copy()
+                            if selected_policy != "All":
+                                filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
+                            if selected_status != "All":
+                                filtered_df = filtered_df[filtered_df["Status"] == selected_status]
                             
-                            if all_policies:
-                                # Create a DataFrame
-                                df = pd.DataFrame(all_policies)
-                                
-                                # Add filters
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    policy_names = ["All"] + sorted(list(set(df["Policy"])))
-                                    selected_policy = st.selectbox(
-                                        "Filter by Policy",
-                                        policy_names,
-                                        key="policy_api_name_filter"
-                                    )
-                                
-                                with col2:
-                                    statuses = ["All"] + sorted(list(set(df["Status"])))
-                                    selected_status = st.selectbox(
-                                        "Filter by Status",
-                                        statuses,
-                                        key="policy_api_status_filter"
-                                    )
-                                
-                                # Apply filters
-                                filtered_df = df.copy()
-                                if selected_policy != "All":
-                                    filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
-                                if selected_status != "All":
-                                    filtered_df = filtered_df[filtered_df["Status"] == selected_status]
-                                
-                                # Sort by Relevance Score (descending)
-                                filtered_df = filtered_df.sort_values(by=["Relevance Score"], ascending=False)
-                                
-                                # Display the dataframe
-                                st.dataframe(filtered_df, use_container_width=True)
-                                
-                                # Group policies by type
-                                policy_groups = filtered_df.groupby("Policy")["Relevance Score"].max().sort_values(ascending=False)
-                                top_policies = policy_groups.index.tolist()
-                                
-                                # Display top policies summary
-                                st.subheader("Policy Implementation Summary")
-                                st.markdown("""
-                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                                    <h4 style="margin-top: 0;">Recommended Policy Implementation</h4>
-                                    <p>Based on the data elements and their sensitivity levels, the following policies should be implemented:</p>
-                                    <ol>
-                                """, unsafe_allow_html=True)
-                                
-                                for policy in top_policies[:5]:  # Show top 5 policies
-                                    st.markdown(f"<li><strong>{policy}</strong></li>", unsafe_allow_html=True)
-                                
-                                st.markdown("""
-                                    </ol>
-                                    <p>These policies will address the compliance obligations required for the sensitive data.</p>
-                                </div>
-                                
-                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                                    <h4 style="margin-top: 0;">How the Policy Recommendation Algorithm Works</h4>
-                                    <p>The algorithm follows this functional flow:</p>
-                                    <ul>
-                                        <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
-                                        <li><strong>Policy Discovery:</strong> Identify organizational policies that address each obligation</li>
-                                        <li><strong>Relevance Assessment:</strong> Determine how relevant each policy is to the specific obligations</li>
-                                        <li><strong>Policy Prioritization:</strong> Rank policies by their relevance to the identified obligations</li>
-                                        <li><strong>Policy Grouping:</strong> Group related policies to provide comprehensive coverage</li>
-                                        <li><strong>Output:</strong> Prioritized list of policies to implement for the asset</li>
-                                    </ul>
-                                    <p>The relevance score indicates how important each policy is for addressing the identified obligations.</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            else:
-                                st.info("No policies found for the identified obligations.")
+                            # Sort by Relevance Score (descending)
+                            filtered_df = filtered_df.sort_values(by=["Relevance Score"], ascending=False)
+                            
+                            # Display the dataframe
+                            st.dataframe(filtered_df, use_container_width=True)
+                            
+                            # Group policies by type
+                            policy_groups = filtered_df.groupby("Policy")["Relevance Score"].max().sort_values(ascending=False)
+                            top_policies = policy_groups.index.tolist()
+                            
+                            # Display top policies summary
+                            st.subheader("Policy Implementation Summary")
+                            st.markdown("""
+                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                <h4 style="margin-top: 0;">Recommended Policy Implementation</h4>
+                                <p>Based on the data elements and their sensitivity levels, the following policies should be implemented:</p>
+                                <ol>
+                            """, unsafe_allow_html=True)
+                            
+                            for policy in top_policies[:5]:  # Show top 5 policies
+                                st.markdown(f"<li><strong>{policy}</strong></li>", unsafe_allow_html=True)
+                            
+                            st.markdown("""
+                                </ol>
+                                <p>These policies will address the compliance obligations required for the sensitive data.</p>
+                            </div>
+                            
+                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                <h4 style="margin-top: 0;">How the Policy Recommendation Algorithm Works</h4>
+                                <p>The algorithm follows this functional flow:</p>
+                                <ul>
+                                    <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                                    <li><strong>Policy Discovery:</strong> Identify organizational policies that address each obligation</li>
+                                    <li><strong>Relevance Assessment:</strong> Determine how relevant each policy is to the specific obligations</li>
+                                    <li><strong>Policy Prioritization:</strong> Rank policies by their relevance to the identified obligations</li>
+                                    <li><strong>Policy Grouping:</strong> Group related policies to provide comprehensive coverage</li>
+                                    <li><strong>Output:</strong> Prioritized list of policies to implement for the asset</li>
+                                </ul>
+                                <p>The relevance score indicates how important each policy is for addressing the identified obligations.</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                         else:
-                            st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                            st.info("No policies found for the identified obligations.")
                     else:
-                        st.warning(f"Could not find sensitivity ID for {sensitivity}.")
+                        st.info(f"No obligations defined for {sensitivity} sensitivity level.")
                 else:
-                    st.warning("Could not determine sensitivity for the selected data.")
+                    st.warning(f"Could not find sensitivity ID for {sensitivity}.")
             else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the details on the left and click 'Infer Policies' to get results.")
-
-                # Show a sample result visualization
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Policy recommendations will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)                    
+                st.warning("Could not determine sensitivity for the selected data.")
                     
     def risk_inference_api(self):
         """Implement a risk inference API based on data sensitivity and obligations.
@@ -8155,244 +7953,227 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Get laws for dropdown selection
+        laws = self.glossary_repository.get_laws()
+        if not laws:
+            st.warning("No laws available in the database.")
+            return
+            
+        law_options = [law["name"] for law in laws]
+        selected_law = st.selectbox("Select Applicable Law", options=law_options, key="risk_law")
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get laws for dropdown selection
-            laws = self.glossary_repository.get_laws()
-            if not laws:
-                st.warning("No laws available in the database.")
-                return
-                
-            law_options = [law["name"] for law in laws]
-            selected_law = st.selectbox("Select Applicable Law", options=law_options, key="risk_law")
-            
-            # Get data subject types
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                dst_options = [dst["name"] for dst in data_subject_types]
-                selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="risk_dst")
+        # Get data subject types
+        data_subject_types = self.glossary_repository.get_data_subject_types()
+        if data_subject_types:
+            dst_options = [dst["name"] for dst in data_subject_types]
+            selected_dst = st.selectbox("Select Data Subject Type", options=dst_options, key="risk_dst")
+        else:
+            st.warning("No data subject types available.")
+            return
+        
+        # Option to select either data element or data category
+        data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="risk_data_type")
+        
+        if data_type == "Data Element":
+            data_elements = self.glossary_repository.get_data_elements()
+            if data_elements:
+                de_options = [de["name"] for de in data_elements]
+                selected_data = st.selectbox("Select Data Element", options=de_options, key="risk_data_element")
             else:
-                st.warning("No data subject types available.")
+                st.warning("No data elements available.")
                 return
-            
-            # Option to select either data element or data category
-            data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="risk_data_type")
-            
-            if data_type == "Data Element":
-                data_elements = self.glossary_repository.get_data_elements()
-                if data_elements:
-                    de_options = [de["name"] for de in data_elements]
-                    selected_data = st.selectbox("Select Data Element", options=de_options, key="risk_data_element")
-                else:
-                    st.warning("No data elements available.")
-                    return
-            else:  # Data Category
-                data_categories = self.glossary_repository.get_data_categories()
-                if data_categories:
-                    dc_options = [dc["name"] for dc in data_categories]
-                    selected_data = st.selectbox("Select Data Category", options=dc_options, key="risk_data_category")
-                else:
-                    st.warning("No data categories available.")
-                    return
-            
-            # Add a button to trigger inference
-            infer_button = st.button("Infer Risks", key="identify_risks_button")
+        else:  # Data Category
+            data_categories = self.glossary_repository.get_data_categories()
+            if data_categories:
+                dc_options = [dc["name"] for dc in data_categories]
+                selected_data = st.selectbox("Select Data Category", options=dc_options, key="risk_data_category")
+            else:
+                st.warning("No data categories available.")
+                return
         
-        with col2:
+        # Add a button to trigger inference
+        infer_button = st.button("Infer Risks", key="identify_risks_button")
+        
+        # Show results below the button
+        if infer_button:
             st.subheader("Risk Recommendations")
+            # First, infer the sensitivity of the data
+            sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
             
-            if infer_button:
-                # First, infer the sensitivity of the data
-                sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+            if sensitivity:
+                st.success(f"Data sensitivity inferred: **{sensitivity}**")
                 
-                if sensitivity:
-                    st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                # Get sensitivity ID
+                all_sensitivities = self.glossary_repository.get_sensitivities()
+                sensitivity_id = None
+                for s in all_sensitivities:
+                    if s["name"] == sensitivity:
+                        sensitivity_id = s["id"]
+                        break
+                
+                if sensitivity_id:
+                    # Get obligations for this sensitivity
+                    sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
                     
-                    # Get sensitivity ID
-                    all_sensitivities = self.glossary_repository.get_sensitivities()
-                    sensitivity_id = None
-                    for s in all_sensitivities:
-                        if s["name"] == sensitivity:
-                            sensitivity_id = s["id"]
-                            break
-                    
-                    if sensitivity_id:
-                        # Get obligations for this sensitivity
-                        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                    if sensitivity_obligations:
+                        # Create a list of obligations for risk lookup
+                        all_obligations = []
+                        for so in sensitivity_obligations:
+                            all_obligations.append({
+                                "id": so["obligation_id"],
+                                "name": so["obligation_name"],
+                                "control_type": so["control_type"],
+                                "priority": so["priority"]
+                            })
                         
-                        if sensitivity_obligations:
-                            # Create a list of obligations for risk lookup
-                            all_obligations = []
-                            for so in sensitivity_obligations:
-                                all_obligations.append({
-                                    "id": so["obligation_id"],
-                                    "name": so["obligation_name"],
-                                    "control_type": so["control_type"],
-                                    "priority": so["priority"]
+                        # Get risks for these obligations
+                        st.subheader("Potential Risks")
+                        
+                        # Get risks for the given obligations from the repository
+                        all_risks = []
+                        obligation_ids = [o["id"] for o in all_obligations]
+                        
+                        # Get risks for each obligation using the repository
+                        for obligation_id in obligation_ids:
+                            risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
+                            obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
+                            
+                            for risk in risks:
+                                all_risks.append({
+                                    "Obligation": obligation_name,
+                                    "Risk": risk["name"],
+                                    "Risk Category": risk["category"],
+                                    "Likelihood": risk["likelihood"],
+                                    "Impact": risk["impact"]
                                 })
+                        
+                        if all_risks:
+                            # Create a DataFrame
+                            df = pd.DataFrame(all_risks)
                             
-                            # Get risks for these obligations
-                            st.subheader("Potential Risks")
+                            # Add filters
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                risk_categories = ["All"] + sorted(list(set(df["Risk Category"])))
+                                selected_category = st.selectbox(
+                                    "Filter by Risk Category",
+                                    risk_categories,
+                                    key="risk_api_category_filter"
+                                )
                             
-                            # Get risks for the given obligations from the repository
-                            all_risks = []
-                            obligation_ids = [o["id"] for o in all_obligations]
+                            with col2:
+                                likelihoods = ["All"] + sorted(list(set(df["Likelihood"])))
+                                selected_likelihood = st.selectbox(
+                                    "Filter by Likelihood",
+                                    likelihoods,
+                                    key="risk_api_likelihood_filter"
+                                )
                             
-                            # Get risks for each obligation using the repository
-                            for obligation_id in obligation_ids:
-                                risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
-                                obligation_name = next((o["name"] for o in all_obligations if o["id"] == obligation_id), "Unknown")
-                                
-                                for risk in risks:
-                                    all_risks.append({
-                                        "Obligation": obligation_name,
-                                        "Risk": risk["name"],
-                                        "Risk Category": risk["category"],
-                                        "Likelihood": risk["likelihood"],
-                                        "Impact": risk["impact"]
-                                    })
+                            with col3:
+                                impacts = ["All"] + sorted(list(set(df["Impact"])))
+                                selected_impact = st.selectbox(
+                                    "Filter by Impact",
+                                    impacts,
+                                    key="risk_api_impact_filter"
+                                )
                             
-                            if all_risks:
-                                # Create a DataFrame
-                                df = pd.DataFrame(all_risks)
-                                
-                                # Add filters
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    risk_categories = ["All"] + sorted(list(set(df["Risk Category"])))
-                                    selected_category = st.selectbox(
-                                        "Filter by Risk Category",
-                                        risk_categories,
-                                        key="risk_api_category_filter"
-                                    )
-                                
-                                with col2:
-                                    likelihoods = ["All"] + sorted(list(set(df["Likelihood"])))
-                                    selected_likelihood = st.selectbox(
-                                        "Filter by Likelihood",
-                                        likelihoods,
-                                        key="risk_api_likelihood_filter"
-                                    )
-                                
-                                with col3:
-                                    impacts = ["All"] + sorted(list(set(df["Impact"])))
-                                    selected_impact = st.selectbox(
-                                        "Filter by Impact",
-                                        impacts,
-                                        key="risk_api_impact_filter"
-                                    )
-                                
-                                # Apply filters
-                                filtered_df = df.copy()
-                                if selected_category != "All":
-                                    filtered_df = filtered_df[filtered_df["Risk Category"] == selected_category]
-                                if selected_likelihood != "All":
-                                    filtered_df = filtered_df[filtered_df["Likelihood"] == selected_likelihood]
-                                if selected_impact != "All":
-                                    filtered_df = filtered_df[filtered_df["Impact"] == selected_impact]
-                                
-                                # Create risk rating column
-                                def get_risk_rating(row):
-                                    if row["Likelihood"] == "High" and row["Impact"] == "High":
-                                        return "Critical"
-                                    elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
-                                         (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
-                                        return "High"
-                                    elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
-                                         (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
-                                         (row["Likelihood"] == "Low" and row["Impact"] == "High"):
-                                        return "Medium"
-                                    else:
-                                        return "Low"
-                                
-                                filtered_df["Risk Rating"] = filtered_df.apply(get_risk_rating, axis=1)
-                                
-                                # Sort by Risk Rating
-                                risk_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-                                filtered_df["Rating Order"] = filtered_df["Risk Rating"].map(risk_order)
-                                filtered_df = filtered_df.sort_values(by=["Rating Order", "Risk Category"])
-                                filtered_df = filtered_df.drop(columns=["Rating Order"])
-                                
-                                # Display the dataframe with the new Risk Rating column
-                                display_columns = ["Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating", "Obligation"]
-                                filtered_df = filtered_df[display_columns]
-                                
-                                st.dataframe(filtered_df, use_container_width=True)
-                                
-                                # Display risk summary
-                                st.subheader("Risk Assessment Summary")
-                                
-                                # Count risks by rating
-                                risk_counts = filtered_df["Risk Rating"].value_counts()
-                                
-                                # Create a summary message based on risk counts
-                                summary_message = """
-                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                                    <h4 style="margin-top: 0;">Risk Assessment</h4>
-                                    <p>If the recommended obligations are not implemented, this data may be exposed to the following risks:</p>
-                                    <ul>
-                                """
-                                
-                                if "Critical" in risk_counts:
-                                    summary_message += f"<li><strong style='color: #d9534f;'>Critical Risks:</strong> {risk_counts['Critical']} potential critical risk(s) identified</li>"
-                                
-                                if "High" in risk_counts:
-                                    summary_message += f"<li><strong style='color: #f0ad4e;'>High Risks:</strong> {risk_counts['High']} potential high risk(s) identified</li>"
-                                
-                                if "Medium" in risk_counts:
-                                    summary_message += f"<li><strong style='color: #5bc0de;'>Medium Risks:</strong> {risk_counts['Medium']} potential medium risk(s) identified</li>"
-                                
-                                if "Low" in risk_counts:
-                                    summary_message += f"<li><strong style='color: #5cb85c;'>Low Risks:</strong> {risk_counts['Low']} potential low risk(s) identified</li>"
-                                
-                                summary_message += """
-                                    </ul>
-                                    <p>These risks should be carefully evaluated and either mitigated through implementing the recommended obligations or formally accepted as residual risks.</p>
-                                </div>
-                                
-                                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                                    <h4 style="margin-top: 0;">How the Risk Recommendation Algorithm Works</h4>
-                                    <p>The algorithm follows this functional flow:</p>
-                                    <ul>
-                                        <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
-                                        <li><strong>Risk Identification:</strong> Determine potential risks if obligations are not fulfilled</li>
-                                        <li><strong>Risk Classification:</strong> Categorize risks by type (e.g., Data Breach, Regulatory, Reputational)</li>
-                                        <li><strong>Impact Assessment:</strong> Evaluate the potential impact of each risk (High, Medium, Low)</li>
-                                        <li><strong>Likelihood Evaluation:</strong> Assess the probability of each risk occurring (High, Medium, Low)</li>
-                                        <li><strong>Risk Rating:</strong> Calculate overall risk rating by combining impact and likelihood</li>
-                                        <li><strong>Output:</strong> Prioritized list of risks with severity ratings</li>
-                                    </ul>
-                                    <p>The risk rating matrix combines likelihood and impact as follows:</p>
-                                    <ul>
-                                        <li><strong>Critical:</strong> High likelihood + High impact</li>
-                                        <li><strong>High:</strong> High likelihood + Medium impact, or Medium likelihood + High impact</li>
-                                        <li><strong>Medium:</strong> Medium likelihood + Medium impact, High likelihood + Low impact, or Low likelihood + High impact</li>
-                                        <li><strong>Low:</strong> All other combinations</li>
-                                    </ul>
-                                </div>
-                                """
-                                
-                                st.markdown(summary_message, unsafe_allow_html=True)
-                            else:
-                                st.info("No risks identified for the obligations.")
+                            # Apply filters
+                            filtered_df = df.copy()
+                            if selected_category != "All":
+                                filtered_df = filtered_df[filtered_df["Risk Category"] == selected_category]
+                            if selected_likelihood != "All":
+                                filtered_df = filtered_df[filtered_df["Likelihood"] == selected_likelihood]
+                            if selected_impact != "All":
+                                filtered_df = filtered_df[filtered_df["Impact"] == selected_impact]
+                            
+                            # Create risk rating column
+                            def get_risk_rating(row):
+                                if row["Likelihood"] == "High" and row["Impact"] == "High":
+                                    return "Critical"
+                                elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
+                                     (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
+                                    return "High"
+                                elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
+                                     (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
+                                     (row["Likelihood"] == "Low" and row["Impact"] == "High"):
+                                    return "Medium"
+                                else:
+                                    return "Low"
+                            
+                            filtered_df["Risk Rating"] = filtered_df.apply(get_risk_rating, axis=1)
+                            
+                            # Sort by Risk Rating
+                            risk_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+                            filtered_df["Rating Order"] = filtered_df["Risk Rating"].map(risk_order)
+                            filtered_df = filtered_df.sort_values(by=["Rating Order", "Risk Category"])
+                            filtered_df = filtered_df.drop(columns=["Rating Order"])
+                            
+                            # Display the dataframe with the new Risk Rating column
+                            display_columns = ["Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating", "Obligation"]
+                            filtered_df = filtered_df[display_columns]
+                            
+                            st.dataframe(filtered_df, use_container_width=True)
+                            
+                            # Display risk summary
+                            st.subheader("Risk Assessment Summary")
+                            
+                            # Count risks by rating
+                            risk_counts = filtered_df["Risk Rating"].value_counts()
+                            
+                            # Create a summary message based on risk counts
+                            summary_message = """
+                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                <h4 style="margin-top: 0;">Risk Assessment</h4>
+                                <p>If the recommended obligations are not implemented, this data may be exposed to the following risks:</p>
+                                <ul>
+                            """
+                            
+                            if "Critical" in risk_counts:
+                                summary_message += f"<li><strong style='color: #d9534f;'>Critical Risks:</strong> {risk_counts['Critical']} potential critical risk(s) identified</li>"
+                            
+                            if "High" in risk_counts:
+                                summary_message += f"<li><strong style='color: #f0ad4e;'>High Risks:</strong> {risk_counts['High']} potential high risk(s) identified</li>"
+                            
+                            if "Medium" in risk_counts:
+                                summary_message += f"<li><strong style='color: #5bc0de;'>Medium Risks:</strong> {risk_counts['Medium']} potential medium risk(s) identified</li>"
+                            
+                            if "Low" in risk_counts:
+                                summary_message += f"<li><strong style='color: #5cb85c;'>Low Risks:</strong> {risk_counts['Low']} potential low risk(s) identified</li>"
+                            
+                            summary_message += """
+                                </ul>
+                                <p>These risks should be carefully evaluated and either mitigated through implementing the recommended obligations or formally accepted as residual risks.</p>
+                            </div>
+                            
+                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                                <h4 style="margin-top: 0;">How the Risk Recommendation Algorithm Works</h4>
+                                <p>The algorithm follows this functional flow:</p>
+                                <ul>
+                                    <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
+                                    <li><strong>Risk Identification:</strong> Determine potential risks if obligations are not fulfilled</li>
+                                    <li><strong>Risk Classification:</strong> Categorize risks by type (e.g., Data Breach, Regulatory, Reputational)</li>
+                                    <li><strong>Impact Assessment:</strong> Evaluate the potential impact of each risk (High, Medium, Low)</li>
+                                    <li><strong>Likelihood Evaluation:</strong> Assess the probability of each risk occurring (High, Medium, Low)</li>
+                                    <li><strong>Risk Rating:</strong> Calculate overall risk rating by combining impact and likelihood</li>
+                                    <li><strong>Output:</strong> Prioritized list of risks with severity ratings</li>
+                                </ul>
+                                <p>The risk rating matrix combines likelihood and impact as follows:</p>
+                                <ul>
+                                    <li><strong>Critical:</strong> High likelihood + High impact</li>
+                                    <li><strong>High:</strong> High likelihood + Medium impact, or Medium likelihood + High impact</li>
+                                    <li><strong>Medium:</strong> Medium likelihood + Medium impact, High likelihood + Low impact, or Low likelihood + High impact</li>
+                                    <li><strong>Low:</strong> All other combinations</li>
+                                </ul>
+                            </div>
+                            """
+                            
+                            st.markdown(summary_message, unsafe_allow_html=True)
                         else:
-                            st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                            st.info("No risks identified for the obligations.")
                     else:
-                        st.warning(f"Could not find sensitivity ID for {sensitivity}.")
-            else:
-                # Display instructions when the form hasn't been submitted yet
-                st.info("Fill in the details on the left and click 'Infer Risks' to get results.")
-
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; border: 2px dashed #7F8C8D; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Risk recommendations will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)                    
+                        st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                else:
+                    st.warning(f"Could not find sensitivity ID for {sensitivity}.")           
 
 if __name__ == "__main__":
     app = DataMap()
