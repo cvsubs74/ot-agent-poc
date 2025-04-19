@@ -4511,80 +4511,47 @@ class DataMap:
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create two columns for input form and results
-        col1, col2 = st.columns([1, 1])
+        # Use full page width for input parameters
+        st.subheader("Input Parameters")
         
-        with col1:
-            st.subheader("Input Parameters")
-            
-            # Get purposes for dropdown selection
-            try:
-                purposes = self.glossary_repository.get_purposes()
-                purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
-            except Exception as e:
-                st.warning(f"Error loading purposes: {e}")
-                purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
-                
-            selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
-            
-            # Get data elements for multiselect
-            try:
-                data_elements = self.glossary_repository.get_data_elements()
-                data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
-            except Exception as e:
-                st.warning(f"Error loading data elements: {e}")
-                data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
-                
-            selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
-            
-            # Operation selection
-            operations = ["read", "write", "share"]
-            selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
-            
-            # Add a button to trigger inference with custom styling
-            st.markdown("""
-            <style>
-            div[data-testid="stButton"] > button#policy_analysis_btn {
-                background-color: #3498db;
-                color: white;
-                border: 2px solid #3498db;
-                padding: 0.5rem 1rem;
-                font-weight: 600;
-                border-radius: 4px;
-                text-align: center;
-                margin: 1rem 0;
-                display: block;
-                width: 100%;
-            }
-            div[data-testid="stButton"] > button#policy_analysis_btn:hover {
-                background-color: #2980b9;
-                border-color: #2980b9;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
+        # Get purposes for dropdown selection
+        try:
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = [purpose["name"] for purpose in purposes] if purposes else ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+        except Exception as e:
+            st.warning(f"Error loading purposes: {e}")
+            purpose_options = ["Customer Support", "Fraud Detection", "Marketing Campaigns", "Product Analytics", "User Authentication"]
+        
+        selected_purpose = st.selectbox("Select Business Purpose", options=purpose_options, key="policy_purpose")
+        
+        # Get data elements for multiselect
+        try:
+            data_elements = self.glossary_repository.get_data_elements()
+            data_element_options = [de["name"] for de in data_elements] if data_elements else ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+        except Exception as e:
+            st.warning(f"Error loading data elements: {e}")
+            data_element_options = ["Full Name", "Email Address", "Phone Number", "Customer ID", "Purchase History", "Social Security Number", "Credit Card Number"]
+        
+        selected_data_elements = st.multiselect("Select Data Elements", options=data_element_options, key="policy_data_elements")
+        
+        # Operation selection
+        operations = ["read", "write", "share"]
+        selected_operation = st.selectbox("Select Operation", options=operations, key="policy_operation")
+        
+        analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
 
-        with col2:
-            st.subheader("Compliance Results")
-            if analyze_button and selected_purpose and selected_data_elements and selected_operation:
-                self._analyze_policy_compliance(selected_purpose, selected_data_elements, selected_operation)
-            elif analyze_button:
-                st.warning("Please select a purpose, at least one data element, and an operation to analyze compliance.")
-            else:
-                st.markdown("""
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">Sample Result</h3>
-                    <p>Policy compliance analysis will appear here after analysis...</p>
-                </div>
-                """, unsafe_allow_html=True)
+        # Show results (decision tree, etc.) below the input parameters
+        if analyze_button and selected_purpose and selected_data_elements and selected_operation:
+            self._analyze_policy_compliance(selected_purpose, selected_data_elements, selected_operation)
+        elif analyze_button:
+            st.warning("Please select a purpose, at least one data element, and an operation to analyze compliance.")
 
     def run(self):
         """Main function to run the Streamlit app."""
-        # Configure the page
         self.configure_page()
+        # [REMOVED: sidebar/menu and section routing logic as requested]
+        pass
 
-        # Main header and introduction
         st.title("OneTrust Platform")
         self.divider(2)
         
@@ -5131,6 +5098,10 @@ class DataMap:
                 )
                 
                 analyze_button = st.button("Recommend Controls", key="policy_controls_button")
+                
+                # Render decision tree immediately below the button in the left column
+                if analyze_button and selected_policy_id:
+                    self.decision_tree_section()
             
             with col2:
                 st.subheader("Recommended Controls")
@@ -7044,28 +7015,6 @@ class DataMap:
                 
             selected_jurisdiction = st.selectbox("Select Jurisdiction (Optional)", options=jurisdiction_options, key="policy_jurisdiction")
             
-            # Add a button to trigger inference with custom styling
-            st.markdown("""
-            <style>
-            div[data-testid="stButton"] > button#policy_analysis_btn {
-                background-color: #3498db;
-                color: white;
-                border: 2px solid #3498db;
-                padding: 0.5rem 1rem;
-                font-weight: 600;
-                border-radius: 4px;
-                text-align: center;
-                margin: 1rem 0;
-                display: block;
-                width: 100%;
-            }
-            div[data-testid="stButton"] > button#policy_analysis_btn:hover {
-                background-color: #2980b9;
-                border-color: #2980b9;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
             analyze_button = st.button("Analyze Policy Compliance", key="policy_analysis_btn")
             
             # Define nodes for the decision tree
@@ -7435,6 +7384,128 @@ class DataMap:
             </div>
             """, unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
+
+        # --- Decision Tree Visualization ---
+        # Build nodes and edges representing the compliance decision path
+        nodes = []
+        edges = []
+        # Root node: Purpose
+        purpose_node_id = f"purpose_{purpose_id}"
+        nodes.append({
+            "id": purpose_node_id,
+            "label": f"Purpose: {purpose}",
+            "color": "#3498db",
+            "shape": "ellipse",
+            "size": 30
+        })
+        # Data Elements
+        data_element_ids_list = []
+        for data_element in data_elements:
+            de_id = f"de_{data_element_ids.get(data_element, data_element)}"
+            data_element_ids_list.append(de_id)
+            nodes.append({
+                "id": de_id,
+                "label": f"Data Element: {data_element}",
+                "color": "#f39c12",
+                "shape": "box",
+                "size": 25
+            })
+            edges.append({
+                "source": purpose_node_id,
+                "target": de_id,
+                "label": "includes"
+            })
+        # Operation node
+        op_node_id = f"operation_{operation}"
+        nodes.append({
+            "id": op_node_id,
+            "label": f"Operation: {operation}",
+            "color": "#2ecc71",
+            "shape": "box",
+            "size": 25
+        })
+        for de_id in data_element_ids_list:
+            edges.append({
+                "source": de_id,
+                "target": op_node_id,
+                "label": "operation"
+            })
+        # Policy Action nodes (Access, Security, Retention)
+        # Access Control (operation relevant)
+        access_node_id = f"access_{purpose_id}_{operation}"
+        access_actions = []
+        for i, data_element in enumerate(data_elements):
+            if i < len(access_decisions["Decision"]):
+                # Only show for the selected operation
+                access_actions.append(f"{data_element}: {access_decisions['Decision'][i]} ({access_decisions['Restrictions'][i]})")
+        access_label = "Access Control Actions:\n" + "\n".join(access_actions)
+        nodes.append({
+            "id": access_node_id,
+            "label": access_label,
+            "color": "#9b59b6",
+            "shape": "box",
+            "size": 25,
+            "font": {"size": 14, "color": "black", "face": "Arial", "multi": True}
+        })
+        edges.append({
+            "source": op_node_id,
+            "target": access_node_id,
+            "label": "Access Control"
+        })
+        # Data Security (always shown for all data elements)
+        security_node_id = f"security_{purpose_id}_{operation}"
+        security_actions = []
+        for i, data_element in enumerate(data_elements):
+            if i < len(security_decisions["Encryption Required"]):
+                sec = security_decisions["Encryption Required"][i]
+                if sec == "No":
+                    security_actions.append(f"Implement encryption for '{data_element}' as required by policy.")
+            if i < len(security_decisions["Masking Required"]) and security_decisions["Masking Required"][i] == "Yes":
+                security_actions.append(f"Apply data masking to '{data_element}' ({security_decisions['Masking Format'][i]})")
+            if i < len(security_decisions["Access Logging"]) and security_decisions["Access Logging"][i] == "No":
+                security_actions.append(f"Enable access logging for '{data_element}'.")
+        if not security_actions:
+            security_actions.append("All security controls are in place.")
+        security_label = "Data Security Actions:\n" + "\n".join(security_actions)
+        nodes.append({
+            "id": security_node_id,
+            "label": security_label,
+            "color": "#16a085",
+            "shape": "box",
+            "size": 25,
+            "font": {"size": 14, "color": "black", "face": "Arial", "multi": True}
+        })
+        edges.append({
+            "source": op_node_id,
+            "target": security_node_id,
+            "label": "Data Security"
+        })
+        # Data Retention (always shown for all data elements)
+        retention_node_id = f"retention_{purpose_id}_{operation}"
+        retention_actions = []
+        for i, data_element in enumerate(data_elements):
+            if i < len(retention_decisions["Retention Period"]):
+                ret = retention_decisions["Retention Period"][i]
+                if ret == "-":
+                    retention_actions.append(f"Define retention period for '{data_element}'.")
+        if not retention_actions:
+            retention_actions.append("All retention periods are defined as required.")
+        retention_label = "Data Retention Actions:\n" + "\n".join(retention_actions)
+        nodes.append({
+            "id": retention_node_id,
+            "label": retention_label,
+            "color": "#e67e22",
+            "shape": "box",
+            "size": 25,
+            "font": {"size": 14, "color": "black", "face": "Arial", "multi": True}
+        })
+        edges.append({
+            "source": op_node_id,
+            "target": retention_node_id,
+            "label": "Data Retention"
+        })
+        # NO overall compliance leaf node; the tree ends with the above actionable nodes
+        self._render_decision_tree(nodes, edges, title="Policy Compliance Decision Tree")
 
 
     def _get_rights_guidance(self, law, right_type):
