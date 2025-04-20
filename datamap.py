@@ -5011,72 +5011,7 @@ class DataMap:
                 else:
                     st.info("No new obligations were generated. They may already exist.")
     
-    def obligation_inference_page(self):
-        """Display the Obligation Inference page to infer obligations based on data sensitivity."""
-        st.header("Obligation Inference API")
-        st.markdown("Infer appropriate obligations based on data sensitivity levels.")
-        
-        # Get all sensitivities for the dropdown
-        sensitivities = self.glossary_repository.get_sensitivities()
-        
-        # Input parameters
-        selected_sensitivity_id = st.selectbox(
-            "Data Sensitivity Level",
-            options=[s["id"] for s in sensitivities],
-            format_func=lambda x: next((s["name"] for s in sensitivities if s["id"] == x), "Unknown"),
-            key="infer_obligations_sensitivity"
-        )
-        
-        analyze_button = st.button("Analyze Obligations")
-        
-        # Show results (decision tree, etc.) below the input parameters
-        if analyze_button and selected_sensitivity_id:
-            # Get the sensitivity name for display
-            sensitivity_name = next((s["name"] for s in sensitivities if s["id"] == selected_sensitivity_id), "Unknown")
-            
-            # Get obligations for this sensitivity level
-            sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(selected_sensitivity_id)
-            
-            if sensitivity_obligations:
-                st.markdown(f"### Recommended Obligations for {sensitivity_name} Data")
-                
-                # Group by control type for better organization
-                control_types = set(so["control_type"] for so in sensitivity_obligations)
-                
-                for control_type in control_types:
-                    st.markdown(f"#### {control_type} Controls")
-                    control_obligations = [so for so in sensitivity_obligations if so["control_type"] == control_type]
-                    
-                    # Sort by priority
-                    priority_order = {"High": 0, "Medium": 1, "Low": 2}
-                    control_obligations.sort(key=lambda x: priority_order.get(x["priority"], 99))
-                    
-                    for obligation in control_obligations:
-                        with st.expander(f"{obligation['obligation_name']} ({obligation['priority']} Priority)", expanded=True):
-                            st.markdown(f"**Description:** {obligation['obligation_description']}")
-                            
-                            # Add a button to create this obligation
-                            if st.button(f"Create Obligation: {obligation['obligation_name']}", key=f"create_{obligation['id']}"):
-                                # Check if this obligation already exists
-                                existing_obligations = self.obligation_repository.get_obligations()
-                                exists = any(o["name"] == obligation["obligation_name"] for o in existing_obligations)
-                                    
-                                if not exists:
-                                    new_id = self.obligation_repository.add_obligation(
-                                        obligation["obligation_name"],
-                                        obligation["obligation_description"],
-                                        f"Sensitivity: {sensitivity_name}",
-                                        obligation["control_type"],
-                                        "Open"
-                                    )
-                                    if new_id:
-                                        st.success(f"Created obligation: {obligation['obligation_name']}")
-                                    else:
-                                        st.error("Failed to create obligation")
-                                else:
-                                    st.info(f"Obligation '{obligation['obligation_name']}' already exists")
-                else:
-                    st.info(f"No standard obligations defined for {sensitivity_name} sensitivity level.")
+
             
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
@@ -5719,25 +5654,84 @@ class DataMap:
             str: The inferred sensitivity level or None if not found
         """
         
-        # Check data element sensitivity
+        # Hierarchical sensitivity inference strategy:
+        # 1. First check law-specific mappings with data subject type (most specific)
+        # 2. Then check general mappings with data subject type
+        # 3. If data element, check if it belongs to a data category with known sensitivity
+        # 4. Finally, check for any default sensitivity for the data element/category
+        
         if data_type == "Data Element":
-            # Check law_dst_de_sensitivity table
-            de_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
-            for item in de_sensitivities:
+            # 1. Check law-specific data element sensitivity with data subject type
+            de_law_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
+            for item in de_law_sensitivities:
                 if (item["law_name"] == law and 
                     item["data_subject_type_name"] == data_subject_type and 
                     item["data_element_name"] == data_value):
                     return item["sensitivity_name"]
+            
+            # 2. Check general data element sensitivity with data subject type
+            de_sensitivities = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
+            for item in de_sensitivities:
+                if (item["data_subject_type_name"] == data_subject_type and 
+                    item["data_element_name"] == data_value):
+                    return item["sensitivity_name"]
+            
+            # 3. Check if the data element belongs to a data category with known sensitivity
+            # First, get the data categories for this data element
+            data_categories = self.regulatory_metadata_repository.get_data_category_data_elements()
+            element_categories = []
+            for mapping in data_categories:
+                if mapping["data_element_name"] == data_value:
+                    element_categories.append(mapping["data_category_name"])
+            
+            # Then check sensitivities for these categories
+            if element_categories:
+                # Check law-specific category sensitivities
+                dc_law_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
+                for category in element_categories:
+                    for item in dc_law_sensitivities:
+                        if (item["law_name"] == law and 
+                            item["data_subject_type_name"] == data_subject_type and 
+                            item["data_category_name"] == category):
+                            return item["sensitivity_name"]
+                
+                # Check general category sensitivities
+                dc_sensitivities = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
+                for category in element_categories:
+                    for item in dc_sensitivities:
+                        if (item["data_subject_type_name"] == data_subject_type and 
+                            item["data_category_name"] == category):
+                            return item["sensitivity_name"]
+            
+            # 4. Look for default sensitivity for this data element
+            all_data_elements = self.glossary_repository.get_data_elements()
+            for element in all_data_elements:
+                if element["name"] == data_value and "sensitivity" in element and element["sensitivity"]:
+                    return element["sensitivity"]
+                    
         else:  # Data Category
-            # Check law_dst_dc_sensitivity table
-            dc_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
-            for item in dc_sensitivities:
+            # 1. Check law-specific data category sensitivity with data subject type
+            dc_law_sensitivities = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
+            for item in dc_law_sensitivities:
                 if (item["law_name"] == law and 
                     item["data_subject_type_name"] == data_subject_type and 
                     item["data_category_name"] == data_value):
                     return item["sensitivity_name"]
+            
+            # 2. Check general data category sensitivity with data subject type
+            dc_sensitivities = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
+            for item in dc_sensitivities:
+                if (item["data_subject_type_name"] == data_subject_type and 
+                    item["data_category_name"] == data_value):
+                    return item["sensitivity_name"]
+            
+            # 3. Look for default sensitivity for this data category
+            all_data_categories = self.glossary_repository.get_data_categories()
+            for category in all_data_categories:
+                if category["name"] == data_value and "sensitivity" in category and category["sensitivity"]:
+                    return category["sensitivity"]
         
-        # If no direct match found, return None
+        # If no sensitivity found after all checks, return None
         return None
         
     def legal_basis_inference_api(self):
@@ -7664,108 +7658,148 @@ class DataMap:
         else:
             st.warning("No data subject types available.")
             return
-            
-        # Option to select either data element or data category
-        data_type = st.radio("Select Data Type", ["Data Element", "Data Category"], key="obligation_data_type")
-            
-        if data_type == "Data Element":
-            data_elements = self.glossary_repository.get_data_elements()
-            if data_elements:
-                de_options = [de["name"] for de in data_elements]
-                selected_data = st.selectbox("Select Data Element", options=de_options, key="obligation_data_element")
-            else:
-                st.warning("No data elements available.")
-                return
-        else:  # Data Category
-            data_categories = self.glossary_repository.get_data_categories()
-            if data_categories:
-                dc_options = [dc["name"] for dc in data_categories]
-                selected_data = st.selectbox("Select Data Category", options=dc_options, key="obligation_data_category")
-            else:
-                st.warning("No data categories available.")
-                return
         
-        # Add a button to trigger inference
-        infer_button = st.button("Infer Obligations", key="infer_obligations_button")
+        # Get data elements
+        data_elements = self.glossary_repository.get_data_elements()
+        if not data_elements:
+            st.warning("No data elements available.")
+            return
         
-        if infer_button:
-            # First, infer the sensitivity of the data
-            sensitivity = self._infer_sensitivity(selected_law, selected_dst, selected_data, data_type)
+        data_element_options = [de["name"] for de in data_elements]
+        selected_data_elements = st.multiselect(
+            "Select Data Elements",
+            options=data_element_options,
+            key="api_infer_obligations_data_elements"
+        )
+
+        analyze_button = st.button("Run Obligation Inference API")
+
+        if analyze_button and selected_data_elements:
+            # First, infer the sensitivity of each data element
+            st.subheader("Inferred Sensitivities for Selected Data Elements")
+            
+            # Create a table to display data element sensitivities
+            sensitivity_data = []
+            data_element_sensitivities = {}
+            
+            for data_element in selected_data_elements:
+                # Infer sensitivity for this data element
+                sensitivity = self._infer_sensitivity(selected_law, selected_dst, data_element, "Data Element")
                 
-            if sensitivity:
-                st.success(f"Data sensitivity inferred: **{sensitivity}**")
+                if sensitivity:
+                    # Store the sensitivity for later use
+                    data_element_sensitivities[data_element] = sensitivity
                     
-                # Get sensitivity ID
-                all_sensitivities = self.glossary_repository.get_sensitivities()
-                sensitivity_id = None
-                for s in all_sensitivities:
-                    if s["name"] == sensitivity:
-                        sensitivity_id = s["id"]
-                        break
+                    # Add to the display table
+                    sensitivity_data.append({
+                        "Data Element": data_element,
+                        "Sensitivity": sensitivity,
+                        "Source": f"Inferred from {selected_law} for {selected_dst}"
+                    })
+                else:
+                    # If no sensitivity found, mark as 'Unknown'
+                    data_element_sensitivities[data_element] = "Unknown"
+                    sensitivity_data.append({
+                        "Data Element": data_element,
+                        "Sensitivity": "Unknown",
+                        "Source": "No sensitivity mapping found"
+                    })
+            
+            # Display the sensitivity table
+            sensitivity_df = pd.DataFrame(sensitivity_data)
+            st.dataframe(sensitivity_df, use_container_width=True)
+            
+            # Now get obligations based on the inferred sensitivities
+            st.subheader("Recommended Obligations Based on Sensitivities")
+            
+            # Get all sensitivities for mapping names to IDs
+            all_sensitivities = self.glossary_repository.get_sensitivities()
+            sensitivity_name_to_id = {s["name"]: s["id"] for s in all_sensitivities}
+            
+            # Group obligations by control type and data element
+            obligations_by_type = {}
+            
+            for data_element, sensitivity in data_element_sensitivities.items():
+                if sensitivity != "Unknown" and sensitivity in sensitivity_name_to_id:
+                    sensitivity_id = sensitivity_name_to_id[sensitivity]
                     
-                if sensitivity_id:
                     # Get obligations for this sensitivity
                     sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
                     
-                    if sensitivity_obligations:
-                        # Display the obligations
-                        st.subheader("Recommended Obligations")
-                        
-                        # Create a DataFrame for display
-                        obligations_data = []
-                        for so in sensitivity_obligations:
-                            obligations_data.append({
-                            "Obligation": so["obligation_name"],
-                            "Description": so["obligation_description"],
-                            "Control Type": so["control_type"],
-                            "Priority": so["priority"]
+                    for obligation in sensitivity_obligations:
+                        control_type = obligation["control_type"]
+                        if control_type not in obligations_by_type:
+                            obligations_by_type[control_type] = []
+                        obligations_by_type[control_type].append({
+                            "Data Element": data_element,
+                            "Sensitivity": sensitivity,
+                            "Obligation Name": obligation["obligation_name"],
+                            "Description": obligation["obligation_description"],
+                            "Priority": obligation["priority"]
                         })
-                    
-                    df = pd.DataFrame(obligations_data)
-                    
-                    # Add filters
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        control_types = ["All"] + sorted(list(set(df["Control Type"])))
-                        selected_control = st.selectbox(
-                            "Filter by Control Type",
-                            control_types,
-                            key="obligation_api_control_filter"
-                        )
-                    with col2:
-                        priorities = ["All"] + sorted(list(set(df["Priority"])))
-                        selected_priority = st.selectbox(
-                            "Filter by Priority",
-                            priorities,
-                            key="obligation_api_priority_filter"
-                        )
-                    
-                    # Apply filters
-                    filtered_df = df.copy()
-                    if selected_control != "All":
-                        filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
-                    if selected_priority != "All":
-                        filtered_df = filtered_df[filtered_df["Priority"] == selected_priority]
-                    
-                    # Sort by Priority and Control Type
-                    priority_order = {"High": 0, "Medium": 1, "Low": 2}
-                    filtered_df["Priority Order"] = filtered_df["Priority"].map(priority_order)
-                    filtered_df = filtered_df.sort_values(by=["Priority Order", "Control Type"])
-                    filtered_df = filtered_df.drop(columns=["Priority Order"])
-                    
-                    # Display the dataframe
-                    st.dataframe(filtered_df, use_container_width=True)
-                    
-                    # Add explanation
-                    st.markdown("""
-                    <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+            
+            if obligations_by_type:
+                # Create a DataFrame for display
+                all_obligations = []
+                for control_type, obligations in obligations_by_type.items():
+                    for obligation in obligations:
+                        all_obligations.append({
+                            "Control Type": control_type,
+                            "Data Element": obligation["Data Element"],
+                            "Sensitivity": obligation["Sensitivity"],
+                            "Obligation": obligation["Obligation Name"],
+                            "Description": obligation["Description"],
+                            "Priority": obligation["Priority"]
+                        })
+                
+                df = pd.DataFrame(all_obligations)
+                
+                # Add filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    control_types = ["All"] + sorted(list(set(df["Control Type"])))
+                    selected_control = st.selectbox(
+                        "Filter by Control Type",
+                        control_types,
+                        key="obligation_api_control_filter"
+                    )
+                with col2:
+                    priorities = ["All"] + sorted(list(set(df["Priority"])))
+                    selected_priority = st.selectbox(
+                        "Filter by Priority",
+                        priorities,
+                        key="obligation_api_priority_filter"
+                    )
+                with col3:
+                    data_elements_filter = ["All"] + sorted(list(set(df["Data Element"])))
+                    selected_data_element = st.selectbox(
+                        "Filter by Data Element",
+                        data_elements_filter,
+                        key="obligation_api_data_element_filter"
+                    )
+                
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_control != "All":
+                    filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
+                priority_order = {"High": 0, "Medium": 1, "Low": 2}
+                all_obligations.sort(key=lambda x: priority_order.get(x["Priority"], 99))
+                
+                # Create a DataFrame for all obligations
+                obligations_df = pd.DataFrame(all_obligations)
+                
+                # Display the dataframe
+                st.dataframe(obligations_df, use_container_width=True)
+                
+                # Add explanation
+                st.markdown("""
+                <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
                                 <h4 style="margin-top: 0;">How the Obligation Inference Algorithm Works</h4>
                                 <p>The algorithm follows this functional flow:</p>
                                 <ul>
                                     <li><strong>Input:</strong> Data elements from the selected asset</li>
                                     <li><strong>Sensitivity Analysis:</strong> Determine sensitivity level for each data element</li>
                                     <li><strong>Obligation Mapping:</strong> Match sensitivities to relevant security and privacy obligations</li>
-                                    <li><strong>Control Categorization:</strong> Group obligations by control type (Encryption, Access Control, etc.)</li>
                                     <li><strong>Priority Assignment:</strong> Assign implementation priority based on data sensitivity</li>
                                     <li><strong>Output:</strong> Prioritized list of security and privacy obligations</li>
                                 </ul>
@@ -7776,9 +7810,11 @@ class DataMap:
                                     <li><strong>Low Priority:</strong> Recommended controls that enhance protection but may be optional</li>
                                 </ul>
                             </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.info(f"No obligations defined for {sensitivity} sensitivity level.")
+                """, unsafe_allow_html=True)
+            else:
+                st.info("No obligations found for the inferred sensitivity levels.")
+        elif analyze_button and not selected_data_elements:
+            st.warning("Please select at least one data element.")
             
     def policy_recommendation_api(self):
         """Implement a policy recommendation API based on data sensitivity and obligations.
