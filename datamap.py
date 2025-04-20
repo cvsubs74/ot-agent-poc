@@ -3,7 +3,24 @@ import time
 from core.sensitivity_inference import SensitivityInference
 from core.law_inference import LawInference
 from core.legal_basis_inference import LegalBasisInference
-from UX.page_configurator import PageConfigurator
+from UX.page_configurator import PageConfigurator   
+from UX.breach_notification_page import BreachNotificationPage
+from UX.core_constructs_pages import (
+    LawPage,
+    JurisdictionsPage,
+    LegalBasisPage,
+    DataElementsPage,
+    DataSubjectTypesPage,
+    ObligationsPage,
+    RisksPage,
+    FrameworksPage,
+    ControlsPage,
+    DataCategoriesPage,
+    SensitivityPage,
+    PurposeCategoriesPage,
+    BreachTypesPage
+)
+
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "500"
@@ -63,7 +80,6 @@ class DataMap:
     def core_constructs_section(self):
         """Handle the Core Constructs section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-book'></i> &nbsp;Core Constructs</div>", unsafe_allow_html=True)
-        
         st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
             <p><strong>Core Constructs™</strong> are foundational reference entities that power the entire OneTrust Platform. They establish a unified source of truth across all modules and functions.</p>
             <ul>
@@ -74,646 +90,37 @@ class DataMap:
                 <li><strong>Extensible Architecture:</strong> Core Constructs can be customized to meet organization-specific requirements while maintaining system integrity</li>
             </ul>
         </div>''', unsafe_allow_html=True)
-        
         tabs = st.tabs([
             "Law", "Jurisdictions", "Legal Basis", "Data Elements", 
             "Data Subject Types", "Data Categories", "Sensitivity", "Purpose Categories", "Breach Types", "Obligations", "Risks",
             "Frameworks", "Controls"
         ])
-        
-        # Law tab
         with tabs[0]:
-            st.subheader("Law Definitions")
-            st.markdown("""
-            <div class="card">
-                <p>A law is a system of rules created and enforced through social or governmental institutions to regulate behavior. 
-                In the context of data protection, laws establish the legal framework for how organizations must handle personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get law data from repository
-            laws = self.glossary_repository.get_laws()
-            if laws:
-                law_data = {
-                    "Law Name": [],
-                    "Description": [],
-                    "Scope": []
-                }
-                for law in laws:
-                    law_data["Law Name"].append(law["name"])
-                    law_data["Description"].append(law["description"])
-                    law_data["Scope"].append(law["scope"])
-                
-                st.dataframe(pd.DataFrame(law_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Jurisdictions tab
+            LawPage(self.glossary_repository, self.regulatory_metadata_repository, self.obligation_repository).render()
         with tabs[1]:
-            st.subheader("Jurisdictions")
-            st.markdown("""
-            <div class="card">
-                <p>Jurisdictions are geographical areas with specific legal authority. In data protection, different jurisdictions may have different laws and regulations governing how personal data must be handled.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get jurisdiction data from repository
-            jurisdictions = self.glossary_repository.get_jurisdictions()
-            if jurisdictions:
-                jurisdiction_data = {
-                    "Jurisdiction": []
-                }
-                for jurisdiction in jurisdictions:
-                    jurisdiction_data["Jurisdiction"].append(jurisdiction["name"])
-                
-                st.dataframe(pd.DataFrame(jurisdiction_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Legal Basis tab
+            JurisdictionsPage(self.glossary_repository).render()
         with tabs[2]:
-            st.subheader("Legal Basis")
-            st.markdown("""
-            <div class="card">
-                <p>A legal basis is the lawful ground for processing personal data. Data protection laws typically require organizations to have a valid legal basis before they can process personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get legal basis data from repository
-            legal_bases = self.glossary_repository.get_legal_bases()
-            if legal_bases:
-                legal_basis_data = {
-                    "Legal Basis": [],
-                    "Description": []
-                }
-                for legal_basis in legal_bases:
-                    legal_basis_data["Legal Basis"].append(legal_basis["name"])
-                    legal_basis_data["Description"].append(legal_basis["description"])
-                
-                st.dataframe(pd.DataFrame(legal_basis_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Data Elements tab
+            LegalBasisPage(self.glossary_repository).render()
         with tabs[3]:
-            st.subheader("Data Elements")
-            st.markdown("""
-            <div class="card">
-                <p>Data elements are specific pieces of information that can be collected about individuals. They are the building blocks of personal data and may include items like names, email addresses, or identification numbers.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get data element data from repository
-            data_elements = self.glossary_repository.get_all_data_elements()
-            if data_elements:
-                data_element_data = {
-                    "Data Element": [],
-                    "Description": [],
-                    "Default Masking Format": []
-                }
-                for data_element in data_elements:
-                    data_element_data["Data Element"].append(data_element["name"])
-                    data_element_data["Description"].append(data_element["description"])
-                    data_element_data["Default Masking Format"].append(data_element["default_masking_format"] if data_element["default_masking_format"] else "")
-                
-                # Create DataFrame
-                df = pd.DataFrame(data_element_data)
-                
-                # Add filters
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    elements = sorted(df["Data Element"].unique())
-                    selected_element = st.selectbox("Filter by Data Element", ["All"] + list(elements), key="data_element_filter")
-                
-                with col2:
-                    formats = sorted(df["Default Masking Format"].unique())
-                    selected_format = st.selectbox("Filter by Masking Format", ["All"] + list(formats), key="masking_format_filter")
-                
-                # Apply filters
-                filtered_df = df.copy()
-                if selected_element != "All":
-                    filtered_df = filtered_df[filtered_df["Data Element"] == selected_element]
-                if selected_format != "All":
-                    filtered_df = filtered_df[filtered_df["Default Masking Format"] == selected_format]
-                
-                # Display the filtered data
-                st.dataframe(filtered_df)
-            else:
-                st.warning("No data available in the database.")
-        
-        # Data Subject Types tab
+            DataElementsPage(self.glossary_repository).render()
         with tabs[4]:
-            st.subheader("Data Subject Types")
-            st.markdown("""
-            <div class="card">
-                <p>Data subject types refer to the categories of individuals whose personal data is being processed. 
-                Different types of data subjects may have different rights and protections under data protection laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get data subject type data from repository
-            data_subject_types = self.glossary_repository.get_data_subject_types()
-            if data_subject_types:
-                data_subject_type_data = {
-                    "Data Subject Type": [],
-                    "Description": []
-                }
-                for dst in data_subject_types:
-                    data_subject_type_data["Data Subject Type"].append(dst["name"])
-                    data_subject_type_data["Description"].append(dst["description"])
-                
-                st.dataframe(pd.DataFrame(data_subject_type_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Data Categories tab
+            DataSubjectTypesPage(self.glossary_repository).render()
         with tabs[5]:
-            st.subheader("Data Categories")
-            st.markdown("""
-            <div class="card">
-                <p>Data categories are groupings of similar types of personal data. 
-                They help organizations classify and manage personal data according to its nature and sensitivity.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get data category data from repository
-            data_categories = self.glossary_repository.get_data_categories()
-            if data_categories:
-                data_category_data = {
-                    "Data Category": [],
-                    "Description": []
-                }
-                for dc in data_categories:
-                    data_category_data["Data Category"].append(dc["name"])
-                    data_category_data["Description"].append(dc["description"])
-                
-                st.dataframe(pd.DataFrame(data_category_data))
-            else:
-                st.warning("No data available in the database.")
-        
-
-        
-        # Sensitivity tab
+            DataCategoriesPage(self.glossary_repository).render()
         with tabs[6]:
-            st.subheader("Sensitivity")
-            st.markdown("""
-            <div class="card">
-                <p>Sensitivity refers to the level of risk associated with certain types of personal data. 
-                Some categories of data are considered more sensitive than others and require additional protections.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get sensitivity data from repository
-            sensitivities = self.glossary_repository.get_sensitivities()
-            if sensitivities:
-                sensitivity_data = {
-                    "Sensitivity Level": [],
-                    "Description": []
-                }
-                for sens in sensitivities:
-                    sensitivity_data["Sensitivity Level"].append(sens["name"])
-                    sensitivity_data["Description"].append(sens["description"])
-                
-                st.dataframe(pd.DataFrame(sensitivity_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Purpose Categories tab
+            SensitivityPage(self.glossary_repository).render()
         with tabs[7]:
-            st.subheader("Purpose Categories")
-            st.markdown("""
-            <div class="card">
-                <p>Purpose categories define the specific reasons for which personal data is processed. 
-                Under most data protection laws, organizations must clearly specify the purpose for which they collect and process personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get purpose categories data from repository
-            purpose_categories = self.glossary_repository.get_purpose_categories()
-            if purpose_categories:
-                purpose_category_data = {
-                    "Purpose Category": [],
-                    "Description": []
-                }
-                for purpose in purpose_categories:
-                    purpose_category_data["Purpose Category"].append(purpose["name"])
-                    purpose_category_data["Description"].append(purpose["description"])
-                
-                st.dataframe(pd.DataFrame(purpose_category_data))
-            else:
-                st.warning("No data available in the database.")
-        
-        # Breach Types tab
+            PurposeCategoriesPage(self.glossary_repository).render()
         with tabs[8]:
-            st.subheader("Breach Types")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about different types of data breaches that can affect organizations.</p>
-                <ul>
-                    <li>Categorized by source and attack vector (cyber attacks, insider threats, physical breaches, supply chain)</li>
-                    <li>Detailed descriptions of each breach type and its characteristics</li>
-                    <li>Helps in identifying and classifying security incidents</li>
-                    <li>Supports breach notification requirements under various regulations</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get breach types data from repository
-            breach_types = self.glossary_repository.get_breach_types()
-            if breach_types:
-                # Group breach types by category
-                categories = {}
-                for breach_type in breach_types:
-                    category = breach_type["category"]
-                    if category not in categories:
-                        categories[category] = []
-                    categories[category].append(breach_type)
-                
-                # Display breach types by category
-                for category, types in categories.items():
-                    st.markdown(f"<h3>{category}</h3>", unsafe_allow_html=True)
-                    
-                    breach_type_data = {
-                        "Breach Type": [],
-                        "Description": []
-                    }
-                    for breach in types:
-                        breach_type_data["Breach Type"].append(breach["name"])
-                        breach_type_data["Description"].append(breach["description"])
-                    
-                    st.dataframe(pd.DataFrame(breach_type_data))
-            else:
-                st.warning("No data available in the database.")
-                
-        # Obligations tab
+            BreachTypesPage(self.glossary_repository).render()
         with tabs[9]:
-            st.subheader("Obligations")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about regulatory and security obligations that organizations must fulfill.</p>
-                <ul>
-                    <li>Detailed descriptions of each obligation and its requirements</li>
-                    <li>Tracks implementation status and policy linkage</li>
-                    <li>Filter by control type, status, and source</li>
-                    <li>Supports compliance with various regulations and standards</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get obligations from repository
-            obligations = self.obligation_repository.get_obligations()
-            if obligations:
-                # Create filters
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    # Get unique control types
-                    control_types = sorted(list(set([obl["control_type"] for obl in obligations if obl["control_type"]]))) 
-                    control_types = ["All"] + control_types
-                    selected_control = st.selectbox("Filter by Control Type", control_types, key="obl_control_filter")
-                
-                with col2:
-                    # Get unique statuses
-                    statuses = sorted(list(set([obl["status"] for obl in obligations if obl["status"]]))) 
-                    statuses = ["All"] + statuses
-                    selected_status = st.selectbox("Filter by Status", statuses, key="obl_status_filter")
-                
-                with col3:
-                    # Get unique sources
-                    sources = sorted(list(set([obl["source"] for obl in obligations if obl["source"]]))) 
-                    sources = ["All"] + sources
-                    selected_source = st.selectbox("Filter by Source", sources, key="obl_source_filter")
-                
-                # Create dataframe
-                df = pd.DataFrame(obligations)
-                df = df.rename(columns={
-                    "id": "ID",
-                    "name": "Obligation",
-                    "description": "Description",
-                    "source": "Source",
-                    "control_type": "Control Type",
-                    "status": "Status",
-                    "policy_name": "Policy",
-                    "risk_accepted": "Risk Accepted",
-                    "created_at": "Created At"
-                })
-                
-                # Apply filters
-                if selected_control != "All":
-                    df = df[df["Control Type"] == selected_control]
-                if selected_status != "All":
-                    df = df[df["Status"] == selected_status]
-                if selected_source != "All":
-                    df = df[df["Source"] == selected_source]
-                
-                # Reorder columns for better display
-                display_columns = ["ID", "Obligation", "Description", "Source", "Control Type", "Status", "Policy", "Risk Accepted"]
-                df = df[display_columns]
-                
-                # Display the dataframe
-                st.dataframe(df, use_container_width=True)
-                
-                # Add new obligation section
-                with st.expander("Add New Obligation", expanded=False):
-                    with st.form("add_obligation_form"):
-                        obligation_name = st.text_input("Obligation Name")
-                        obligation_desc = st.text_area("Description")
-                        obligation_source = st.text_input("Source (e.g., Regulation, Standard)")
-                        obligation_control = st.selectbox(
-                            "Control Type",
-                            ["Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
-                            key="new_obligation_control"
-                        )
-                        obligation_status = st.selectbox(
-                            "Status",
-                            ["Open", "In Progress", "Implemented", "Accepted Risk"],
-                            key="new_obligation_status"
-                        )
-                        
-                        submitted = st.form_submit_button("Add Obligation")
-                        if submitted:
-                            if obligation_name and obligation_desc:
-                                # Add the obligation to the repository
-                                new_id = self.obligation_repository.add_obligation(
-                                    obligation_name, obligation_desc, obligation_source, 
-                                    obligation_control, obligation_status
-                                )
-                                if new_id:
-                                    st.success(f"Obligation '{obligation_name}' added successfully!")
-                                    st.experimental_rerun()
-                                else:
-                                    st.error("Failed to add obligation. Please try again.")
-                            else:
-                                st.warning("Obligation Name and Description are required.")
-            else:
-                st.warning("No obligations available in the database.")
-        
-        # Risks tab
+            ObligationsPage(self.obligation_repository).render()
         with tabs[10]:
-            st.subheader("Risks")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about potential privacy and security risks that organizations may face when handling personal data.</p>
-                <ul>
-                    <li>Detailed descriptions of common privacy and security risks</li>
-                    <li>Risk categorization by type (security, privacy, compliance, etc.)</li>
-                    <li>Risk assessment information including likelihood and impact</li>
-                    <li>Foundation for risk-based compliance decision making</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Sample risk data (in a real implementation, this would come from a repository)
-            risk_data = [
-                {"id": 1, "name": "Unauthorized Data Access", "description": "Unauthorized individuals gain access to sensitive personal data due to inadequate access controls", "category": "Security", "likelihood": "High", "impact": "High"},
-                {"id": 2, "name": "Data Breach", "description": "Personal data is exposed, lost, altered, or accessed without authorization", "category": "Security", "likelihood": "Medium", "impact": "High"},
-                {"id": 3, "name": "Excessive Data Collection", "description": "Collection of personal data beyond what is necessary for the stated purpose", "category": "Privacy", "likelihood": "High", "impact": "Medium"},
-                {"id": 4, "name": "Improper Data Retention", "description": "Retention of personal data beyond the necessary period for the stated purpose", "category": "Privacy", "likelihood": "High", "impact": "Medium"},
-                {"id": 5, "name": "Inadequate Consent Management", "description": "Failure to obtain, record, or manage valid consent for data processing activities", "category": "Consent", "likelihood": "Medium", "impact": "High"},
-                {"id": 6, "name": "Cross-Border Transfer Violations", "description": "Transfer of personal data to jurisdictions without adequate protection or proper transfer mechanisms", "category": "Transfer", "likelihood": "Medium", "impact": "High"},
-                {"id": 7, "name": "Insufficient Data Subject Rights Management", "description": "Inability to fulfill data subject requests (access, deletion, portability, etc.) within required timeframes", "category": "Rights", "likelihood": "Medium", "impact": "Medium"},
-                {"id": 8, "name": "Inadequate Security Controls", "description": "Lack of appropriate technical and organizational measures to protect personal data", "category": "Security", "likelihood": "Medium", "impact": "High"},
-                {"id": 9, "name": "Vendor Non-Compliance", "description": "Third-party processors handling personal data without adequate contractual controls or compliance verification", "category": "Third Party", "likelihood": "High", "impact": "Medium"},
-                {"id": 10, "name": "Incomplete Data Inventory", "description": "Incomplete or inaccurate records of data processing activities and data assets", "category": "Governance", "likelihood": "High", "impact": "Medium"}
-            ]
-            
-            # Create filters
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Get unique risk categories
-                categories = sorted(list(set([risk["category"] for risk in risk_data if risk["category"]]))) 
-                categories = ["All"] + categories
-                selected_category = st.selectbox("Filter by Risk Category", categories, key="risk_category_filter")
-            
-            with col2:
-                # Get unique likelihood levels
-                likelihoods = sorted(list(set([risk["likelihood"] for risk in risk_data if risk["likelihood"]]))) 
-                likelihoods = ["All"] + likelihoods
-                selected_likelihood = st.selectbox("Filter by Likelihood", likelihoods, key="risk_likelihood_filter")
-            
-            with col3:
-                # Get unique impact levels
-                impacts = sorted(list(set([risk["impact"] for risk in risk_data if risk["impact"]]))) 
-                impacts = ["All"] + impacts
-                selected_impact = st.selectbox("Filter by Impact", impacts, key="risk_impact_filter")
-            
-            # Create dataframe
-            df = pd.DataFrame(risk_data)
-            df = df.rename(columns={
-                "id": "ID",
-                "name": "Risk",
-                "description": "Description",
-                "category": "Risk Category",
-                "likelihood": "Likelihood",
-                "impact": "Impact"
-            })
-            
-            # Apply filters
-            if selected_category != "All":
-                df = df[df["Risk Category"] == selected_category]
-            if selected_likelihood != "All":
-                df = df[df["Likelihood"] == selected_likelihood]
-            if selected_impact != "All":
-                df = df[df["Impact"] == selected_impact]
-            
-            # Display the dataframe
-            st.dataframe(df, use_container_width=True)
-            
-            # Add new risk section
-            with st.expander("Add New Risk", expanded=False):
-                with st.form("add_risk_form"):
-                    risk_name = st.text_input("Risk Name")
-                    risk_desc = st.text_area("Description")
-                    risk_category = st.selectbox(
-                        "Risk Category",
-                        ["Security", "Privacy", "Consent", "Transfer", "Rights", "Third Party", "Governance", "Other"],
-                        key="new_risk_category"
-                    )
-                    risk_likelihood = st.selectbox(
-                        "Likelihood",
-                        ["Low", "Medium", "High"],
-                        key="new_risk_likelihood"
-                    )
-                    risk_impact = st.selectbox(
-                        "Impact",
-                        ["Low", "Medium", "High"],
-                        key="new_risk_impact"
-                    )
-                    
-                    # Submit button
-                    submitted = st.form_submit_button("Add Risk")
-                    if submitted:
-                        st.success(f"Risk '{risk_name}' has been added successfully!")
-        
-        # Frameworks tab
+            RisksPage(self.glossary_repository).render()
         with tabs[11]:
-            st.subheader("Frameworks")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about security and compliance frameworks that organizations can implement to ensure proper data protection.</p>
-                <ul>
-                    <li>Detailed descriptions of common security and compliance frameworks</li>
-                    <li>Framework categorization by type (security, privacy, industry-specific, etc.)</li>
-                    <li>Framework version and adoption information</li>
-                    <li>Foundation for structured compliance implementation</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get framework data from repository
-            framework_data = self.glossary_repository.get_frameworks()
-            if not framework_data:
-                st.warning("No framework data available in the database.")
-                framework_data = []
-            
-            # Create filters
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Get unique framework categories
-                categories = sorted(list(set([framework["category"] for framework in framework_data if framework["category"]]))) 
-                categories = ["All"] + categories
-                selected_category = st.selectbox("Filter by Framework Category", categories, key="framework_category_filter")
-            
-            with col2:
-                # Get unique framework versions
-                versions = sorted(list(set([framework["version"] for framework in framework_data if framework["version"]]))) 
-                versions = ["All"] + versions
-                selected_version = st.selectbox("Filter by Version", versions, key="framework_version_filter")
-            
-            # Create dataframe
-            df = pd.DataFrame(framework_data)
-            df = df.rename(columns={
-                "id": "ID",
-                "name": "Framework",
-                "description": "Description",
-                "category": "Category",
-                "version": "Version"
-            })
-            
-            # Apply filters
-            if selected_category != "All":
-                df = df[df["Category"] == selected_category]
-            if selected_version != "All":
-                df = df[df["Version"] == selected_version]
-            
-            # Display the dataframe
-            st.dataframe(df, use_container_width=True)
-            
-            # Add new framework section
-            with st.expander("Add New Framework", expanded=False):
-                with st.form("add_framework_form"):
-                    framework_name = st.text_input("Framework Name")
-                    framework_desc = st.text_area("Description")
-                    framework_category = st.selectbox(
-                        "Framework Category",
-                        ["Security", "Privacy", "Industry-Specific", "Healthcare", "Financial", "Other"],
-                        key="new_framework_category"
-                    )
-                    framework_version = st.text_input("Version")
-                    
-                    # Submit button
-                    submitted = st.form_submit_button("Add Framework")
-                    if submitted:
-                        if framework_name and framework_desc and framework_category and framework_version:
-                            # Add framework to database
-                            framework_id = self.glossary_repository.add_framework(framework_name, framework_desc, framework_version, framework_category)
-                            if framework_id:
-                                st.success(f"Framework '{framework_name}' has been added successfully!")
-                            else:
-                                st.error("Failed to add framework. Please try again.")
-                        else:
-                            st.error("Please fill in all fields.")
-        
-        # Controls tab
+            FrameworksPage(self.glossary_repository).render()
         with tabs[12]:
-            st.subheader("Controls")
-            st.markdown('''<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                <p>This section provides information about security and privacy controls that organizations can implement to mitigate risks and ensure compliance with regulations and frameworks.</p>
-                <ul>
-                    <li>Detailed descriptions of common security and privacy controls</li>
-                    <li>Control categorization by type (technical, administrative, physical, etc.)</li>
-                    <li>Implementation status and priority information</li>
-                    <li>Foundation for structured risk mitigation</li>
-                </ul>
-            </div>''', unsafe_allow_html=True)
-            
-            # Get control data from repository
-            control_data = self.glossary_repository.get_controls()
-            if not control_data:
-                st.warning("No control data available in the database.")
-                control_data = []
-            
-            # Create filters
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Get unique control types
-                control_types = sorted(list(set([control["control_type"] for control in control_data if control["control_type"]]))) 
-                control_types = ["All"] + control_types
-                selected_control_type = st.selectbox("Filter by Control Type", control_types, key="control_type_filter")
-            
-            with col2:
-                # Get unique implementation statuses
-                statuses = sorted(list(set([control["implementation_status"] for control in control_data if control["implementation_status"]]))) 
-                statuses = ["All"] + statuses
-                selected_status = st.selectbox("Filter by Implementation Status", statuses, key="control_status_filter")
-            
-            with col3:
-                # Get unique priorities
-                priorities = sorted(list(set([control["priority"] for control in control_data if control["priority"]]))) 
-                priorities = ["All"] + priorities
-                selected_priority = st.selectbox("Filter by Priority", priorities, key="control_priority_filter")
-            
-            # Create dataframe
-            df = pd.DataFrame(control_data)
-            df = df.rename(columns={
-                "id": "ID",
-                "name": "Control",
-                "description": "Description",
-                "control_type": "Control Type",
-                "implementation_status": "Implementation Status",
-                "priority": "Priority"
-            })
-            
-            # Apply filters
-            if selected_control_type != "All":
-                df = df[df["Control Type"] == selected_control_type]
-            if selected_status != "All":
-                df = df[df["Implementation Status"] == selected_status]
-            if selected_priority != "All":
-                df = df[df["Priority"] == selected_priority]
-            
-            # Display the dataframe
-            st.dataframe(df, use_container_width=True)
-            
-            # Add new control section
-            with st.expander("Add New Control", expanded=False):
-                with st.form("add_control_form"):
-                    control_name = st.text_input("Control Name")
-                    control_desc = st.text_area("Description")
-                    control_type = st.selectbox(
-                        "Control Type",
-                        ["Technical", "Administrative", "Physical", "Other"],
-                        key="new_control_type"
-                    )
-                    implementation_status = st.selectbox(
-                        "Implementation Status",
-                        ["Not Implemented", "Partially Implemented", "Implemented"],
-                        key="new_implementation_status"
-                    )
-                    priority = st.selectbox(
-                        "Priority",
-                        ["Low", "Medium", "High"],
-                        key="new_priority"
-                    )
-                    
-                    # Submit button
-                    submitted = st.form_submit_button("Add Control")
-                    if submitted:
-                        if control_name and control_desc and control_type and implementation_status and priority:
-                            # Add control to database
-                            control_id = self.glossary_repository.add_control(control_name, control_desc, control_type, implementation_status, priority)
-                            if control_id:
-                                st.success(f"Control '{control_name}' has been added successfully!")
-                            else:
-                                st.error("Failed to add control. Please try again.")
-                        else:
-                            st.error("Please fill in all fields.")
-        
+            ControlsPage(self.glossary_repository).render()
 
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
