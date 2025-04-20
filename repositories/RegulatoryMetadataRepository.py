@@ -1771,7 +1771,7 @@ class RegulatoryMetadataRepository:
         Returns:
             list: A list of dictionaries containing the implementation steps data
         """
-        cursor = self.connection.cursor(dictionary=True)
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
             if law_id and right_type:
                 select_query = """
