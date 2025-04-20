@@ -1,6 +1,7 @@
 import os
 import time
 from core.sensitivity_inference import SensitivityInference
+from core.law_inference import LawInference
 
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
@@ -31,8 +32,13 @@ class DataMap:
         self.inventory_repository = InventoryRepository(self.database_manager.connection)
         self.obligation_repository = ObligationRepository(self.database_manager.connection)
         
-        # Initialize sensitivity inference
+        # Initialize inference classes
         self.sensitivity_inference = SensitivityInference(
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        )
+        
+        self.law_inference = LawInference(
             self.regulatory_metadata_repository,
             self.glossary_repository
         )
@@ -6732,6 +6738,41 @@ class DataMap:
                     </div>
                     """, unsafe_allow_html=True)
 
+                if analyze_button and selected_jurisdiction:
+                    # Get applicable laws using LawInference
+                    applicable_laws = self.law_inference.get_applicable_laws(selected_jurisdiction)
+                    
+                    if applicable_laws:
+                        # Display the applicable laws with appropriate styling
+                        st.markdown(f"""
+                        <div style="padding: 20px; border-radius: 10px; background-color: #3498db25; border: 2px solid #3498db; margin-top: 20px;">
+                            <h3 style="color: #3498db;">Laws Applicable to {selected_jurisdiction}</h3>
+                            <p>The following laws apply to activities in this jurisdiction:</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Display each applicable law with its description
+                        for i, law in enumerate(applicable_laws):
+                            with st.expander(f"{i+1}. {law['name']}", expanded=True):
+                                st.markdown(f"**Full Name:** {law['full_name']}")
+                                st.markdown(f"**Description:** {law['description']}")
+                                st.markdown(f"**Effective Date:** {law['effective_date']}")
+
+                    else:
+                        # Display a message if no laws apply to the selected jurisdiction
+                        st.markdown("""
+                        <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                            <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
+                            <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
+                            <p>This may be due to:</p>
+                            <ul>
+                                <li>The jurisdiction may not have comprehensive data protection legislation</li>
+                                <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
+                                <li>The database may need to be updated with the latest regulatory information</li>
+                            </ul>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
                 # Render the decision tree
                 self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
@@ -7476,11 +7517,11 @@ class DataMap:
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
             <p>This API helps determine which data protection laws apply to specific jurisdictions based on regulatory metadata.</p>
             <p>The Law Inference API uses the Law Jurisdiction mapping table to identify applicable laws for a given jurisdiction, helping organizations understand their compliance obligations.</p>
-        </div>''', unsafe_allow_html=True)
+        </div>
+        ''', unsafe_allow_html=True)
         
-        # Get all jurisdictions from the repository
-        law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
-        jurisdictions = sorted(list(set([lj["jurisdiction_name"] for lj in law_jurisdictions])))
+        # Get jurisdictions using LawInference
+        jurisdictions = self.law_inference.get_jurisdictions()
         
         # Jurisdiction selection
         selected_jurisdiction = st.selectbox(
@@ -7492,27 +7533,13 @@ class DataMap:
         # Add a button to trigger analysis
         analyze_button = st.button("Determine Applicable Laws")
         
-        # Define nodes for the decision tree
-        nodes = [
-            {"id": "jurisdiction", "label": "Jurisdiction Selection", "color": "#3498db", "shape": "ellipse", "size": 30},
-            {"id": "mapping", "label": "Law Jurisdiction Mapping", "color": "#f39c12", "shape": "box", "size": 25},
-            {"id": "laws", "label": "Applicable Laws", "color": "#27ae60", "shape": "box", "size": 25},
-            {"id": "details", "label": "Law Details", "color": "#9b59b6", "shape": "box", "size": 25}
-        ]
-        
-        # Define edges for the decision tree
-        edges = [
-            {"source": "jurisdiction", "target": "mapping", "label": "Lookup"},
-            {"source": "mapping", "target": "laws", "label": "Identify"},
-            {"source": "laws", "target": "details", "label": "Retrieve"}
-        ]
+        # Get decision tree visualization elements
+        nodes = self.law_inference.get_decision_tree_nodes()
+        edges = self.law_inference.get_decision_tree_edges()
         
         if analyze_button and selected_jurisdiction:
-            # Get all laws that apply to the selected jurisdiction
-            applicable_laws = []
-            for lj in law_jurisdictions:
-                if lj["jurisdiction_name"] == selected_jurisdiction:
-                    applicable_laws.append(lj["law_name"])
+            # Get applicable laws using LawInference
+            applicable_laws = self.law_inference.get_applicable_laws(selected_jurisdiction)
             
             if applicable_laws:
                 # Display the applicable laws with appropriate styling
@@ -7524,33 +7551,28 @@ class DataMap:
                 """, unsafe_allow_html=True)
                 
                 # Display each applicable law with its description
-                for i, law_name in enumerate(applicable_laws):
-                    # Get law details from the glossary repository
-                    laws = self.glossary_repository.get_laws()
-                    law_details = next((law for law in laws if law["name"] == law_name), None)
-                    
-                    if law_details:
-                        with st.expander(f"{i+1}. {law_name}", expanded=True):
-                            st.markdown(f"**Full Name:** {law_details.get('full_name', 'Not available')}")
-                            st.markdown(f"**Description:** {law_details.get('description', 'No description available')}")
-                            st.markdown(f"**Effective Date:** {law_details.get('effective_date', 'Not specified')}")
+                for i, law in enumerate(applicable_laws):
+                    with st.expander(f"{i+1}. {law['name']}", expanded=True):
+                        st.markdown(f"**Full Name:** {law['full_name']}")
+                        st.markdown(f"**Description:** {law['description']}")
+                        st.markdown(f"**Effective Date:** {law['effective_date']}")
 
-                # Render the decision tree
-                self._render_decision_tree(nodes, edges, "Decision Tree", 700)
-            else:
-                # Display a message if no laws apply to the selected jurisdiction
-                st.markdown("""
-                <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
-                    <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
-                    <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
-                    <p>This may be due to:</p>
-                    <ul>
-                        <li>The jurisdiction may not have comprehensive data protection legislation</li>
-                        <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
-                        <li>The database may need to be updated with the latest regulatory information</li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
+            # Render the decision tree
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+        else:
+            # Display a message if no laws apply to the selected jurisdiction
+            st.markdown("""
+            <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
+                <h3 style="color: #7F8C8D;">No Applicable Laws Found</h3>
+                <p>No specific data protection laws were found for the selected jurisdiction in our database.</p>
+                <p>This may be due to:</p>
+                <ul>
+                    <li>The jurisdiction may not have comprehensive data protection legislation</li>
+                    <li>The jurisdiction may be covered by regional laws not specifically mapped in the database</li>
+                    <li>The database may need to be updated with the latest regulatory information</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
 
     def obligation_inference_api(self):
         """Implement an obligation inference API based on data sensitivity.
@@ -8129,24 +8151,24 @@ class DataMap:
                                 <p>If the recommended obligations are not implemented, this data may be exposed to the following risks:</p>
                                 <ul>
                             """
-                            
+                             
                             if "Critical" in risk_counts:
                                 summary_message += f"<li><strong style='color: #d9534f;'>Critical Risks:</strong> {risk_counts['Critical']} potential critical risk(s) identified</li>"
-                            
+                             
                             if "High" in risk_counts:
                                 summary_message += f"<li><strong style='color: #f0ad4e;'>High Risks:</strong> {risk_counts['High']} potential high risk(s) identified</li>"
-                            
+                             
                             if "Medium" in risk_counts:
                                 summary_message += f"<li><strong style='color: #5bc0de;'>Medium Risks:</strong> {risk_counts['Medium']} potential medium risk(s) identified</li>"
-                            
+                             
                             if "Low" in risk_counts:
                                 summary_message += f"<li><strong style='color: #5cb85c;'>Low Risks:</strong> {risk_counts['Low']} potential low risk(s) identified</li>"
-                            
+                             
                             summary_message += """
                                 </ul>
                                 <p>These risks should be carefully evaluated and either mitigated through implementing the recommended obligations or formally accepted as residual risks.</p>
                             </div>
-                            
+                             
                             <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
                                 <h4 style="margin-top: 0;">How the Risk Recommendation Algorithm Works</h4>
                                 <p>The algorithm follows this functional flow:</p>
