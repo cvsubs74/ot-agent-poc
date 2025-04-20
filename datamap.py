@@ -2495,7 +2495,7 @@ class DataMap:
         elif st.session_state['current_section'] == 'Processing Activities':
             self.processing_activities_section()
         elif st.session_state['current_section'] == 'Law API':
-            self.law_inference_api()
+            self.law_inference_page()
         elif st.session_state['current_section'] == 'Sensitivity API':
             self.sensitivity_inference_page()
         elif st.session_state['current_section'] == 'Legal Basis API':
@@ -3685,10 +3685,13 @@ class DataMap:
         st.subheader(title)
         components.html(html, height=height)
     
-    def law_inference_api(self):
+    def law_inference_page(self):
         """Render the Law Inference page using the new LawInferencePage class."""
         from UX.law_inference_page import LawInferencePage
-        LawInferencePage(self.law_inference).render(self._render_decision_tree)
+        LawInferencePage(
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        ).render()
 
     def obligation_inference_page(self):
         """Render the Obligation Inference page using the new ObligationInferencePage class."""

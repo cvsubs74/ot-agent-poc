@@ -1,10 +1,13 @@
 import streamlit as st
 
-class LawInferencePage:
-    def __init__(self, law_inference):
-        self.law_inference = law_inference
+from core.law_inference import LawInference
+from UX.decision_tree_renderer import DecisionTreeRenderer
 
-    def render(self, render_decision_tree_callback):
+class LawInferencePage:
+    def __init__(self, regulatory_metadata_repository, glossary_repository):
+        self.law_inference = LawInference(regulatory_metadata_repository, glossary_repository)
+
+    def render(self):
         """Implement a law inference API based on regulatory metadata."""
         st.markdown("<div class='page-header'><i class='fas fa-gavel'></i> &nbsp;Law Inference</div>", unsafe_allow_html=True)
         st.markdown('''
@@ -36,7 +39,7 @@ class LawInferencePage:
                         st.markdown(f"**Full Name:** {law['full_name']}")
                         st.markdown(f"**Description:** {law['description']}")
                         st.markdown(f"**Effective Date:** {law['effective_date']}")
-            render_decision_tree_callback(nodes, edges, "Decision Tree", 700)
+            DecisionTreeRenderer.render(nodes, edges, "Decision Tree", 700)
         else:
             st.markdown("""
             <div style="padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-top: 20px;">
