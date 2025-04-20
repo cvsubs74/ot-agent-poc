@@ -2,6 +2,7 @@ import os
 import time
 from core.sensitivity_inference import SensitivityInference
 from core.law_inference import LawInference
+from core.legal_basis_inference import LegalBasisInference
 
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
@@ -39,6 +40,11 @@ class DataMap:
         )
         
         self.law_inference = LawInference(
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        )
+        
+        self.legal_basis_inference = LegalBasisInference(
             self.regulatory_metadata_repository,
             self.glossary_repository
         )
@@ -5736,8 +5742,8 @@ class DataMap:
         if infer_button:
             # Display a spinner while "processing"
             with st.spinner("Analyzing regulatory metadata..."):
-                # Get legal bases based on the selected parameters
-                legal_bases = self._infer_legal_basis(
+                # Get legal bases using LegalBasisInference
+                legal_bases = self.legal_basis_inference.get_legal_bases(
                     selected_law, 
                     selected_jurisdiction,
                     selected_sensitivity,
