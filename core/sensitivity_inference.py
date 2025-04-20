@@ -2,12 +2,12 @@ from repositories.RegulatoryMetadataRepository import RegulatoryMetadataReposito
 from repositories.GlossaryRepository import GlossaryRepository
 
 class SensitivityInference:
-    def __init__(self, regulatory_metadata_repository: RegulatoryMetadataRepository, glossary_repository: GlossaryRepository):
+    def __init__(self, glossary_repository: GlossaryRepository, regulatory_metadata_repository: RegulatoryMetadataRepository):
         """Initialize the SensitivityInference with required repositories.
         
         Args:
-            regulatory_metadata_repository: Repository for regulatory metadata
             glossary_repository: Repository for glossary data
+            regulatory_metadata_repository: Repository for regulatory metadata
         """
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.glossary_repository = glossary_repository
@@ -24,21 +24,6 @@ class SensitivityInference:
         Returns:
             The inferred sensitivity level or None if not found
         """
-        return self._infer_sensitivity(law, data_subject_type, data_value, data_type)
-
-    def _infer_sensitivity(self, law: str, data_subject_type: str, data_value: str, data_type: str) -> str:
-        """Internal method to infer sensitivity based on regulatory metadata.
-        
-        Args:
-            law: The name of the selected law
-            data_subject_type: The name of the data subject type
-            data_value: The name of the data element or category
-            data_type: Either "Data Element" or "Data Category"
-            
-        Returns:
-            The inferred sensitivity level or None if not found
-        """
-        
         # Hierarchical sensitivity inference strategy:
         # 1. First check law-specific mappings with data subject type (most specific)
         # 2. Then check general mappings with data subject type
