@@ -3,6 +3,7 @@ import time
 from core.sensitivity_inference import SensitivityInference
 from core.law_inference import LawInference
 from core.legal_basis_inference import LegalBasisInference
+from core.breach_notification_inference import BreachNotificationInference
 
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
@@ -45,6 +46,10 @@ class DataMap:
         )
         
         self.legal_basis_inference = LegalBasisInference(
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        )
+        self.breach_notification_inference = BreachNotificationInference(
             self.regulatory_metadata_repository,
             self.glossary_repository
         )
@@ -6009,7 +6014,7 @@ class DataMap:
             # Display a spinner while "processing"
             with st.spinner("Analyzing breach notification requirements..."):
                 # Get breach notification guidance based on the selected law
-                guidance = self._get_breach_notification_guidance(selected_law)
+                guidance = self.breach_notification_inference.get_breach_notification_guidance(selected_law)
                 
                 if guidance:
                     # Display the notification requirements with appropriate styling
@@ -6217,34 +6222,7 @@ class DataMap:
                     Many jurisdictions have mandatory breach notification requirements with specific timeframes and thresholds.
                     """)
     
-    def _get_breach_notification_guidance(self, law_name):
-        """Internal method to get breach notification guidance for a specific law.
-        
-        Args:
-            law_name (str): The name of the selected law
-            
-        Returns:
-            dict: The breach notification guidance or None if not found
-        """
-        # Get the law ID from the name
-        laws = self.glossary_repository.get_laws()
-        law_id = None
-        for law in laws:
-            if law["name"] == law_name:
-                law_id = law["id"]
-                break
-        
-        if not law_id:
-            return None
-        
-        # Get breach notification guidance for the law
-        guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances(law_id)
-        
-        if not guidances:
-            return None
-        
-        # Return the first guidance for the law (typically there's only one per law)
-        return guidances[0]
+
 
 
     def transfer_mechanism_api(self):
