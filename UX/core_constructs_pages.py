@@ -231,18 +231,66 @@ class ObligationsPage:
             <p>Obligations are the legal or regulatory requirements that organizations must fulfill when processing personal data.</p>
         </div>
         """, unsafe_allow_html=True)
-        obligations = self.obligation_repository.get_obligations()
+        # Create columns for filters and actions
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            status_filter = st.selectbox(
+                "Filter by Status",
+                ["All", "Open", "In Progress", "Implemented", "Accepted Risk"],
+                key="obligation_status_filter"
+            )
+        
+        with col2:
+            control_filter = st.selectbox(
+                "Filter by Control Type",
+                ["All", "Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"],
+                key="obligation_control_filter"
+            )
+        
+        with col3:
+            policy_filter = st.selectbox(
+                "Filter by Policy Status",
+                ["All", "Linked to Policy", "No Policy"],
+                key="obligation_policy_filter"
+            )
+        
+        # Apply filters
+        status = None if status_filter == "All" else status_filter
+        control_type = None if control_filter == "All" else control_filter
+        policy_linked = None
+        if policy_filter == "Linked to Policy":
+            policy_linked = True
+        elif policy_filter == "No Policy":
+            policy_linked = False
+        
+        # Get obligations from repository with filters
+        obligations = self.obligation_repository.get_obligations(status, control_type, policy_linked)
+        
         if obligations:
-            obligation_data = {
-                "Obligation": [],
-                "Description": []
-            }
-            for o in obligations:
-                obligation_data["Obligation"].append(o["name"])
-                obligation_data["Description"].append(o["description"])
-            st.dataframe(pd.DataFrame(obligation_data))
+            # Convert to DataFrame for display
+            df = pd.DataFrame(obligations)
+            # Rename columns for better display
+            df = df.rename(columns={
+                "id": "ID",
+                "name": "Obligation",
+                "description": "Description",
+                "source": "Source",
+                "control_type": "Control Type",
+                "status": "Status",
+                "policy_name": "Policy",
+                "risk_accepted": "Risk Accepted",
+                "created_at": "Created At"
+            })
+            
+            # Reorder columns for better display
+            display_columns = ["ID", "Obligation", "Description", "Source", "Control Type", "Status", "Policy", "Risk Accepted"]
+            df = df[display_columns]
+            
+            # Display the dataframe
+            st.dataframe(df, use_container_width=True)
         else:
-            st.warning("No data available in the database.")
+            st.info("No obligations found with the selected filters.")
 
 class RisksPage:
     def __init__(self, glossary_repository):
