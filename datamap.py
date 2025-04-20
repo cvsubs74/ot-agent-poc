@@ -3,14 +3,12 @@ import time
 from core.sensitivity_inference import SensitivityInference
 from core.law_inference import LawInference
 from core.legal_basis_inference import LegalBasisInference
-from UX.breach_notification_page import BreachNotificationPage
-
+from UX.page_configurator import PageConfigurator
 # Set environment variables to avoid config issues
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "500"
 
 import streamlit as st
-from UX.decision_tree_renderer import DecisionTreeRenderer
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -60,257 +58,7 @@ class DataMap:
         )
 
     def configure_page(self):
-        """Configure the Streamlit page settings."""
-        st.set_page_config(page_title="OneTrust Platform", layout="wide")
-
-        # Store the current section in session state if not already there
-        if 'current_section' not in st.session_state:
-            st.session_state['current_section'] = 'Core'
-
-        # Inject custom CSS for styling
-        st.markdown("""
-        <style>
-        /* Import Font Awesome for icons */
-        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
-        
-        /* Main styling */
-        .main {
-            background-color: #f8f9fa;
-        }
-        
-        /* Page header styling */
-        .page-header {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.25rem;
-            display: flex;
-            align-items: center;
-        }
-        
-        .page-header i {
-            margin-right: 0.75rem;
-            color: #3498db;
-        }
-        
-        /* Tab styling */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 2px;
-            background-color: white;
-            border-radius: 4px;
-            padding: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            height: 40px;
-            border-radius: 4px;
-            color: #495057;
-            font-weight: 500;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: #e9f7fe !important;
-            color: #3498db !important;
-            font-weight: 600;
-        }
-        
-        /* Card styling for content sections */
-        .stDataFrame, div.stTable {
-            border: none !important;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
-            border-radius: 6px !important;
-        }
-                
-        /* Sidebar styling */
-        .css-1d391kg, [data-testid="stSidebar"] {
-            background-color: white !important;
-            border-right: 1px solid #f0f0f0;
-        }
-        
-        /* Tab styling */
-        .stTabs [role="tablist"] {
-            background-color: #f4f4f4;
-            padding: 5px;
-            border-radius: 10px;
-        }
-        
-        .stTabs [role="tab"] {
-            background-color: #3498db;
-            color: white;
-            font-size: 16px;
-            margin-right: 2px;
-            padding: 10px 15px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-        }
-        
-        .stTabs [role="tab"]:hover {
-            background-color: #2980b9;
-            color: white;
-        }
-        
-        .stTabs [role="tab"][aria-selected="true"] {
-            background-color: #1a5276;
-            color: white;
-        }
-        
-        /* Card styling */
-        .card {
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Sidebar menu styling */
-        .sidebar-menu {
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            color: #333;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-            text-align: left;
-            display: flex;
-            align-items: center;
-        }
-        
-        .sidebar-menu:hover {
-            background-color: #f8f9fa;
-            border-left: 3px solid #3498db;
-        }
-        
-        .sidebar-menu.active {
-            background-color: #f8f9fa;
-            border-left: 3px solid #1abc9c;
-            font-weight: 600;
-        }
-        
-        /* Icon styling */
-        .sidebar-menu i {
-            width: 20px;
-            text-align: center;
-            margin-right: 8px;
-        }
-        
-        /* Sidebar section headers */
-        .sidebar-section-header {
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #555;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        /* Header styling */
-        h1, h2, h3 {
-            color: #2c3e50;
-        }
-        
-        /* Table styling */
-        .dataframe {
-            border-collapse: collapse;
-            width: 100%;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        
-        .dataframe th {
-            background-color: #3498db;
-            color: white;
-            padding: 12px;
-            text-align: left;
-        }
-        
-        .dataframe td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .dataframe tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        
-        .dataframe tr:hover {
-            background-color: #e6f7ff;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # Style the menu items with improved CSS for left alignment
-        st.markdown(f"""
-            <style>
-            /* Style for all buttons */
-            div[data-testid="stButton"] > button {{
-                background-color: #e6f3ff; /* Light blue background for all buttons */
-                color: #333;
-                border: 1px solid #a8d8ff; /* Light blue border for all buttons */
-                text-align: left !important;
-                font-weight: normal;
-                padding: 8px 10px;
-                border-radius: 4px;
-                box-shadow: none;
-                width: 100%;
-                margin: 0;
-                transition: all 0.2s ease;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-            }}
-            
-            /* Style for active button */
-            div[data-testid="stButton"] > button#{'core_constructs_button' if st.session_state['current_section'] == 'Core' else 
-                                                 'regulatory_btn' if st.session_state['current_section'] == 'Regulatory' else
-                                                 'decision_tree_btn' if st.session_state['current_section'] == 'Decision Tree' else
-                                                 'sensitivity_api_btn' if st.session_state['current_section'] == 'Sensitivity API' else
-                                                 'legal_basis_api_btn' if st.session_state['current_section'] == 'Legal Basis API' else
-                                                 'breach_api_btn'} {{
-                color: #3498db;
-                font-weight: 600;
-                background-color: #f8f9fa;
-                border: 1px solid #3498db; /* Darker blue border for active button */
-                border-left: 3px solid #3498db;
-            }}
-            
-            /* Hover effect for buttons */
-            div[data-testid="stButton"] > button:hover {{
-                background-color: #cce5ff; /* Darker blue background on hover */
-                color: #3498db;
-            }}
-            
-            /* Force text alignment in buttons */
-            div[data-testid="stButton"] > button p {{
-                text-align: left !important;
-                display: inline-block;
-                margin: 0;
-                padding: 0;
-            }}
-            
-            /* Override any Streamlit defaults that might center text */
-            .stButton {{
-                text-align: left !important;
-            }}
-            
-            /* Section header styling */
-            .sidebar-section-header {{
-                font-size: 0.9rem;
-                font-weight: 600;
-                color: #6c757d;
-                margin-top: 20px;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                text-align: left;
-            }}
-            </style>
-            """, unsafe_allow_html=True)        
+        PageConfigurator.configure_page()
 
     def core_constructs_section(self):
         """Handle the Core Constructs section with its tabs."""
@@ -4591,10 +4339,7 @@ class DataMap:
     def run(self):
         """Main function to run the Streamlit app."""
         self.configure_page()
-        # [REMOVED: sidebar/menu and section routing logic as requested]
-        pass
 
-        st.title("OneTrust Platform")
         self.divider(2)
         
         # Create sidebar with navigation
@@ -5650,7 +5395,7 @@ class DataMap:
                 ]
                 
                 # Render the decision tree
-                DecisionTreeRenderer.render(nodes, edges, "Sensitivity Inference Process", 700)
+                self._render_decision_tree(nodes, edges, "Sensitivity Inference Process", 700)
             else:
                 st.warning("No sensitivity classification found for the selected parameters.")
                 st.markdown("""
@@ -5873,7 +5618,7 @@ class DataMap:
             ]
                 
             # Render the decision tree
-            DecisionTreeRenderer.render(nodes, edges, "Legal Basis Inference Process", 700)
+            self._render_decision_tree(nodes, edges, "Legal Basis Inference Process", 700)
     
 
         
@@ -6083,7 +5828,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            DecisionTreeRenderer.render(nodes, edges, "Transfer Mechanism Process", 700)
+            self._render_decision_tree(nodes, edges, "Transfer Mechanism Process", 700)
 
     def _get_transfer_mechanisms(self, law, source_jurisdiction, destination_jurisdiction, is_adequate):
         """Internal method to get appropriate transfer mechanisms based on regulatory metadata.
@@ -6360,7 +6105,7 @@ class DataMap:
                         """, unsafe_allow_html=True)
                 
                 # Render the decision tree
-                DecisionTreeRenderer.render(nodes, edges, "Decision Tree", 700)
+                self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         
             else:
                 # Display a message if no rights guidance is found
@@ -6471,7 +6216,7 @@ class DataMap:
                 )
 
                 # Render the decision tree
-                DecisionTreeRenderer.render(nodes, edges, title="Policy Decision Tree")
+                self._render_decision_tree(nodes, edges, title="Policy Decision Tree")
         else:
             st.markdown("""
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
@@ -6935,7 +6680,7 @@ class DataMap:
             })
 
         # NO overall compliance leaf node; the tree ends with the above actionable nodes
-        DecisionTreeRenderer.render(nodes, edges, title="Policy Compliance Decision Tree")
+        self._render_decision_tree(nodes, edges, title="Policy Compliance Decision Tree")
 
 
     def _get_rights_guidance(self, law, right_type):
@@ -6951,6 +6696,147 @@ class DataMap:
         # Use the repository method to get guidance
         return self.regulatory_metadata_repository.get_data_subject_right_guidance(law, right_type)
     
+    def _render_decision_tree(self, nodes, edges, title="Decision Tree", height=700):
+        """Helper method to render a decision tree visualization using PyVis.
+        
+        Args:
+            nodes (list): List of node dictionaries with id, label, color, etc.
+            edges (list): List of edge dictionaries with source, target, label, etc.
+            title (str): Title for the decision tree
+            height (int): Height of the visualization in pixels
+            
+        Returns:
+            None: Renders the decision tree directly in the Streamlit app
+        """
+        import tempfile
+        from pyvis.network import Network
+        import streamlit.components.v1 as components
+        
+        # Create a network with larger dimensions
+        net = Network(height=f"{height}px", width="100%", directed=True, notebook=True)
+        net.toggle_hide_edges_on_drag(False)
+        net.barnes_hut()
+        
+        # Add nodes
+        for node in nodes:
+            # Format title as HTML if it's a detailed description
+            node_title = node.get("title", node["label"])
+            if isinstance(node_title, dict) and "html" in node_title:
+                formatted_title = node_title["html"]
+            else:
+                formatted_title = node_title
+                
+            net.add_node(
+                node["id"], 
+                label=node["label"], 
+                color=node.get("color", "#3498db"),
+                shape=node.get("shape", "box"),
+                title=formatted_title,
+                size=node.get("size", 25),
+                font=node.get("font", {"size": 14, "color": "black", "face": "Arial"})
+            )
+        
+        # Add edges
+        for edge in edges:
+            net.add_edge(
+                edge["source"], 
+                edge["target"], 
+                title=edge.get("label", ""),
+                label=edge.get("label", ""),
+                color=edge.get("color", "#7F8C8D"),
+                width=edge.get("width", 2),
+                arrows=edge.get("arrows", "to")
+            )
+        
+        # Configure physics for hierarchical layout
+        net.set_options("""
+        {
+          "physics": {
+            "hierarchicalRepulsion": {
+              "centralGravity": 0.0,
+              "springLength": 100,
+              "springConstant": 0.01,
+              "nodeDistance": 120,
+              "damping": 0.09
+            },
+            "solver": "hierarchicalRepulsion",
+            "stabilization": {
+              "iterations": 100
+            }
+          },
+          "layout": {
+            "hierarchical": {
+              "enabled": true,
+              "levelSeparation": 150,
+              "nodeSpacing": 100,
+              "treeSpacing": 200,
+              "blockShifting": true,
+              "edgeMinimization": true,
+              "parentCentralization": true,
+              "direction": "UD",
+              "sortMethod": "directed"
+            }
+          },
+          "interaction": {
+            "navigationButtons": true,
+            "keyboard": true
+          }
+        }
+        """)
+        
+        # Generate the visualization
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmpfile:
+            net.save_graph(tmpfile.name)
+            with open(tmpfile.name, "r", encoding="utf-8") as f:
+                html = f.read()
+            
+            # Fix HTML in tooltips by modifying the HTML directly
+            # This adds a script that properly renders HTML in tooltips
+            html = html.replace('</head>', '''
+            <style>
+                div.vis-tooltip {
+                    position: absolute;
+                    visibility: hidden;
+                    padding: 5px;
+                    white-space: normal !important;
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                    color: #000000;
+                    background-color: #ffffff;
+                    border-radius: 5px;
+                    border: 1px solid #d3d3d3;
+                    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+                    max-width: 400px;
+                    word-wrap: break-word;
+                    z-index: 9999;
+                    overflow: auto;
+                    max-height: 400px;
+                }
+            </style>
+            <script>
+                // Override the default tooltip rendering to support HTML
+                document.addEventListener("DOMContentLoaded", function() {
+                    setTimeout(function() {
+                        if (typeof network !== 'undefined') {
+                            network.on("hoverNode", function(params) {
+                                var nodeId = params.node;
+                                var node = network.body.nodes[nodeId];
+                                if (node && node.options && node.options.title) {
+                                    var tooltip = document.querySelector(".vis-tooltip");
+                                    if (tooltip) {
+                                        tooltip.innerHTML = node.options.title;
+                                    }
+                                }
+                            });
+                        }
+                    }, 1000);
+                });
+            </script>
+            </head>''')
+        
+        # Display the visualization with a title
+        st.subheader(title)
+        components.html(html, height=height)
     
     def law_inference_api(self):
         """Implement a law inference API based on regulatory metadata.
@@ -7003,7 +6889,7 @@ class DataMap:
                         st.markdown(f"**Effective Date:** {law['effective_date']}")
 
             # Render the decision tree
-            DecisionTreeRenderer.render(nodes, edges, "Decision Tree", 700)
+            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
         else:
             # Display a message if no laws apply to the selected jurisdiction
             st.markdown("""
