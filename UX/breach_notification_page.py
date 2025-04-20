@@ -1,11 +1,13 @@
 import streamlit as st
 import datetime
 import re
+from core.breach_notification_inference import BreachNotificationInference
+from UX.decision_tree_renderer import DecisionTreeRenderer
 
 class BreachNotificationPage:
     """Class to handle the breach notification page UI and logic."""
     
-    def __init__(self, glossary_repository, regulatory_metadata_repository, breach_notification_inference):
+    def __init__(self, glossary_repository, regulatory_metadata_repository):
         """Initialize the breach notification page with required repositories and inference engines.
         
         Args:
@@ -15,7 +17,11 @@ class BreachNotificationPage:
         """
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
-        self.breach_notification_inference = breach_notification_inference
+        self.breach_notification_inference = BreachNotificationInference(
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        )
+
     
     def render(self):
         """Render the breach notification page UI."""
@@ -304,9 +310,8 @@ class BreachNotificationPage:
                         {"source": "lookup", "target": "timeframe", "label": "Specifies"}
                     ]
                     
-                    # Pass the nodes and edges back to the parent DataMap instance for rendering
-                    if hasattr(self, 'parent') and self.parent and hasattr(self.parent, '_render_decision_tree'):
-                        self.parent._render_decision_tree(nodes, edges, "Breach Notification Process", 700)
+                    # Render the decision tree
+                    DecisionTreeRenderer.render(nodes, edges, "Breach Notification Process", 700)
                 else:
                     st.warning(f"No breach notification guidance found for {selected_law}.")
                     st.markdown("""

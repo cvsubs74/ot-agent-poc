@@ -3,7 +3,6 @@ import time
 from core.sensitivity_inference import SensitivityInference
 from core.law_inference import LawInference
 from core.legal_basis_inference import LegalBasisInference
-from core.breach_notification_inference import BreachNotificationInference
 from UX.breach_notification_page import BreachNotificationPage
 
 # Set environment variables to avoid config issues
@@ -11,6 +10,7 @@ os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "true"
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "500"
 
 import streamlit as st
+from UX.decision_tree_renderer import DecisionTreeRenderer
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -47,10 +47,6 @@ class DataMap:
         )
         
         self.legal_basis_inference = LegalBasisInference(
-            self.regulatory_metadata_repository,
-            self.glossary_repository
-        )
-        self.breach_notification_inference = BreachNotificationInference(
             self.regulatory_metadata_repository,
             self.glossary_repository
         )
@@ -4716,7 +4712,7 @@ class DataMap:
         elif st.session_state['current_section'] == 'Legal Basis API':
             self.legal_basis_inference_api()
         elif st.session_state['current_section'] == 'Breach API':
-            self.breach_notification_api()
+            self.breach_notification_page()
         elif st.session_state['current_section'] == 'Transfer API':
             self.transfer_mechanism_api()
         elif st.session_state['current_section'] == 'DSR API':
@@ -5654,7 +5650,7 @@ class DataMap:
                 ]
                 
                 # Render the decision tree
-                self._render_decision_tree(nodes, edges, "Sensitivity Inference Process", 700)
+                DecisionTreeRenderer.render(nodes, edges, "Sensitivity Inference Process", 700)
             else:
                 st.warning("No sensitivity classification found for the selected parameters.")
                 st.markdown("""
@@ -5877,7 +5873,7 @@ class DataMap:
             ]
                 
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Legal Basis Inference Process", 700)
+            DecisionTreeRenderer.render(nodes, edges, "Legal Basis Inference Process", 700)
     
 
         
@@ -5906,26 +5902,19 @@ class DataMap:
                  "consent" in lb["name"].lower()), 
                 reverse=True)
         
-    def breach_notification_api(self):
+    def breach_notification_page(self):
         """Implement an incident breach notification API based on regulatory metadata.
         This helps users determine notification requirements for data breaches.
         """
         # Create the breach notification page with the necessary repositories and inference engines
         page = BreachNotificationPage(
             self.glossary_repository,
-            self.regulatory_metadata_repository,
-            self.breach_notification_inference
+            self.regulatory_metadata_repository
         )
-        
-        # Set the parent reference for decision tree rendering
-        page.parent = self
         
         # Render the breach notification page
         page.render()
     
-
-
-
     def transfer_mechanism_api(self):
         """Implement a transfer mechanism inference API based on regulatory metadata.
         This helps users determine appropriate safeguards for cross-border data transfers.
@@ -6094,7 +6083,7 @@ class DataMap:
             ]
             
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Transfer Mechanism Process", 700)
+            DecisionTreeRenderer.render(nodes, edges, "Transfer Mechanism Process", 700)
 
     def _get_transfer_mechanisms(self, law, source_jurisdiction, destination_jurisdiction, is_adequate):
         """Internal method to get appropriate transfer mechanisms based on regulatory metadata.
@@ -6371,7 +6360,7 @@ class DataMap:
                         """, unsafe_allow_html=True)
                 
                 # Render the decision tree
-                self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+                DecisionTreeRenderer.render(nodes, edges, "Decision Tree", 700)
         
             else:
                 # Display a message if no rights guidance is found
@@ -6482,7 +6471,7 @@ class DataMap:
                 )
 
                 # Render the decision tree
-                self._render_decision_tree(nodes, edges, title="Policy Decision Tree")
+                DecisionTreeRenderer.render(nodes, edges, title="Policy Decision Tree")
         else:
             st.markdown("""
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
@@ -6946,7 +6935,7 @@ class DataMap:
             })
 
         # NO overall compliance leaf node; the tree ends with the above actionable nodes
-        self._render_decision_tree(nodes, edges, title="Policy Compliance Decision Tree")
+        DecisionTreeRenderer.render(nodes, edges, title="Policy Compliance Decision Tree")
 
 
     def _get_rights_guidance(self, law, right_type):
@@ -6962,147 +6951,6 @@ class DataMap:
         # Use the repository method to get guidance
         return self.regulatory_metadata_repository.get_data_subject_right_guidance(law, right_type)
     
-    def _render_decision_tree(self, nodes, edges, title="Decision Tree", height=700):
-        """Helper method to render a decision tree visualization using PyVis.
-        
-        Args:
-            nodes (list): List of node dictionaries with id, label, color, etc.
-            edges (list): List of edge dictionaries with source, target, label, etc.
-            title (str): Title for the decision tree
-            height (int): Height of the visualization in pixels
-            
-        Returns:
-            None: Renders the decision tree directly in the Streamlit app
-        """
-        import tempfile
-        from pyvis.network import Network
-        import streamlit.components.v1 as components
-        
-        # Create a network with larger dimensions
-        net = Network(height=f"{height}px", width="100%", directed=True, notebook=True)
-        net.toggle_hide_edges_on_drag(False)
-        net.barnes_hut()
-        
-        # Add nodes
-        for node in nodes:
-            # Format title as HTML if it's a detailed description
-            node_title = node.get("title", node["label"])
-            if isinstance(node_title, dict) and "html" in node_title:
-                formatted_title = node_title["html"]
-            else:
-                formatted_title = node_title
-                
-            net.add_node(
-                node["id"], 
-                label=node["label"], 
-                color=node.get("color", "#3498db"),
-                shape=node.get("shape", "box"),
-                title=formatted_title,
-                size=node.get("size", 25),
-                font=node.get("font", {"size": 14, "color": "black", "face": "Arial"})
-            )
-        
-        # Add edges
-        for edge in edges:
-            net.add_edge(
-                edge["source"], 
-                edge["target"], 
-                title=edge.get("label", ""),
-                label=edge.get("label", ""),
-                color=edge.get("color", "#7F8C8D"),
-                width=edge.get("width", 2),
-                arrows=edge.get("arrows", "to")
-            )
-        
-        # Configure physics for hierarchical layout
-        net.set_options("""
-        {
-          "physics": {
-            "hierarchicalRepulsion": {
-              "centralGravity": 0.0,
-              "springLength": 100,
-              "springConstant": 0.01,
-              "nodeDistance": 120,
-              "damping": 0.09
-            },
-            "solver": "hierarchicalRepulsion",
-            "stabilization": {
-              "iterations": 100
-            }
-          },
-          "layout": {
-            "hierarchical": {
-              "enabled": true,
-              "levelSeparation": 150,
-              "nodeSpacing": 100,
-              "treeSpacing": 200,
-              "blockShifting": true,
-              "edgeMinimization": true,
-              "parentCentralization": true,
-              "direction": "UD",
-              "sortMethod": "directed"
-            }
-          },
-          "interaction": {
-            "navigationButtons": true,
-            "keyboard": true
-          }
-        }
-        """)
-        
-        # Generate the visualization
-        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmpfile:
-            net.save_graph(tmpfile.name)
-            with open(tmpfile.name, "r", encoding="utf-8") as f:
-                html = f.read()
-            
-            # Fix HTML in tooltips by modifying the HTML directly
-            # This adds a script that properly renders HTML in tooltips
-            html = html.replace('</head>', '''
-            <style>
-                div.vis-tooltip {
-                    position: absolute;
-                    visibility: hidden;
-                    padding: 5px;
-                    white-space: normal !important;
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
-                    color: #000000;
-                    background-color: #ffffff;
-                    border-radius: 5px;
-                    border: 1px solid #d3d3d3;
-                    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
-                    max-width: 400px;
-                    word-wrap: break-word;
-                    z-index: 9999;
-                    overflow: auto;
-                    max-height: 400px;
-                }
-            </style>
-            <script>
-                // Override the default tooltip rendering to support HTML
-                document.addEventListener("DOMContentLoaded", function() {
-                    setTimeout(function() {
-                        if (typeof network !== 'undefined') {
-                            network.on("hoverNode", function(params) {
-                                var nodeId = params.node;
-                                var node = network.body.nodes[nodeId];
-                                if (node && node.options && node.options.title) {
-                                    var tooltip = document.querySelector(".vis-tooltip");
-                                    if (tooltip) {
-                                        tooltip.innerHTML = node.options.title;
-                                    }
-                                }
-                            });
-                        }
-                    }, 1000);
-                });
-            </script>
-            </head>''')
-        
-        # Display the visualization with a title
-        st.subheader(title)
-        components.html(html, height=height)
     
     def law_inference_api(self):
         """Implement a law inference API based on regulatory metadata.
@@ -7155,7 +7003,7 @@ class DataMap:
                         st.markdown(f"**Effective Date:** {law['effective_date']}")
 
             # Render the decision tree
-            self._render_decision_tree(nodes, edges, "Decision Tree", 700)
+            DecisionTreeRenderer.render(nodes, edges, "Decision Tree", 700)
         else:
             # Display a message if no laws apply to the selected jurisdiction
             st.markdown("""
