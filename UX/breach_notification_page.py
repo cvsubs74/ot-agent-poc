@@ -6,7 +6,26 @@ from UX.decision_tree_renderer import DecisionTreeRenderer
 
 class BreachNotificationPage:
     """Class to handle the breach notification page UI and logic."""
-    
+
+    @staticmethod
+    def explain():
+        st.markdown(
+            """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Breach Notification Inference Works</h4>
+                <p>The Breach Notification Inference API uses the Law Incident Breach Notification mapping table to determine notification requirements when a data breach occurs:</p>
+                <ul>
+                    <li>Analyzes breach severity, scope, and data types involved</li>
+                    <li>Identifies applicable laws based on affected jurisdictions</li>
+                    <li>Determines notification thresholds and timeframes</li>
+                    <li>Provides guidance on notification content and recipients</li>
+                </ul>
+                <p>The system helps organizations comply with varying breach notification requirements across different jurisdictions, ensuring timely and appropriate responses to data incidents.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def __init__(self, glossary_repository, regulatory_metadata_repository):
         """Initialize the breach notification page with required repositories and inference engines.
         

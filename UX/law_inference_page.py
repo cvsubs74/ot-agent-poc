@@ -7,6 +7,25 @@ class LawInferencePage:
     def __init__(self, regulatory_metadata_repository, glossary_repository):
         self.law_inference = LawInference(regulatory_metadata_repository, glossary_repository)
 
+    @staticmethod
+    def explain():
+        st.markdown(
+            """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Law Inference Works</h4>
+                <p>The Law Inference API uses the Law Jurisdiction mapping table to determine which privacy laws apply to an organization:</p>
+                <ul>
+                    <li>Analyzes the jurisdictional scope of privacy regulations</li>
+                    <li>Determines applicable laws based on selected jurisdiction</li>
+                    <li>Provides detailed information about each applicable law</li>
+                    <li>Highlights key compliance requirements and effective dates</li>
+                </ul>
+                <p>The system helps organizations understand their regulatory obligations across different jurisdictions, ensuring comprehensive compliance with all relevant privacy laws.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def render(self):
         """Implement a law inference API based on regulatory metadata."""
         st.markdown("<div class='page-header'><i class='fas fa-gavel'></i> &nbsp;Law Inference</div>", unsafe_allow_html=True)

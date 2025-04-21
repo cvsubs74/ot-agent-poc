@@ -146,6 +146,7 @@ class DataMap:
         with tabs[12]:
             ControlsPage(self.glossary_repository).render()
 
+
     def regulatory_metadata_section(self):
         """Handle the Regulatory Metadata section with its tabs."""
         st.markdown("<div class='page-header'><i class='fas fa-project-diagram'></i> &nbsp;Regulatory Intelligence Engine</div>", unsafe_allow_html=True)
@@ -162,31 +163,33 @@ class DataMap:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        # Define all tab names
-        all_tab_names = [
-            "Law Jurisdiction", 
-            "Law Legal Basis", 
-            "Law Incident Breach Notification", 
-            "Law Transfer",
-            "Data Subject Access Request",
-            "Data Category Data Element",
-            "Law Data Subject Type Data Element Sensitivity",
-            "Law Data Subject Type Data Category Sensitivity",
-            "Data Subject Type Data Category Sensitivity",
-            "Data Subject Type Data Element Sensitivity",
-            "Law Purpose Category Legal Basis",
-            "Legal Basis Requirements",
-            "Policy Purpose",
-            "Policy Purpose Data Element",
-            "Policy Purpose Data Usage",
-            "Sensitivity Obligations",
-            "Obligation Policy",
-            "Obligation Risk",
-            "Framework Control",
-            "Policy Control",
-            "Risk Control"
+        # Define all tab names and their handler lambdas
+        tab_definitions = [
+            ("Law Jurisdiction", lambda: LawJurisdictionPage(self.regulatory_metadata_repository).render()),
+            ("Law Legal Basis", lambda: LawLegalBasisPage(self.regulatory_metadata_repository).render()),
+            ("Law Incident Breach Notification", lambda: LawIncidentBreachNotificationPage(self.regulatory_metadata_repository).render()),
+            ("Law Transfer", lambda: LawTransferPage(self.regulatory_metadata_repository).render()),
+            ("Data Subject Access Request", lambda: DataSubjectAccessRequestPage(self.regulatory_metadata_repository).render()),
+            ("Data Category Data Element", lambda: DataCategoryDataElementPage(self.regulatory_metadata_repository).render()),
+            ("Law Data Subject Type Data Element Sensitivity", lambda: LawDataSubjectTypeDataElementSensitivityPage(self.regulatory_metadata_repository).render()),
+            ("Law Data Subject Type Data Category Sensitivity", lambda: LawDataSubjectTypeDataCategorySensitivityPage(self.regulatory_metadata_repository).render()),
+            ("Data Subject Type Data Category Sensitivity", lambda: DataSubjectTypeDataCategorySensitivityPage(self.regulatory_metadata_repository).render()),
+            ("Data Subject Type Data Element Sensitivity", lambda: DataSubjectTypeDataElementSensitivityPage(self.regulatory_metadata_repository).render()),
+            ("Law Purpose Category Legal Basis", lambda: LawPurposeCategoryLegalBasisPage(self.regulatory_metadata_repository).render()),
+            ("Legal Basis Requirements", lambda: LegalBasisRequirementsPage(self.regulatory_metadata_repository).render()),
+            ("Policy Purpose", lambda: PolicyPurposePage(self.regulatory_metadata_repository).render()),
+            ("Policy Purpose Data Element", lambda: PolicyPurposeDataElementPage(self.regulatory_metadata_repository).render()),
+            ("Policy Purpose Data Usage", lambda: PolicyPurposeDataUsagePage(self.regulatory_metadata_repository).render()),
+            ("Sensitivity Obligations", lambda: SensitivityObligationsPage(self.glossary_repository, self.obligation_repository).render()),
+            ("Obligation Policy", lambda: ObligationPolicyPage(self.glossary_repository, self.obligation_repository).render()),
+            ("Obligation Risk", lambda: ObligationRiskPage(self.glossary_repository, self.obligation_repository).render()),
+            ("Framework Control", lambda: FrameworkControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
+            ("Policy Control", lambda: PolicyControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
+            ("Risk Control", lambda: RiskControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
         ]
-        
+
+        all_tab_names = [name for name, _ in tab_definitions]
+
         # Define which tabs are used by each inference API
         inference_api_mappings = {
             "All": list(range(len(all_tab_names))),  # All tabs
@@ -201,93 +204,37 @@ class DataMap:
             "Risk Inference": [5, 6, 7, 8, 9, 15, 17],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
             "Control Inference": [18, 19, 20]  # Framework Control, Policy Control, Risk Control tabs
         }
-        
+
         # Create a filter for inference APIs
         st.markdown("<h3>Filter by Inference API</h3>", unsafe_allow_html=True)
-        
-        # Add explanation about the inference API filter
         st.caption("Filter to view only the mapping tables used by each specific inference API. Each inference API uses different tables to make regulatory determinations.")
-        
+
         inference_api_options = list(inference_api_mappings.keys())
         selected_inference_api = st.selectbox(
             "Select an Inference API",
             inference_api_options,
             key="inference_api_filter"
         )
-        
-        # Get the tab indices for the selected inference API
+
         visible_tab_indices = inference_api_mappings[selected_inference_api]
-        
-        # Create filtered tab names
         visible_tab_names = [all_tab_names[i] for i in visible_tab_indices]
-        
-        # Create tabs with filtered names
         tabs = st.tabs(visible_tab_names)
-        
+
         # Add explanation about how the selected inference API uses the mapping tables
         if selected_inference_api == "Law Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Law Inference Works</h4>
-                <p>The Law Inference API uses the Law Jurisdiction mapping table to determine which privacy laws apply to an organization:</p>
-                <ul>
-                    <li>Analyzes the jurisdictional scope of privacy regulations</li>
-                    <li>Determines applicable laws based on selected jurisdiction</li>
-                    <li>Provides detailed information about each applicable law</li>
-                    <li>Highlights key compliance requirements and effective dates</li>
-                </ul>
-                <p>The system helps organizations understand their regulatory obligations across different jurisdictions, ensuring comprehensive compliance with all relevant privacy laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.law_inference_page import LawInferencePage
+            LawInferencePage.explain()
         elif selected_inference_api == "Legal Basis Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Legal Basis Inference Works</h4>
-                <p>The Legal Basis Inference API uses these mapping tables to determine the appropriate legal basis for processing personal data:</p>
-                <ol>
-                    <li><strong>Law Legal Basis</strong>: Maps laws to their supported legal bases, establishing which legal bases are valid under each regulation.</li>
-                    <li><strong>Law Purpose Category Legal Basis</strong>: Provides recommended legal bases for specific processing purposes under each law, with preference ordering.</li>
-                    <li><strong>Legal Basis Requirements</strong>: Details the compliance requirements for each legal basis, helping organizations implement the necessary safeguards.</li>
-                </ol>
-                <p>When making a legal basis determination, the system considers:</p>
-                <ul>
-                    <li>The applicable law (e.g., GDPR, CCPA)</li>
-                    <li>The processing purpose (e.g., Marketing, Security)</li>
-                    <li>Data sensitivity level</li>
-                    <li>Specific context of processing</li>
-                </ul>
-                <p>The system then recommends appropriate legal bases in order of preference, along with their compliance requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.regulatory_metadata_pages import LawLegalBasisPage
+            LawLegalBasisPage.explain()
         elif selected_inference_api == "Breach Notification Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Breach Notification Inference Works</h4>
-                <p>The Breach Notification Inference API uses the Law Incident Breach Notification mapping table to determine notification requirements when a data breach occurs:</p>
-                <ul>
-                    <li>Analyzes breach severity, scope, and data types involved</li>
-                    <li>Identifies applicable laws based on affected jurisdictions</li>
-                    <li>Determines notification thresholds and timeframes</li>
-                    <li>Provides guidance on notification content and recipients</li>
-                </ul>
-                <p>The system helps organizations comply with varying breach notification requirements across different jurisdictions, ensuring timely and appropriate responses to data incidents.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.breach_notification_page import BreachNotificationPage
+            BreachNotificationPage.explain()
+
         elif selected_inference_api == "Transfer Mechanism Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Transfer Mechanism Inference Works</h4>
-                <p>The Transfer Mechanism Inference API uses the Law Transfer mapping table to determine appropriate safeguards for cross-border data transfers:</p>
-                <ul>
-                    <li>Identifies source and destination jurisdictions</li>
-                    <li>Determines applicable data protection laws</li>
-                    <li>Evaluates adequacy decisions and existing agreements</li>
-                    <li>Recommends appropriate transfer mechanisms (e.g., SCCs, BCRs)</li>
-                    <li>Highlights additional requirements for specific transfers</li>
-                </ul>
-                <p>The system helps organizations implement compliant data transfer frameworks while navigating complex international data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.regulatory_metadata_pages import LawTransferPage
+            LawTransferPage.explain()
+
         elif selected_inference_api == "Data Subject Rights Inference":
             st.markdown("""
             <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">

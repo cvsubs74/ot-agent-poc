@@ -13,6 +13,29 @@ class ObligationInferencePage:
             self.regulatory_metadata_repository
         )
 
+    @staticmethod
+    def explain():
+        st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Obligation Inference Works</h4>
+                <p>The Obligation Inference API uses sensitivity mapping tables to determine what security and privacy controls should be implemented based on data sensitivity:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for hierarchical classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to specific security and privacy obligations.</li>
+                </ul>
+                <p>The Obligation Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Based on the inferred sensitivity, identify all applicable security and privacy obligations</li>
+                    <li>Group obligations by control type (e.g., Technical, Administrative, Physical)</li>
+                    <li>Prioritize obligations based on their importance (High, Medium, Low)</li>
+                </ol>
+                <p>This approach ensures organizations implement appropriate safeguards proportional to the sensitivity of the data they process, helping maintain compliance with privacy regulations and security best practices.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
     def render(self):
         """Implement an obligation inference API based on data sensitivity."""
         st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Obligation Inference</div>", unsafe_allow_html=True)

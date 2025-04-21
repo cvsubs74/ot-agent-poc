@@ -12,6 +12,25 @@ class SensitivityInferencePage:
             self.regulatory_metadata_repository
         )
 
+    @staticmethod
+    def explain():
+        st.markdown(
+            """
+            <div style=\"background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;\">
+                <h4 style=\"margin-top: 0;\">How Data Sensitivity Inference Works</h4>
+                <p>The Data Sensitivity Inference API uses multiple sensitivity mapping tables to determine the sensitivity level of data elements in different contexts:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories, establishing hierarchical relationships.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements under different laws and for different data subject types.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Provides higher-level sensitivity determinations for data categories.</li>
+                    <li><strong>Context Sensitivity</strong>: Adjusts sensitivity based on processing context (e.g., healthcare vs. marketing).</li>
+                </ul>
+                <p>The system considers multiple factors to determine data sensitivity, which then influences other decisions like legal basis selection, security requirements, and risk assessments.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def render(self):
         """Implement a sensitivity inference API based on regulatory metadata.
         This allows users to input data attributes and get sensitivity predictions.

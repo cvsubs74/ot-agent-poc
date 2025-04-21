@@ -5,6 +5,29 @@ class ControlInferencePage:
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
+    @staticmethod
+    def explain():
+        st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Control Inference Works</h4>
+                <p>The Control Inference API suggests appropriate security and privacy controls based on frameworks, policies, or risks:</p>
+                <ul>
+                    <li><strong>Framework Control</strong>: Maps security and compliance frameworks to specific controls that help implement the framework requirements.</li>
+                    <li><strong>Policy Control</strong>: Maps organizational policies to specific controls that help enforce those policies.</li>
+                    <li><strong>Risk Control</strong>: Maps identified risks to specific controls that help mitigate those risks.</li>
+                </ul>
+                <p>The Control Inference process follows these steps:</p>
+                <ol>
+                    <li>Identify the input context (framework, policy, or risk) that requires control recommendations</li>
+                    <li>Query the appropriate mapping table (Framework Control, Policy Control, or Risk Control)</li>
+                    <li>Retrieve controls with their relevance scores or mitigation levels</li>
+                    <li>Rank controls based on their effectiveness for the given context</li>
+                    <li>Present a prioritized list of recommended controls</li>
+                </ol>
+                <p>This approach ensures that organizations implement the most effective controls for their specific compliance requirements and risk profile, optimizing their security and privacy investments.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
     def render(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
         st.header("Control Inference API")

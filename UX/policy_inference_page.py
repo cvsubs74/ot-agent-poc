@@ -7,6 +7,34 @@ class PolicyInferencePage:
         self.glossary_repository = glossary_repository
         self.policy_compliance_page = policy_compliance_page
 
+    @staticmethod
+    def explain():
+        st.markdown(
+            """
+            <div style=\"background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;\">
+                <h4 style=\"margin-top: 0;\">How Policy Inference Works</h4>
+                <p>The Policy Inference API uses sensitivity and obligation mappings to recommend organizational policies based on data sensitivity and obligations:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
+                    <li><strong>Obligation Policy</strong>: Maps security and privacy obligations to organizational policies that should be implemented.</li>
+                </ul>
+                <p>The Policy Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
+                    <li>Map these obligations to relevant organizational policies using the Obligation Policy mapping</li>
+                    <li>Calculate a relevance score for each policy based on how many obligations it addresses</li>
+                    <li>Present a prioritized list of recommended policies to implement</li>
+                </ol>
+                <p>This approach helps organizations implement a comprehensive policy framework that addresses their specific data protection requirements and ensures compliance with relevant regulations.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def render(self):
         """Implement the Policy Inference API for access governance.
         This helps determine whether access to data is permitted based on purpose limitation principles.

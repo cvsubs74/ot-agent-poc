@@ -11,6 +11,31 @@ class RiskInferencePage:
             self.regulatory_metadata_repository
         )
 
+    @staticmethod
+    def explain():
+        st.markdown("""
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Risk Inference Works</h4>
+                <p>The Risk Inference API uses sensitivity and obligation mappings to identify potential risks if security and privacy obligations are not implemented:</p>
+                <ul>
+                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
+                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
+                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
+                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
+                    <li><strong>Obligation Risk</strong>: Maps security and privacy obligations to potential risks if not implemented.</li>
+                </ul>
+                <p>The Risk Inference process follows these steps:</p>
+                <ol>
+                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
+                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
+                    <li>Map these obligations to potential risks using the Obligation Risk mapping</li>
+                    <li>Evaluate the likelihood and impact of each risk</li>
+                    <li>Calculate an overall risk rating (Critical, High, Medium, Low)</li>
+                </ol>
+                <p>This risk-based approach helps organizations prioritize their compliance efforts based on the potential consequences of non-compliance, focusing resources on mitigating the most significant risks first.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
     def render(self):
         """Implement a risk inference API based on data sensitivity and obligations.
         This allows users to input data elements and get risk assessments.

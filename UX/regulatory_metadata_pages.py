@@ -5,6 +5,31 @@ class LawLegalBasisPage:
     def __init__(self, regulatory_metadata_repository):
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
+    @staticmethod
+    def explain():
+        st.markdown(
+            """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Legal Basis Inference Works</h4>
+                <p>The Legal Basis Inference API uses these mapping tables to determine the appropriate legal basis for processing personal data:</p>
+                <ol>
+                    <li><strong>Law Legal Basis</strong>: Maps laws to their supported legal bases, establishing which legal bases are valid under each regulation.</li>
+                    <li><strong>Law Purpose Category Legal Basis</strong>: Provides recommended legal bases for specific processing purposes under each law, with preference ordering.</li>
+                    <li><strong>Legal Basis Requirements</strong>: Details the compliance requirements for each legal basis, helping organizations implement the necessary safeguards.</li>
+                </ol>
+                <p>When making a legal basis determination, the system considers:</p>
+                <ul>
+                    <li>The applicable law (e.g., GDPR, CCPA)</li>
+                    <li>The processing purpose (e.g., Marketing, Security)</li>
+                    <li>Data sensitivity level</li>
+                    <li>Specific context of processing</li>
+                </ul>
+                <p>The system then recommends appropriate legal bases in order of preference, along with their compliance requirements.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def render(self):
         st.markdown("""
             <div class="card">
@@ -1274,6 +1299,27 @@ class DataSubjectAccessRequestPage:
     def __init__(self, regulatory_metadata_repository):
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
+    @staticmethod
+    def explain():
+        import streamlit as st
+        st.markdown(
+            """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Data Subject Rights Inference Works</h4>
+                <p>The Data Subject Rights Inference API uses the Data Subject Access Request mapping table to determine rights and response requirements:</p>
+                <ul>
+                    <li>Identifies applicable laws based on data subject location</li>
+                    <li>Determines available rights (access, deletion, portability, etc.)</li>
+                    <li>Calculates response timeframes</li>
+                    <li>Identifies valid exemptions and conditions</li>
+                    <li>Provides guidance on verification requirements</li>
+                </ul>
+                <p>The system helps organizations respond appropriately to data subject requests while maintaining compliance with various privacy regulations.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     def render(self):
         st.markdown("""
             <div class=\"card\">
@@ -1327,6 +1373,27 @@ class DataSubjectAccessRequestPage:
 class LawTransferPage:
     def __init__(self, regulatory_metadata_repository):
         self.regulatory_metadata_repository = regulatory_metadata_repository
+
+    @staticmethod
+    def explain():
+        import streamlit as st
+        st.markdown(
+            """
+            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
+                <h4 style="margin-top: 0;">How Transfer Mechanism Inference Works</h4>
+                <p>The Transfer Mechanism Inference API uses the Law Transfer mapping table to determine appropriate safeguards for cross-border data transfers:</p>
+                <ul>
+                    <li>Identifies source and destination jurisdictions</li>
+                    <li>Determines applicable data protection laws</li>
+                    <li>Evaluates adequacy decisions and existing agreements</li>
+                    <li>Recommends appropriate transfer mechanisms (e.g., SCCs, BCRs)</li>
+                    <li>Highlights additional requirements for specific transfers</li>
+                </ul>
+                <p>The system helps organizations implement compliant data transfer frameworks while navigating complex international data protection requirements.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     def render(self):
         st.markdown("""
