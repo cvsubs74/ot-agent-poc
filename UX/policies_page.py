@@ -22,10 +22,16 @@ class PoliciesPage:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention", "Policy Purpose Data Security"])
+        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention", "Policy Purpose Data Security", "Roles"])
         
         # Policies tab
         with tabs[0]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policies:</b><br>
+                Policies are formal rules that govern how data is managed, protected, and used within the organization. They set the foundation for compliance, security, and responsible data stewardship by defining what is allowed or required for data handling.
+            </div>
+            ''', unsafe_allow_html=True)
             # Get policies data from repository
             policies = self.glossary_repository.get_policies()
             if policies:
@@ -75,6 +81,12 @@ class PoliciesPage:
         
         # Policy Purpose tab
         with tabs[1]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Purposes:</b><br>
+                Policy Purposes define the legitimate reasons or objectives for which data may be processed under a given policy. They ensure that data use is aligned with business needs and regulatory expectations, supporting purpose limitation and transparency.
+            </div>
+            ''', unsafe_allow_html=True)
             # Get policy purposes from repository
             policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
             
@@ -123,6 +135,12 @@ class PoliciesPage:
         
         # Policy Purpose Data Element tab
         with tabs[2]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Purpose Data Elements:</b><br>
+                This construct maps which specific data elements are governed by each policy-purpose combination. It enables organizations to control and audit what pieces of data are accessible for each business purpose, supporting data minimization and access governance.
+            </div>
+            ''', unsafe_allow_html=True)
             # Get policy purpose data elements from repository
             policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements()
             
@@ -188,6 +206,12 @@ class PoliciesPage:
         
         # Policy Purpose Data Usage tab
         with tabs[3]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Purpose Data Usage:</b><br>
+                This construct specifies which operations (such as read, write, share) are permitted on each data element for a given policy and purpose. It enforces usage controls and ensures that data is only used in ways that are authorized and appropriate.
+            </div>
+            ''', unsafe_allow_html=True)
             # Get policy purpose data usages from repository
             policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages()
             
@@ -278,6 +302,12 @@ class PoliciesPage:
         
         # Policy Purpose Data Retention tab
         with tabs[4]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Purpose Data Retention:</b><br>
+                This construct defines the retention requirements for each data element under specific policy-purpose contexts. It ensures that data is only kept for as long as necessary, supporting compliance with data retention and deletion obligations.
+            </div>
+            ''', unsafe_allow_html=True)
             # Get policy purpose data retentions from repository
             policy_purpose_data_retentions = self.regulatory_metadata_repository.get_policy_purpose_data_retentions()
             
@@ -361,7 +391,12 @@ class PoliciesPage:
     
         # Policy Purpose Data Security tab
         with tabs[5]:
-            st.markdown("### Policy Purpose Data Security")
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Purpose Data Security:</b><br>
+                This construct captures the security requirements and controls (such as encryption or masking) that must be applied to data elements for each policy-purpose context. It helps enforce security best practices and regulatory mandates.
+            </div>
+            ''', unsafe_allow_html=True)
             security_rules = self.regulatory_metadata_repository.get_policy_purpose_data_security()
             if security_rules:
                 df = pd.DataFrame(security_rules)
@@ -389,249 +424,272 @@ class PoliciesPage:
             else:
                 st.warning("No policy purpose data security rules available.")
 
-        # Add a section for defining new policies on purposes
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.subheader("Define New Policy on Purpose")
-        st.markdown("Create a new policy that defines rules for data access and usage based on specific purposes.")
-        
-        # Get existing policy-purpose relationships
-        existing_policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
-        existing_purpose_ids = set()
-        if existing_policy_purposes:
-            for pp in existing_policy_purposes:
-                existing_purpose_ids.add(pp["purpose_id"])
-        
-        # Get all purposes for selection
-        purposes = self.glossary_repository.get_purposes()
-        
-        # Filter out purposes that already have policies defined
-        available_purposes = [p for p in purposes if p["id"] not in existing_purpose_ids] if purposes else []
-        purpose_options = {p["id"]: p["name"] for p in available_purposes}
-        
-        # Get all data elements for selection
-        data_elements = self.glossary_repository.get_data_elements()
-        data_element_options = {de["id"]: de["name"] for de in data_elements} if data_elements else {}
-        
-        # Get data categories for selection
-        data_categories = self.glossary_repository.get_data_categories()
-        data_category_options = {dc["id"]: dc["name"] for dc in data_categories} if data_categories else {}
-        
-        # Selection mode (outside the form)
-        st.markdown("Select how you want to define the policy:")
-        selection_mode = st.radio(
-            "Selection Mode", 
-            ["By Data Category", "By Individual Data Elements"]
-        )
-        
-        # Create a form for defining a new policy on a purpose
-        with st.form(key="define_policy_form"):
-            # Purpose selection (first step)
-            if purpose_options:
-                selected_purpose_id = st.selectbox(
-                    "Select Purpose", 
-                    options=list(purpose_options.keys()),
-                    format_func=lambda x: purpose_options[x]
-                )
-                if selected_purpose_id:
-                    purpose_name = purpose_options[selected_purpose_id]
+        # External Roles tab
+        with tabs[6]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About External Roles:</b><br>
+                This construct provides a unified view of roles imported from external systems (such as Snowflake or Databricks). It supports access governance by enabling oversight and management of external privileges within the organization.
+            </div>
+            ''', unsafe_allow_html=True)
+            roles = self.glossary_repository.get_external_roles()
+            if roles:
+                st.table([
+                    {
+                        "Name": r[1],
+                        "Description": r[2],
+                        "Source System": r[3],
+                        "Source Role Name": r[4]
+                    }
+                    for r in roles
+                ])
             else:
-                st.warning("No available purposes found in the database. All purposes already have policies defined.")
-                selected_purpose_id = None
-                
-            # Get policies of the selected type from the RegulatoryMetadataRepository
-            filtered_policies = self.glossary_repository.get_policies()
+                st.info("No external roles have been imported yet.")
+
+def create_policy():
+    # Add a section for defining new policies on purposes
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.subheader("Define New Policy on Purpose")
+    st.markdown("Create a new policy that defines rules for data access and usage based on specific purposes.")
+    
+    # Get existing policy-purpose relationships
+    existing_policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
+    existing_purpose_ids = set()
+    if existing_policy_purposes:
+        for pp in existing_policy_purposes:
+            existing_purpose_ids.add(pp["purpose_id"])
+    
+    # Get all purposes for selection
+    purposes = self.glossary_repository.get_purposes()
+    
+    # Filter out purposes that already have policies defined
+    available_purposes = [p for p in purposes if p["id"] not in existing_purpose_ids] if purposes else []
+    purpose_options = {p["id"]: p["name"] for p in available_purposes}
+    
+    # Get all data elements for selection
+    data_elements = self.glossary_repository.get_data_elements()
+    data_element_options = {de["id"]: de["name"] for de in data_elements} if data_elements else {}
+    
+    # Get data categories for selection
+    data_categories = self.glossary_repository.get_data_categories()
+    data_category_options = {dc["id"]: dc["name"] for dc in data_categories} if data_categories else {}
+    
+    # Selection mode (outside the form)
+    st.markdown("Select how you want to define the policy:")
+    selection_mode = st.radio(
+        "Selection Mode", 
+        ["By Data Category", "By Individual Data Elements"]
+    )
+    
+    # Create a form for defining a new policy on a purpose
+    with st.form(key="define_policy_form"):
+        # Purpose selection (first step)
+        if purpose_options:
+            selected_purpose_id = st.selectbox(
+                "Select Purpose", 
+                options=list(purpose_options.keys()),
+                format_func=lambda x: purpose_options[x]
+            )
+            if selected_purpose_id:
+                purpose_name = purpose_options[selected_purpose_id]
+        else:
+            st.warning("No available purposes found in the database. All purposes already have policies defined.")
+            selected_purpose_id = None
             
-            # Create a dictionary of filtered policies for the selectbox
-            filtered_policy_options = {p["id"]: p["name"] for p in filtered_policies}
-            
-            # Select an existing policy
-            if filtered_policy_options:
-                selected_policy_id = st.selectbox(
-                    "Select Policy", 
-                    options=list(filtered_policy_options.keys()),
-                    format_func=lambda x: filtered_policy_options[x]
-                )
-                
-            # Data selection based on the selection mode
-            selected_data_element_ids = []
-            
-            if selection_mode == "By Data Category":
-                # Data category selection
-                if data_category_options:
-                    selected_category_ids = st.multiselect(
-                        "Select Data Categories",
-                        options=list(data_category_options.keys()),
-                        format_func=lambda x: data_category_options[x]
-                    )
-                    
-                    # Get all data elements in the selected categories
-                    if selected_category_ids:
-                        # Map to show which category each element belongs to
-                        element_category_map = {}
-                        
-                        # For each selected category, get its data elements
-                        for category_id in selected_category_ids:
-                            category_elements = self.regulatory_metadata_repository.get_data_category_data_elements(category_id=category_id)
-                            if category_elements:
-                                for element in category_elements:
-                                    element_id = element["data_element_id"]
-                                    if element_id not in selected_data_element_ids:  # Avoid duplicates
-                                        selected_data_element_ids.append(element_id)
-                                    element_category_map[element_id] = data_category_options[category_id]
-                        
-                        # Show the count of data elements in each category
-                        if element_category_map:
-                            st.info(f"Selected {len(selected_data_element_ids)} data elements from {len(selected_category_ids)} categories")
-                            
-                            # Show a sample of the selected data elements
-                            with st.expander("View Selected Data Elements"):
-                                for category_id in selected_category_ids:
-                                    category_name = data_category_options[category_id]
-                                    category_elements = [de_id for de_id, cat in element_category_map.items() if cat == category_name]
-                                    if category_elements:
-                                        st.markdown(f"**{category_name}:** {len(category_elements)} elements")
-                else:
-                    st.warning("No data categories found in the database.")
-            else:  # By Individual Data Elements
-                # Show all data elements in a multiselect
-                if data_elements:
-                    # Create a multiselect for all data elements
-                    selected_data_element_ids = st.multiselect(
-                        "Select Data Elements",
-                        options=list(data_element_options.keys()),
-                        format_func=lambda x: data_element_options[x]
-                    )
-                    
-                    # Show count of selected elements
-                    if selected_data_element_ids:
-                        st.info(f"Selected {len(selected_data_element_ids)} data elements")
-                else:
-                    st.warning("No data elements found in the database.")
-                    selected_data_element_ids = []
-            
-            # Create a multiselect for operations
-            operations = ["read", "write", "share"]
-            selected_operations = st.multiselect(
-                    "Select allowed operations",
-                    options=operations,
-                    default=operations,  # Default to all operations selected
-                    format_func=lambda x: x.capitalize()
-                )
-                
-            # Optional restrictions for selected operations
-            operation_restrictions = {}
-            if selected_operations:
-                with st.expander("Add restrictions for operations (optional)"):
-                    for operation in selected_operations:
-                        operation_restrictions[operation] = st.text_input(
-                            f"Restrictions for {operation.capitalize()}",
-                            placeholder=f"Enter any restrictions for {operation} operation",
-                            key=f"rest_{operation}"
-                        )
-            
-            # Create a dictionary to store permissions
-            permissions = {}
-                
-            # Set the same permissions for all selected data elements
-            for data_element_id in selected_data_element_ids:
-                permissions[data_element_id] = {}
-                
-                # Set permissions based on selected operations
-                for operation in operations:
-                    permissions[data_element_id][operation] = operation in selected_operations
-                    if operation in selected_operations and operation_restrictions.get(operation):
-                        permissions[data_element_id][f"{operation}_restrictions"] = operation_restrictions[operation]
-                    else:
-                        permissions[data_element_id][f"{operation}_restrictions"] = None
-            
-            # Show a summary of the selected operations
-            if selected_operations:
-                st.info(f"Selected operations: {', '.join(op.capitalize() for op in selected_operations)}")
-            else:
-                st.warning("No operations selected. All operations will be denied.")
+        # Get policies of the selected type from the RegulatoryMetadataRepository
+        filtered_policies = self.glossary_repository.get_policies()
         
-            # Submit button
-            submit_button = st.form_submit_button("Create Policy Definition")
+        # Create a dictionary of filtered policies for the selectbox
+        filtered_policy_options = {p["id"]: p["name"] for p in filtered_policies}
         
-        if submit_button:
-            # Validate inputs
-            if not selected_purpose_id:
-                st.error("Please select a purpose.")
-                return
-            
-            if not selected_data_element_ids:
-                st.error("Please select at least one data element.")
-                return
-            
-            if not selected_policy_id:
-                st.error("Please select an existing policy.")
-                return
-            
-            # Create policy-purpose relationship
-            success = self.regulatory_metadata_repository.add_policy_purpose(
-                policy_id=selected_policy_id,
-                purpose_id=selected_purpose_id
+        # Select an existing policy
+        if filtered_policy_options:
+            selected_policy_id = st.selectbox(
+                "Select Policy", 
+                options=list(filtered_policy_options.keys()),
+                format_func=lambda x: filtered_policy_options[x]
             )
             
-            if not success:
-                st.error("Failed to create the policy-purpose relationship. Please try again.")
-                return
-            
-            # Create policy-purpose-data element relationships and usage rules
-            progress_bar = st.progress(0)
-            progress_text = st.empty()
-            
-            total_operations = len(selected_data_element_ids) * (1 + (3 if selected_policy_id else 0))
-            completed_operations = 0
-            
-            all_success = True
-            for data_element_id in selected_data_element_ids:
-                data_element_name = data_element_options[data_element_id]
-                progress_text.text(f"Processing: {data_element_name}")
+        # Data selection based on the selection mode
+        selected_data_element_ids = []
+        
+        if selection_mode == "By Data Category":
+            # Data category selection
+            if data_category_options:
+                selected_category_ids = st.multiselect(
+                    "Select Data Categories",
+                    options=list(data_category_options.keys()),
+                    format_func=lambda x: data_category_options[x]
+                )
                 
-                # Add policy-purpose-data element relationship
-                success = self.regulatory_metadata_repository.add_policy_purpose_data_element(
+                # Get all data elements in the selected categories
+                if selected_category_ids:
+                    # Map to show which category each element belongs to
+                    element_category_map = {}
+                    
+                    # For each selected category, get its data elements
+                    for category_id in selected_category_ids:
+                        category_elements = self.regulatory_metadata_repository.get_data_category_data_elements(category_id=category_id)
+                        if category_elements:
+                            for element in category_elements:
+                                element_id = element["data_element_id"]
+                                if element_id not in selected_data_element_ids:  # Avoid duplicates
+                                    selected_data_element_ids.append(element_id)
+                                element_category_map[element_id] = data_category_options[category_id]
+                    
+                    # Show the count of data elements in each category
+                    if element_category_map:
+                        st.info(f"Selected {len(selected_data_element_ids)} data elements from {len(selected_category_ids)} categories")
+                        
+                        # Show a sample of the selected data elements
+                        with st.expander("View Selected Data Elements"):
+                            for category_id in selected_category_ids:
+                                category_name = data_category_options[category_id]
+                                category_elements = [de_id for de_id, cat in element_category_map.items() if cat == category_name]
+                                if category_elements:
+                                    st.markdown(f"**{category_name}:** {len(category_elements)} elements")
+            else:
+                st.warning("No data categories found in the database.")
+        else:  # By Individual Data Elements
+            # Show all data elements in a multiselect
+            if data_elements:
+                # Create a multiselect for all data elements
+                selected_data_element_ids = st.multiselect(
+                    "Select Data Elements",
+                    options=list(data_element_options.keys()),
+                    format_func=lambda x: data_element_options[x]
+                )
+                
+                # Show count of selected elements
+                if selected_data_element_ids:
+                    st.info(f"Selected {len(selected_data_element_ids)} data elements")
+            else:
+                st.warning("No data elements found in the database.")
+                selected_data_element_ids = []
+        
+        # Create a multiselect for operations
+        operations = ["read", "write", "share"]
+        selected_operations = st.multiselect(
+                "Select allowed operations",
+                options=operations,
+                default=operations,  # Default to all operations selected
+                format_func=lambda x: x.capitalize()
+            )
+            
+        # Optional restrictions for selected operations
+        operation_restrictions = {}
+        if selected_operations:
+            with st.expander("Add restrictions for operations (optional)"):
+                for operation in selected_operations:
+                    operation_restrictions[operation] = st.text_input(
+                        f"Restrictions for {operation.capitalize()}",
+                        placeholder=f"Enter any restrictions for {operation} operation",
+                        key=f"rest_{operation}"
+                    )
+        
+        # Create a dictionary to store permissions
+        permissions = {}
+            
+        # Set the same permissions for all selected data elements
+        for data_element_id in selected_data_element_ids:
+            permissions[data_element_id] = {}
+            
+            # Set permissions based on selected operations
+            for operation in operations:
+                permissions[data_element_id][operation] = operation in selected_operations
+                if operation in selected_operations and operation_restrictions.get(operation):
+                    permissions[data_element_id][f"{operation}_restrictions"] = operation_restrictions[operation]
+                else:
+                    permissions[data_element_id][f"{operation}_restrictions"] = None
+        
+        # Show a summary of the selected operations
+        if selected_operations:
+            st.info(f"Selected operations: {', '.join(op.capitalize() for op in selected_operations)}")
+        else:
+            st.warning("No operations selected. All operations will be denied.")
+    
+        # Submit button
+        submit_button = st.form_submit_button("Create Policy Definition")
+    
+    if submit_button:
+        # Validate inputs
+        if not selected_purpose_id:
+            st.error("Please select a purpose.")
+            return
+        
+        if not selected_data_element_ids:
+            st.error("Please select at least one data element.")
+            return
+        
+        if not selected_policy_id:
+            st.error("Please select an existing policy.")
+            return
+        
+        # Create policy-purpose relationship
+        success = self.regulatory_metadata_repository.add_policy_purpose(
+            policy_id=selected_policy_id,
+            purpose_id=selected_purpose_id
+        )
+        
+        if not success:
+            st.error("Failed to create the policy-purpose relationship. Please try again.")
+            return
+        
+        # Create policy-purpose-data element relationships and usage rules
+        progress_bar = st.progress(0)
+        progress_text = st.empty()
+        
+        total_operations = len(selected_data_element_ids) * (1 + (3 if selected_policy_id else 0))
+        completed_operations = 0
+        
+        all_success = True
+        for data_element_id in selected_data_element_ids:
+            data_element_name = data_element_options[data_element_id]
+            progress_text.text(f"Processing: {data_element_name}")
+            
+            # Add policy-purpose-data element relationship
+            success = self.regulatory_metadata_repository.add_policy_purpose_data_element(
+                policy_id=selected_policy_id,
+                purpose_id=selected_purpose_id,
+                data_element_id=data_element_id,
+                access_allowed=True  # Default to allowed, operations will be controlled by usage rules
+            )
+            
+            completed_operations += 1
+            progress_bar.progress(completed_operations / total_operations)
+                    
+            if not success:
+                all_success = False
+                continue
+            
+            # Add operation permissions based on selected operations
+            for operation in ["read", "write", "share"]:
+                progress_text.text(f"Processing: {data_element_name} - {operation}")
+                
+                # Add policy-purpose-data-element-usage relationship
+                # The operation is allowed only if it was selected in the multiselect
+                is_allowed = operation in selected_operations
+                restrictions = operation_restrictions.get(operation) if is_allowed else None
+                
+                success = self.regulatory_metadata_repository.add_policy_purpose_data_usage(
                     policy_id=selected_policy_id,
                     purpose_id=selected_purpose_id,
                     data_element_id=data_element_id,
-                    access_allowed=True  # Default to allowed, operations will be controlled by usage rules
+                    operation=operation,
+                    allowed=is_allowed,
+                    restrictions=restrictions
                 )
+                
+                if not success:
+                    all_success = False
                 
                 completed_operations += 1
                 progress_bar.progress(completed_operations / total_operations)
-                        
-                if not success:
-                    all_success = False
-                    continue
-                
-                # Add operation permissions based on selected operations
-                for operation in ["read", "write", "share"]:
-                    progress_text.text(f"Processing: {data_element_name} - {operation}")
-                    
-                    # Add policy-purpose-data-element-usage relationship
-                    # The operation is allowed only if it was selected in the multiselect
-                    is_allowed = operation in selected_operations
-                    restrictions = operation_restrictions.get(operation) if is_allowed else None
-                    
-                    success = self.regulatory_metadata_repository.add_policy_purpose_data_usage(
-                        policy_id=selected_policy_id,
-                        purpose_id=selected_purpose_id,
-                        data_element_id=data_element_id,
-                        operation=operation,
-                        allowed=is_allowed,
-                        restrictions=restrictions
-                    )
-                    
-                    if not success:
-                        all_success = False
-                    
-                    completed_operations += 1
-                    progress_bar.progress(completed_operations / total_operations)
-            
-            progress_text.empty()
-            progress_bar.empty()
-            
-            if all_success:
-                st.success("Successfully created policy for purpose: {}".format(purpose_name))
-            else:
-                st.error("Failed to create policy for purpose: {}".format(purpose_name))
+        
+        progress_text.empty()
+        progress_bar.empty()
+        
+        if all_success:
+            st.success("Successfully created policy for purpose: {}".format(purpose_name))
+        else:
+            st.error("Failed to create policy for purpose: {}".format(purpose_name))

@@ -22,6 +22,7 @@ class GlossaryRepository:
         self.create_purpose_table()
         self.create_framework_table()
         self.create_control_table()
+        self.create_external_roles_table()
         
     def create_law_table(self):
         """Create the Law table."""
@@ -1251,6 +1252,48 @@ class GlossaryRepository:
         finally:
             cursor.close()
     
+    def create_external_roles_table(self):
+        cursor = self.connection.cursor()
+        create_table_query = '''
+        CREATE TABLE IF NOT EXISTS external_roles (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            source_system VARCHAR(255) NOT NULL,
+            source_role_name VARCHAR(255) NOT NULL,
+            UNIQUE(source_system, source_role_name)
+        );
+        '''
+        cursor.execute(create_table_query)
+        self.connection.commit()
+        cursor.close()
+
+    def add_external_role(self, name, description, source_system, source_role_name):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "INSERT IGNORE INTO external_roles (name, description, source_system, source_role_name) VALUES (%s, %s, %s, %s);",
+                (name, description, source_system, source_role_name)
+            )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error adding external role: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+
+    def get_external_roles(self):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description, source_system, source_role_name FROM external_roles;")
+            roles = cursor.fetchall()
+            return roles
+        except Exception as e:
+            print(f"Error fetching external roles: {e}")
+            return []
+        finally:
+            cursor.close()
+
     def seed_policies(self):
         """Seed the database with initial policy data."""
         policies = [

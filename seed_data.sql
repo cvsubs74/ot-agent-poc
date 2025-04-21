@@ -91,6 +91,16 @@ UPDATE data_element SET default_masking_format = '****@domain.com' WHERE name = 
 UPDATE data_element SET default_masking_format = 'IP: XXX.XXX.XXX.XXX' WHERE name = 'IP Address';
 UPDATE data_element SET default_masking_format = 'Device: XXXXXXXX' WHERE name = 'Device ID';
 
+-- Create external_roles table for external system roles
+CREATE TABLE IF NOT EXISTS `external_roles` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `source_system` VARCHAR(255) NOT NULL,
+    `source_role_name` VARCHAR(255) NOT NULL,
+    UNIQUE(`source_system`, `source_role_name`)
+);
+
 -- Create Data Subject Type table
 CREATE TABLE IF NOT EXISTS `data_subject_type` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
