@@ -545,8 +545,6 @@ class DataMap:
             if st.button("📋 Regulatory Metadata", key="regulatory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Regulatory'
                 
-            # Removed Obligations menu item (moved to Core Constructs)
-            
             # Decision Tree menu item
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
@@ -619,52 +617,36 @@ class DataMap:
             # Processing Activities menu item
             if st.button("🔄 Processing Activities", key="processing_activities_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Processing Activities'
-
-            
             
             # Add some space
             st.markdown("<br>", unsafe_allow_html=True)
             self.divider()
             
         # Main content area based on selected section
-        if st.session_state['current_section'] == 'Core':
-            self.core_constructs_section()
-        elif st.session_state['current_section'] == 'Regulatory':
-            # Rename the section title in the UI
-            self.regulatory_metadata_section()
-        elif st.session_state['current_section'] == 'Decision Tree':
-            self.decision_tree_section()
-        elif st.session_state['current_section'] == 'Assets':
-            self.assets_section()
-        elif st.session_state['current_section'] == 'Processing Activities':
-            self.processing_activities_section()
-        elif st.session_state['current_section'] == 'Law API':
-            self.law_inference_page()
-        elif st.session_state['current_section'] == 'Sensitivity API':
-            self.sensitivity_inference_page()
-        elif st.session_state['current_section'] == 'Legal Basis API':
-            self.legal_basis_inference_page()
-        elif st.session_state['current_section'] == 'Breach API':
-            self.breach_notification_page()
-        elif st.session_state['current_section'] == 'Transfer API':
-            self.transfer_mechanism_page()
-        elif st.session_state['current_section'] == 'DSR API':
-            self.data_subject_rights_page()
-        elif st.session_state['current_section'] == 'Obligation API':
-            self.obligation_inference_page()
-        elif st.session_state['current_section'] == 'Policy Inference API':
-            self.policy_recommendation_page()
-        elif st.session_state['current_section'] == 'Risk API':
-            self.risk_inference_page()
-        elif st.session_state['current_section'] == 'Purposes':
-            self.purposes_page()
-        elif st.session_state['current_section'] == 'Policies':
-            self.policies_page()
-        elif st.session_state['current_section'] == 'Policy Compliance':
-            self.policy_compliance()
-        elif st.session_state['current_section'] == 'Control API':
-            self.control_inference_page()            
-
+        section_handlers = {
+            'Core': self.core_constructs_section,
+            'Regulatory': self.regulatory_metadata_section,
+            'Decision Tree': self.decision_tree_section,
+            'Assets': self.assets_section,
+            'Processing Activities': self.processing_activities_section,
+            'Law API': self.law_inference_page,
+            'Sensitivity API': self.sensitivity_inference_page,
+            'Legal Basis API': self.legal_basis_inference_page,
+            'Breach API': self.breach_notification_page,
+            'Transfer API': self.transfer_mechanism_page,
+            'DSR API': self.data_subject_rights_page,
+            'Obligation API': self.obligation_inference_page,
+            'Policy Inference API': self.policy_recommendation_page,
+            'Risk API': self.risk_inference_page,
+            'Purposes': self.purposes_page,
+            'Policies': self.policies_page,
+            'Policy Compliance': self.policy_compliance,
+            'Control API': self.control_inference_page,
+        }
+        handler = section_handlers.get(st.session_state['current_section'])
+        if handler:
+            handler()
+       
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
         from UX.control_inference_page import ControlInferencePage
