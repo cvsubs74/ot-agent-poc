@@ -22,6 +22,7 @@ class AssetsPage:
             </ul>
         </div>''', unsafe_allow_html=True)
 
+
         assets = self.inventory_repository.get_assets()
         if not assets:
             st.warning("No assets available in the database.")
@@ -98,6 +99,20 @@ class AssetsPage:
                             de_data["Description"].append(de['description'])
                         st.dataframe(pd.DataFrame(de_data), use_container_width=True)
                     run_analysis = st.button("Run Data Element Analysis", key=f"run_analysis_{selected_asset['id']}")
+                    # Show info box about analysis workflow
+                    st.markdown('''
+                    <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
+                        <h4 style="margin-top: 0; color: #229954;">How Policy Recommendation and Risk Analysis Work</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li><strong>Input:</strong> The analysis starts with the data elements associated with each asset.</li>
+                                <li><strong>Sensitivity Inference:</strong> Sensitivity levels for each data element are inferred using regulatory mappings and business logic.</li>
+                                <li><strong>Obligation Mapping:</strong> Based on sensitivities, relevant security and privacy obligations are determined for each data element.</li>
+                                <li><strong>Policy Recommendation:</strong> For each obligation, recommended policies and controls are identified to help ensure compliance.</li>
+                                <li><strong>Risk Analysis:</strong> Potential risks are derived for each obligation if not properly implemented, including likelihood and impact assessment.</li>
+                                <li><strong>Risk Rating:</strong> Risks are categorized as Critical, High, Medium, or Low based on a matrix of likelihood and impact.</li>
+                                <li><strong>Summary:</strong> The workflow provides a prioritized list of obligations, recommended policies, and potential risks to guide remediation and compliance actions.</li>
+                            </ul>
+                        </div>''', unsafe_allow_html=True)                    
                     if run_analysis:
                         # 1. Infer sensitivities
                         data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
