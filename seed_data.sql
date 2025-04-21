@@ -158,6 +158,41 @@ CREATE TABLE IF NOT EXISTS `risk` (
 -- REGULATORY METADATA TABLES
 -- =============================================
 
+-- Override table for Data Usage rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_usage (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    operation VARCHAR(50) NOT NULL,            -- e.g., read, write, share, delete
+    allowed BOOLEAN NOT NULL,
+    restrictions TEXT,                  -- e.g., justification, conditions
+    UNIQUE(policy_purpose_data_element_id, external_role_id, operation),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
+
+-- Override table for Data Retention rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_retention (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    retention_period TEXT NOT NULL,     -- e.g., "3 years", "Indefinite", "End of Session"
+    retention_justification TEXT,
+    UNIQUE(policy_purpose_data_element_id, external_role_id),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
+
+-- Override table for Data Security rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_security (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    UNIQUE(policy_purpose_data_element_id, external_role_id),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
+
 -- Create Law Jurisdiction table
 CREATE TABLE IF NOT EXISTS `law_jurisdiction` (
     `law_id` INT NOT NULL,
@@ -1013,11 +1048,12 @@ CREATE TABLE IF NOT EXISTS `policy_purpose` (
 
 -- Create Policy Purpose Data Element table
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
     `policy_id` INT NOT NULL,
     `purpose_id` INT NOT NULL,
     `data_element_id` INT NOT NULL,
     `access_allowed` BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+    UNIQUE KEY `unique_policy_purpose_data_element` (`policy_id`, `purpose_id`, `data_element_id`),
     FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
@@ -1025,29 +1061,22 @@ CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
 
 -- Create Policy Purpose Data Usage table
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
-    `policy_id` INT NOT NULL,
-    `purpose_id` INT NOT NULL,
-    `data_element_id` INT NOT NULL,
+    `policy_purpose_data_element_id` INT NOT NULL,
     `operation` VARCHAR(50) NOT NULL,
     `allowed` BOOLEAN NOT NULL DEFAULT FALSE,
     `restrictions` TEXT,
-    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`, `operation`),
-    FOREIGN KEY (`policy_id`, `purpose_id`, `data_element_id`) 
-        REFERENCES `policy_purpose_data_element`(`policy_id`, `purpose_id`, `data_element_id`) ON DELETE CASCADE
+    PRIMARY KEY (`policy_purpose_data_element_id`, `operation`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_retention` (
-    `policy_id` INT NOT NULL,
-    `purpose_id` INT NOT NULL,
-    `data_element_id` INT NOT NULL,
+    `policy_purpose_data_element_id` INT NOT NULL,
     `retention_period` VARCHAR(100) NOT NULL,
     `retention_trigger` VARCHAR(100) NOT NULL DEFAULT 'Collection',
     `retention_basis` VARCHAR(255),
     `exceptions` TEXT,
-    PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+    PRIMARY KEY (`policy_purpose_data_element_id`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
 );
 
 -- Insert policies
@@ -1353,344 +1382,184 @@ INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id,
  (SELECT id FROM data_element WHERE name = 'Social Security Number'), FALSE);
 
 -- Insert policy-purpose-data usage rules for all purposes
-INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, operation, allowed, restrictions) VALUES
+INSERT INTO policy_purpose_data_usage (policy_purpose_data_element_id, operation, allowed, restrictions) VALUES
 -- Customer Support purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Limited to last 12 months of purchases'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for updating customer contact information'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), 'write', TRUE, 'Only for updating customer contact information'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'share', FALSE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), 'share', FALSE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), 'read', TRUE, 'Limited to last 12 months of purchases'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, 'Only for updating customer contact information'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'write', TRUE, 'Only for updating customer contact information'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'share', FALSE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'share', FALSE, NULL),
 
 -- Marketing Campaigns purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Limited to product categories only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for campaign tracking'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'share', TRUE, 'Only with approved marketing partners'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), 'read', TRUE, 'Limited to product categories only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, 'Only for campaign tracking'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'share', TRUE, 'Only with approved marketing partners'),
 
 -- Payment Processing purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Bank Account Number'), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'write', TRUE, 'Only during transaction processing'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'share', TRUE, 'Only with payment processors'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), 'read', TRUE, 'Last 4 digits only except during transaction processing'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'write', TRUE, 'Only during transaction processing'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'share', TRUE, 'Only with payment processors'),
 
 -- Product Analytics purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, 'Anonymized where possible'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Aggregated data only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, 'Truncated for anonymization'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, 'Hashed for anonymization'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'write', TRUE, 'For analytics tracking only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'share', FALSE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, 'Anonymized where possible'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), 'read', TRUE, 'Aggregated data only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'read', TRUE, 'Truncated for anonymization'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), 'read', TRUE, 'Hashed for anonymization'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'write', TRUE, 'For analytics tracking only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'share', FALSE, NULL),
 
 -- Employee Management purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'read', TRUE, 'HR department only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Date of Birth'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'write', TRUE, 'HR department only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'HR department only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'share', TRUE, 'Only for tax and legal compliance'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'read', TRUE, 'HR department only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Date of Birth')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'write', TRUE, 'HR department only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, 'HR department only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'share', TRUE, 'Only for tax and legal compliance'),
 
 -- Fraud Detection purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'write', TRUE, 'For fraud detection logs only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'write', TRUE, 'For fraud detection logs only'),
 
 -- User Authentication purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'User Authentication'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'User Authentication'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'User Authentication'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'User Authentication'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'User Authentication'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for authentication logs'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, 'Only for authentication logs'),
 
 -- Regulatory Compliance purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
- (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'read', TRUE, 'Only for required regulatory reporting'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Regulatory Compliance'),
- (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'share', TRUE, 'Only with authorized regulatory bodies'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Regulatory Compliance') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Regulatory Compliance') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Regulatory Compliance') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Regulatory Compliance') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'read', TRUE, 'Only for required regulatory reporting'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Regulatory Compliance') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'share', TRUE, 'Only with authorized regulatory bodies'),
 
 -- Service Delivery purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Address'), 'read', TRUE, NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only for service-related communications'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Service Delivery'),
- (SELECT id FROM data_element WHERE name = 'Address'), 'share', TRUE, 'Only with delivery partners'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, 'Only for service-related communications'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'share', TRUE, 'Only with delivery partners'),
 
 -- Research and Development purpose
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Research and Development'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), 'read', TRUE, 'Anonymized data only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), 'read', TRUE, 'Anonymized data only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), 'read', TRUE, 'Anonymized data only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), 'read', TRUE, 'Anonymized data only'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), 'read', TRUE, 'Anonymized data only');
 
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Research and Development'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), 'read', TRUE, 'Anonymized data only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Research and Development'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), 'read', TRUE, 'Anonymized data only'),
-
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
- (SELECT id FROM purpose WHERE name = 'Research and Development'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), 'read', TRUE, 'Anonymized data only');
-
--- Insert policy-purpose-data retention rules
-INSERT INTO policy_purpose_data_retention (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES
+-- Insert policy_purpose_data_element entries for Data Retention Policy
+INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES
 -- Customer Support purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Phone Number'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), '2 years', 'Last Interaction', 'Customer service quality', NULL),
-
-((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
- (SELECT id FROM purpose WHERE name = 'Customer Support'),
- (SELECT id FROM data_element WHERE name = 'Purchase History'), '2 years', 'Last Interaction', 'Customer service quality', 'Retain longer if required for warranty purposes'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
 
 -- Marketing Campaigns purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Email Address'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
 
 -- Fraud Detection purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
-
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
-
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
- (SELECT id FROM data_element WHERE name = 'Customer ID'), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
 
 -- Payment Processing purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), '7 years', 'Transaction Completion', 'Financial regulations', NULL),
-
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
-
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Payment Processing'),
- (SELECT id FROM data_element WHERE name = 'Bank Account Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE),
 
 -- Product Analytics purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'IP Address'), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
-
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Product Analytics'),
- (SELECT id FROM data_element WHERE name = 'Device ID'), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
 
 -- Employee Management purpose
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Full Name'), '7 years', 'Employment End', 'Employment regulations', 'Retain longer if required by law'),
-
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
 ((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
  (SELECT id FROM purpose WHERE name = 'Employee Management'),
- (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law');
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE);
+
+-- Insert policy-purpose-data retention rules
+INSERT INTO policy_purpose_data_retention (policy_purpose_data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES
+-- Customer Support purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), '2 years', 'Last Interaction', 'Customer service quality', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), '2 years', 'Last Interaction', 'Customer service quality', 'Retain longer if required for warranty purposes'),
+
+-- Marketing Campaigns purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), '1 year', 'Campaign End', 'Marketing effectiveness', NULL),
+
+-- Fraud Detection purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), '5 years', 'Incident Resolution', 'Legal requirement', 'Required for fraud investigation purposes'),
+
+-- Payment Processing purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), '7 years', 'Transaction Completion', 'Financial regulations', NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law'),
+
+-- Product Analytics purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), '90 days', 'Collection', 'Business need', 'Anonymized after 30 days'),
+
+-- Employee Management purpose
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), '7 years', 'Employment End', 'Employment regulations', 'Retain longer if required by law'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law');
 
 -- =============================================
 -- REGULATORY INTELLIGENCE TABLES
@@ -2024,18 +1893,14 @@ ON DUPLICATE KEY UPDATE
 
 -- POLICY PURPOSE DATA SECURITY TABLE
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
-    `policy_id`            INT         NOT NULL,
-    `purpose_id`           INT         NOT NULL,
-    `data_element_id`      INT         NOT NULL,
+    `policy_purpose_data_element_id` INT NOT NULL,
     `encryption_required`  BOOLEAN     NOT NULL DEFAULT FALSE,
     `encryption_algorithm` VARCHAR(100),
     `masking_required`     BOOLEAN     NOT NULL DEFAULT FALSE,
     `masking_format`       VARCHAR(100),
     `access_logging`       BOOLEAN     NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (`policy_id`,`purpose_id`,`data_element_id`),
-    FOREIGN KEY (`policy_id`)       REFERENCES `policy`(`id`)            ON DELETE CASCADE,
-    FOREIGN KEY (`purpose_id`)      REFERENCES `purpose`(`id`)           ON DELETE CASCADE,
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)    ON DELETE CASCADE
+    PRIMARY KEY (`policy_purpose_data_element_id`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
 );
 
 -- Insert policy-purpose relationships for Data Security Policy
@@ -2051,46 +1916,120 @@ INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management')),
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'));
 
+-- Insert policy_purpose_data_element entries for Data Security Policy
+INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES
+-- Customer Support
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+-- Fraud Detection
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Fraud Detection'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+-- Marketing Campaigns
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+-- Product Analytics
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+-- Payment Processing
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+-- Service Delivery
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Service Delivery'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+-- Research and Development
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Research and Development'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+-- Employee Management
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Employee Management'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+-- User Authentication
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'User Authentication'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE);
+
 -- Seed Policy Purpose Data Security
 DELETE FROM policy_purpose_data_security;
 INSERT INTO policy_purpose_data_security
-    (`policy_id`, `purpose_id`, `data_element_id`, `encryption_required`, `encryption_algorithm`, `masking_required`, `masking_format`, `access_logging`)
+    (`policy_purpose_data_element_id`, `encryption_required`, `encryption_algorithm`, `masking_required`, `masking_format`, `access_logging`) 
 VALUES
 -- Customer Support
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
 
 -- Fraud Detection
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection'), (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
 
 -- Marketing Campaigns
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), (SELECT id FROM data_element WHERE name = 'Email Address'), FALSE, NULL, TRUE, 'xxxx@####.com', FALSE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), (SELECT id FROM data_element WHERE name = 'Customer ID'), FALSE, NULL, TRUE, '######', FALSE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), FALSE, NULL, TRUE, 'xxxx@####.com', FALSE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), FALSE, NULL, TRUE, '######', FALSE),
 
 -- Product Analytics
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Product Analytics'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
 
 -- Payment Processing
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE, 'AES-256', TRUE, '####-XXXX-XXXX-####', TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), TRUE, 'AES-256', TRUE, '####-XXXX-XXXX-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
 
 -- Service Delivery
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-128', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-128', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-128', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-128', TRUE, 'xxxx@####.com', TRUE),
 
 -- Research and Development
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development'), (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development'), (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
 
 -- Employee Management
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'), (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
 
 -- User Authentication
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
-((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'User Authentication'), (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE, 'AES-128', FALSE, NULL, TRUE);
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE);
 
 
 -- =============================================

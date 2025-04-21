@@ -2,10 +2,139 @@ import pymysql.cursors
 import json
 
 class RegulatoryMetadataRepository:
+
     def __init__(self, connection):
-        """Initialize the RegulatoryMetadataRepository with a database connection."""
         self.connection = connection
-        self.setup_tables()
+        # self.setup_tables()
+
+    # --- POLICY OVERRIDE TABLES: CRUD Methods ---
+    def create_policy_override_role_purpose_data_usage_table(self):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_usage (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                policy_purpose_data_element_id INTEGER NOT NULL,
+                external_role_id INTEGER NOT NULL,
+                operation VARCHAR(50) NOT NULL,
+                allowed BOOLEAN NOT NULL,
+                restrictions TEXT,
+                UNIQUE(policy_purpose_data_element_id, external_role_id, operation),
+                FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+                FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+            );
+        ''')
+        self.connection.commit()
+        cursor.close()
+
+    def create_policy_override_role_purpose_data_retention_table(self):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_retention (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                policy_purpose_data_element_id INTEGER NOT NULL,
+                external_role_id INTEGER NOT NULL,
+                retention_period TEXT NOT NULL,
+                retention_justification TEXT,
+                UNIQUE(policy_purpose_data_element_id, external_role_id),
+                FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+                FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+            );
+        ''')
+        self.connection.commit()
+        cursor.close()
+
+    def create_policy_override_role_purpose_data_security_table(self):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_security (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                policy_purpose_data_element_id INTEGER NOT NULL,
+                external_role_id INTEGER NOT NULL,
+                security_rule_id INTEGER NOT NULL,
+                UNIQUE(policy_purpose_data_element_id, external_role_id, security_rule_id),
+                FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+                FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+                -- Removed foreign key constraint to security_rules table as it doesn't exist yet
+                -- FOREIGN KEY (security_rule_id) REFERENCES security_rules(id)
+            );
+        ''')
+        self.connection.commit()
+        cursor.close()
+
+    # --- CRUD for Data Usage Override ---
+    def add_policy_override_role_purpose_data_usage(self, policy_purpose_data_element_id, external_role_id, operation, allowed, restrictions=None):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            INSERT INTO policy_override_role_purpose_data_usage (policy_purpose_data_element_id, external_role_id, operation, allowed, restrictions)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE allowed=VALUES(allowed), restrictions=VALUES(restrictions)
+        ''', (policy_purpose_data_element_id, external_role_id, operation, allowed, restrictions))
+        self.connection.commit()
+        cursor.close()
+
+    def get_all_policy_override_role_purpose_data_usage(self):
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT * FROM policy_override_role_purpose_data_usage')
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
+
+    def delete_policy_override_role_purpose_data_usage(self, override_id):
+        cursor = self.connection.cursor()
+        cursor.execute('DELETE FROM policy_override_role_purpose_data_usage WHERE id = %s', (override_id,))
+        self.connection.commit()
+        cursor.close()
+
+    # --- CRUD for Data Retention Override ---
+    def add_policy_override_role_purpose_data_retention(self, policy_purpose_data_element_id, external_role_id, retention_period, retention_justification=None):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            INSERT INTO policy_override_role_purpose_data_retention (policy_purpose_data_element_id, external_role_id, retention_period, retention_justification)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE retention_period=VALUES(retention_period), retention_justification=VALUES(retention_justification)
+        ''', (policy_purpose_data_element_id, external_role_id, retention_period, retention_justification))
+        self.connection.commit()
+        cursor.close()
+
+    def get_all_policy_override_role_purpose_data_retention(self):
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT * FROM policy_override_role_purpose_data_retention')
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
+
+    def delete_policy_override_role_purpose_data_retention(self, override_id):
+        cursor = self.connection.cursor()
+        cursor.execute('DELETE FROM policy_override_role_purpose_data_retention WHERE id = %s', (override_id,))
+        self.connection.commit()
+        cursor.close()
+
+    # --- CRUD for Data Security Override ---
+    def add_policy_override_role_purpose_data_security(self, policy_purpose_data_element_id, external_role_id, security_rule_id):
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            INSERT INTO policy_override_role_purpose_data_security (policy_purpose_data_element_id, external_role_id, security_rule_id)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE policy_purpose_data_element_id=VALUES(policy_purpose_data_element_id)
+        ''', (policy_purpose_data_element_id, external_role_id, security_rule_id))
+        self.connection.commit()
+        cursor.close()
+
+    def get_all_policy_override_role_purpose_data_security(self):
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT * FROM policy_override_role_purpose_data_security')
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
+
+    def delete_policy_override_role_purpose_data_security(self, override_id):
+        cursor = self.connection.cursor()
+        cursor.execute('DELETE FROM policy_override_role_purpose_data_security WHERE id = %s', (override_id,))
+        self.connection.commit()
+        cursor.close()        
         
     def setup_tables(self):
         """Create all the necessary tables for the regulatory metadata if they don't exist."""
@@ -305,16 +434,28 @@ class RegulatoryMetadataRepository:
         self.connection.commit()
         cursor.close()
 
-    def add_policy_purpose_data_security(self, policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging):
-        """Add a new policy purpose data security rule."""
+    def add_policy_purpose_data_security(self, policy_purpose_data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging):
+        """Add a new policy purpose data security rule.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
+            encryption_required (bool): Whether encryption is required
+            encryption_algorithm (str): The encryption algorithm to use
+            masking_required (bool): Whether masking is required
+            masking_format (str): The masking format to use
+            access_logging (bool): Whether access logging is required
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
         cursor = self.connection.cursor()
         try:
             query = """
             INSERT INTO policy_purpose_data_security
-            (policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (policy_purpose_data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(query, (policy_id, purpose_id, data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging))
+            cursor.execute(query, (policy_purpose_data_element_id, encryption_required, encryption_algorithm, masking_required, masking_format, access_logging))
             self.connection.commit()
             return True
         except Exception as e:
@@ -332,20 +473,21 @@ class RegulatoryMetadataRepository:
             SELECT p.name as policy_name, pu.name as purpose_name, de.name as data_element_name,
                    s.encryption_required, s.encryption_algorithm, s.masking_required, s.masking_format, s.access_logging
             FROM policy_purpose_data_security s
-            JOIN policy p ON s.policy_id = p.id
-            JOIN purpose pu ON s.purpose_id = pu.id
-            JOIN data_element de ON s.data_element_id = de.id
+            JOIN policy_purpose_data_element ppde ON s.policy_purpose_data_element_id = ppde.id
+            JOIN policy p ON ppde.policy_id = p.id
+            JOIN purpose pu ON ppde.purpose_id = pu.id
+            JOIN data_element de ON ppde.data_element_id = de.id
             WHERE 1=1
             """
             params = []
             if policy_id:
-                query += " AND s.policy_id = %s"
+                query += " AND ppde.policy_id = %s"
                 params.append(policy_id)
             if purpose_id:
-                query += " AND s.purpose_id = %s"
+                query += " AND ppde.purpose_id = %s"
                 params.append(purpose_id)
             if data_element_id:
-                query += " AND s.data_element_id = %s"
+                query += " AND ppde.data_element_id = %s"
                 params.append(data_element_id)
             cursor.execute(query, params)
             results = []
@@ -1037,7 +1179,7 @@ class RegulatoryMetadataRepository:
                 print(f"Error seeding law data subject access request notification requirement: {e}")
         
         cursor.close()
-    
+        
     # Data Category Data Element methods
     def add_data_category_data_element(self, data_category_id, data_element_id):
         """Add a new data category data element relationship to the database."""
@@ -2233,11 +2375,12 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         create_table_query = """
         CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
             `policy_id` INT NOT NULL,
             `purpose_id` INT NOT NULL,
             `data_element_id` INT NOT NULL,
             `access_allowed` BOOLEAN NOT NULL DEFAULT TRUE,
-            PRIMARY KEY (`policy_id`, `purpose_id`, `data_element_id`),
+            UNIQUE KEY `unique_policy_purpose_data_element` (`policy_id`, `purpose_id`, `data_element_id`),
             FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
             FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
             FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
@@ -2324,7 +2467,7 @@ class RegulatoryMetadataRepository:
             access_allowed (bool, optional): Whether access is allowed. Defaults to True.
             
         Returns:
-            bool: True if successful, False otherwise
+            int: The ID of the new record if successful, None otherwise
         """
         cursor = self.connection.cursor()
         try:
@@ -2333,21 +2476,19 @@ class RegulatoryMetadataRepository:
                 (policy_id, purpose_id, data_element_id, access_allowed)
             )
             self.connection.commit()
-            return True
+            return cursor.lastrowid
         except Exception as e:
             print(f"Error adding policy-purpose-data element relationship: {e}")
             self.connection.rollback()
-            return False
+            return None
         finally:
             cursor.close()
             
-    def add_policy_purpose_data_usage(self, policy_id, purpose_id, data_element_id, operation, allowed=False, restrictions=None):
+    def add_policy_purpose_data_usage(self, policy_purpose_data_element_id, operation, allowed=False, restrictions=None):
         """Add a new policy-purpose-data element usage rule to the database.
         
         Args:
-            policy_id (int): The ID of the policy
-            purpose_id (int): The ID of the purpose
-            data_element_id (int): The ID of the data element
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
             operation (str): The operation (e.g., 'read', 'write', 'share')
             allowed (bool, optional): Whether the operation is allowed. Defaults to False.
             restrictions (str, optional): Any restrictions on the operation. Defaults to None.
@@ -2358,8 +2499,8 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             cursor.execute(
-                "INSERT INTO policy_purpose_data_usage (policy_id, purpose_id, data_element_id, operation, allowed, restrictions) VALUES (%s, %s, %s, %s, %s, %s);",
-                (policy_id, purpose_id, data_element_id, operation, allowed, restrictions)
+                "INSERT INTO policy_purpose_data_usage (policy_purpose_data_element_id, operation, allowed, restrictions) VALUES (%s, %s, %s, %s);",
+                (policy_purpose_data_element_id, operation, allowed, restrictions)
             )
             self.connection.commit()
             return True
@@ -2425,7 +2566,7 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             query = """
-                SELECT ppde.policy_id, p.name as policy_name, ppde.purpose_id, pu.name as purpose_name,
+                SELECT ppde.id, ppde.policy_id, p.name as policy_name, ppde.purpose_id, pu.name as purpose_name,
                        ppde.data_element_id, de.name as data_element_name, ppde.access_allowed
                 FROM policy_purpose_data_element ppde
                 JOIN policy p ON ppde.policy_id = p.id
@@ -2452,13 +2593,14 @@ class RegulatoryMetadataRepository:
             relationships = []
             for row in cursor.fetchall():
                 relationships.append({
-                    "policy_id": row[0],
-                    "policy_name": row[1],
-                    "purpose_id": row[2],
-                    "purpose_name": row[3],
-                    "data_element_id": row[4],
-                    "data_element_name": row[5],
-                    "access_allowed": row[6]
+                    "id": row[0],
+                    "policy_id": row[1],
+                    "policy_name": row[2],
+                    "purpose_id": row[3],
+                    "purpose_name": row[4],
+                    "data_element_id": row[5],
+                    "data_element_name": row[6],
+                    "access_allowed": row[7]
                 })
             return relationships
         except Exception as e:
@@ -2481,34 +2623,35 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             query = """
-                SELECT ppdu.policy_id, p.name as policy_name, p.policy_type,
-                       ppdu.purpose_id, pu.name as purpose_name,
-                       ppdu.data_element_id, de.name as data_element_name,
+                SELECT ppde.policy_id, p.name as policy_name, p.policy_type,
+                       ppde.purpose_id, pu.name as purpose_name,
+                       ppde.data_element_id, de.name as data_element_name,
                        ppdu.operation, ppdu.allowed, ppdu.restrictions
                 FROM policy_purpose_data_usage ppdu
-                JOIN policy p ON ppdu.policy_id = p.id
-                JOIN purpose pu ON ppdu.purpose_id = pu.id
-                JOIN data_element de ON ppdu.data_element_id = de.id
+                JOIN policy_purpose_data_element ppde ON ppdu.policy_purpose_data_element_id = ppde.id
+                JOIN policy p ON ppde.policy_id = p.id
+                JOIN purpose pu ON ppde.purpose_id = pu.id
+                JOIN data_element de ON ppde.data_element_id = de.id
             """
             
             conditions = []
             params = []
             
             if policy_id:
-                conditions.append("ppdu.policy_id = %s")
+                conditions.append("ppde.policy_id = %s")
                 params.append(policy_id)
             
             if purpose_id:
-                conditions.append("ppdu.purpose_id = %s")
+                conditions.append("ppde.purpose_id = %s")
                 params.append(purpose_id)
             
             if data_element_id:
-                conditions.append("ppdu.data_element_id = %s")
+                conditions.append("ppde.data_element_id = %s")
                 params.append(data_element_id)
-            
+                
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
-            
+                
             cursor.execute(query, params)
             
             usages = []
@@ -2823,17 +2966,15 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
             
-    def add_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id, retention_period, retention_trigger='Collection', retention_basis=None, exceptions=None):
+    def add_policy_purpose_data_retention(self, policy_purpose_data_element_id, retention_period, retention_trigger='Collection', retention_basis=None, exceptions=None):
         """Add a new policy-purpose-data element retention rule to the database.
         
         Args:
-            policy_id (int): The ID of the policy
-            purpose_id (int): The ID of the purpose
-            data_element_id (int): The ID of the data element
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
             retention_period (str): The retention period (e.g., '30 days', '1 year', '7 years')
-            retention_trigger (str, optional): What triggers the retention period (e.g., 'Collection', 'Last Use', 'End of Contract')
-            retention_basis (str, optional): The basis for the retention period (e.g., 'Legal requirement', 'Business need')
-            exceptions (str, optional): Any exceptions to the retention rule
+            retention_trigger (str, optional): What triggers the retention period. Defaults to 'Collection'.
+            retention_basis (str, optional): The basis for the retention period. Defaults to None.
+            exceptions (str, optional): Any exceptions to the retention rule. Defaults to None.
             
         Returns:
             bool: True if successful, False otherwise
@@ -2841,8 +2982,8 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             cursor.execute(
-                "INSERT INTO policy_purpose_data_retention (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES (%s, %s, %s, %s, %s, %s, %s);",
-                (policy_id, purpose_id, data_element_id, retention_period, retention_trigger, retention_basis, exceptions)
+                "INSERT INTO policy_purpose_data_retention (policy_purpose_data_element_id, retention_period, retention_trigger, retention_basis, exceptions) VALUES (%s, %s, %s, %s, %s)",
+                (policy_purpose_data_element_id, retention_period, retention_trigger, retention_basis, exceptions)
             )
             self.connection.commit()
             return True
@@ -2867,29 +3008,30 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             query = """
-                SELECT ppdr.policy_id, p.name as policy_name, p.policy_type,
-                       ppdr.purpose_id, pu.name as purpose_name,
-                       ppdr.data_element_id, de.name as data_element_name,
+                SELECT ppde.policy_id, p.name as policy_name, p.policy_type,
+                       ppde.purpose_id, pu.name as purpose_name,
+                       ppde.data_element_id, de.name as data_element_name,
                        ppdr.retention_period, ppdr.retention_trigger, ppdr.retention_basis, ppdr.exceptions
                 FROM policy_purpose_data_retention ppdr
-                JOIN policy p ON ppdr.policy_id = p.id
-                JOIN purpose pu ON ppdr.purpose_id = pu.id
-                JOIN data_element de ON ppdr.data_element_id = de.id
+                JOIN policy_purpose_data_element ppde ON ppdr.policy_purpose_data_element_id = ppde.id
+                JOIN policy p ON ppde.policy_id = p.id
+                JOIN purpose pu ON ppde.purpose_id = pu.id
+                JOIN data_element de ON ppde.data_element_id = de.id
             """
             
             conditions = []
             params = []
             
             if policy_id:
-                conditions.append("ppdr.policy_id = %s")
+                conditions.append("ppde.policy_id = %s")
                 params.append(policy_id)
             
             if purpose_id:
-                conditions.append("ppdr.purpose_id = %s")
+                conditions.append("ppde.purpose_id = %s")
                 params.append(purpose_id)
             
             if data_element_id:
-                conditions.append("ppdr.data_element_id = %s")
+                conditions.append("ppde.data_element_id = %s")
                 params.append(data_element_id)
             
             if conditions:
@@ -2919,15 +3061,37 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
             
-    def update_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id, retention_period, retention_trigger=None, retention_basis=None, exceptions=None):
-        """Update an existing policy-purpose-data element retention rule.
+    def get_policy_purpose_data_element_id(self, policy_id, purpose_id, data_element_id):
+        """Get the ID of a policy_purpose_data_element entry based on policy, purpose, and data element IDs.
         
         Args:
             policy_id (int): The ID of the policy
             purpose_id (int): The ID of the purpose
             data_element_id (int): The ID of the data element
+            
+        Returns:
+            int: The ID of the policy_purpose_data_element entry, or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """SELECT id FROM policy_purpose_data_element 
+                      WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s"""
+            cursor.execute(query, (policy_id, purpose_id, data_element_id))
+            result = cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting policy_purpose_data_element_id: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def update_policy_purpose_data_retention(self, policy_purpose_data_element_id, retention_period, retention_trigger=None, retention_basis=None, exceptions=None):
+        """Update an existing policy-purpose-data element retention rule.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
             retention_period (str): The retention period (e.g., '30 days', '1 year', '7 years')
-            retention_trigger (str, optional): What triggers the retention period (e.g., 'Collection', 'Last Use', 'End of Contract')
+            retention_trigger (str, optional): What triggers the retention period
             retention_basis (str, optional): The basis for the retention period
             exceptions (str, optional): Any exceptions to the retention rule
             
@@ -2952,12 +3116,12 @@ class RegulatoryMetadataRepository:
                 update_parts.append("exceptions = %s")
                 params.append(exceptions)
                 
-            # Add the WHERE clause parameters
-            params.extend([policy_id, purpose_id, data_element_id])
+            # Add the WHERE clause parameter
+            params.append(policy_purpose_data_element_id)
             
             query = f"""UPDATE policy_purpose_data_retention 
                       SET {', '.join(update_parts)} 
-                      WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s;"""
+                      WHERE policy_purpose_data_element_id = %s;"""
                       
             cursor.execute(query, params)
             self.connection.commit()
@@ -2969,13 +3133,11 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
             
-    def delete_policy_purpose_data_retention(self, policy_id, purpose_id, data_element_id):
+    def delete_policy_purpose_data_retention(self, policy_purpose_data_element_id):
         """Delete a policy-purpose-data element retention rule from the database.
         
         Args:
-            policy_id (int): The ID of the policy
-            purpose_id (int): The ID of the purpose
-            data_element_id (int): The ID of the data element
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
             
         Returns:
             bool: True if successful, False otherwise
@@ -2983,8 +3145,8 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             cursor.execute(
-                "DELETE FROM policy_purpose_data_retention WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s;",
-                (policy_id, purpose_id, data_element_id)
+                "DELETE FROM policy_purpose_data_retention WHERE policy_purpose_data_element_id = %s;",
+                (policy_purpose_data_element_id,)
             )
             self.connection.commit()
             return cursor.rowcount > 0
@@ -3001,12 +3163,12 @@ class RegulatoryMetadataRepository:
         cursor = self.connection.cursor()
         try:
             cursor.execute(
-                """SELECT policy_id, purpose_id, data_element_id FROM policy_purpose_data_element
+                """SELECT id, policy_id, purpose_id, data_element_id FROM policy_purpose_data_element
                    WHERE (policy_id, purpose_id) IN (SELECT policy_id, purpose_id FROM policy_purpose)"""
             )
             
             for row in cursor.fetchall():
-                policy_id, purpose_id, data_element_id = row
+                ppde_id, policy_id, purpose_id, data_element_id = row
                 
                 # Define retention periods based on purpose and data element
                 retention_period = "1 year"  # Default
@@ -3061,7 +3223,7 @@ class RegulatoryMetadataRepository:
                 
                 # Add the retention rule
                 self.add_policy_purpose_data_retention(
-                    policy_id, purpose_id, data_element_id, 
+                    ppde_id, 
                     retention_period, retention_trigger, retention_basis, exceptions
                 )
                 

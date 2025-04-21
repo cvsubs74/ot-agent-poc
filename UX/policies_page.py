@@ -22,7 +22,18 @@ class PoliciesPage:
             </ul>
         </div>''', unsafe_allow_html=True)
         
-        tabs = st.tabs(["Policies", "Policy Purpose", "Policy Purpose Data Element", "Policy Purpose Data Usage", "Policy Purpose Data Retention", "Policy Purpose Data Security", "Roles"])
+        tabs = st.tabs([
+            "Policies",
+            "Policy Purpose",
+            "Policy Purpose Data Element",
+            "Policy Purpose Data Usage",
+            "Policy Purpose Data Retention",
+            "Policy Purpose Data Security",
+            "Roles",
+            "Role Purpose Data Usage Overrides",
+            "Role Purpose Data Retention Overrides",
+            "Role Purpose Data Security Overrides",
+        ])
         
         # Policies tab
         with tabs[0]:
@@ -147,6 +158,7 @@ class PoliciesPage:
             if policy_purpose_data_elements:
                 # Create a DataFrame for display
                 ppde_data = {
+                    "ID": [],
                     "Policy": [],
                     "Purpose": [],
                     "Data Element": [],
@@ -154,6 +166,7 @@ class PoliciesPage:
                 }
                 
                 for relation in policy_purpose_data_elements:
+                    ppde_data["ID"].append(relation["id"])
                     ppde_data["Policy"].append(relation["policy_name"])
                     ppde_data["Purpose"].append(relation["purpose_name"])
                     ppde_data["Data Element"].append(relation["data_element_name"])
@@ -424,8 +437,50 @@ class PoliciesPage:
             else:
                 st.warning("No policy purpose data security rules available.")
 
+        # Role Purpose Data Usage Overrides tab
+        with tabs[7]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Role Purpose Data Usage Overrides:</b><br>
+                This construct allows you to define exceptions to default data usage policies for specific external roles and purposes. Use it to grant or restrict operations (read, write, share, etc.) on data elements for a given role and purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            usage_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_usage()
+            if usage_overrides:
+                st.dataframe(pd.DataFrame(usage_overrides), use_container_width=True)
+            else:
+                st.info("No role-purpose data usage overrides defined.")
+
+        # Role Purpose Data Retention Overrides tab
+        with tabs[8]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Role Purpose Data Retention Overrides:</b><br>
+                This construct allows you to define exceptions to default data retention policies for specific external roles and purposes. Use it to specify unique retention periods or justifications for a role and purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            retention_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_retention()
+            if retention_overrides:
+                st.dataframe(pd.DataFrame(retention_overrides), use_container_width=True)
+            else:
+                st.info("No role-purpose data retention overrides defined.")
+
+        # Role Purpose Data Security Overrides tab
+        with tabs[9]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Role Purpose Data Security Overrides:</b><br>
+                This construct allows you to define exceptions to default data security policies for specific external roles and purposes. Use it to apply special security rules (e.g., masking, encryption) for a role and purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            security_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_security()
+            if security_overrides:
+                st.dataframe(pd.DataFrame(security_overrides), use_container_width=True)
+            else:
+                st.info("No role-purpose data security overrides defined.")
+
         # External Roles tab
-        with tabs[6]:
+        with tabs[6]:   
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About External Roles:</b><br>
@@ -662,6 +717,17 @@ def create_policy():
                 all_success = False
                 continue
             
+            # Get the policy_purpose_data_element_id for the relationship we just created
+            ppde_id = self.regulatory_metadata_repository.get_policy_purpose_data_element_id(
+                policy_id=selected_policy_id,
+                purpose_id=selected_purpose_id,
+                data_element_id=data_element_id
+            )
+            
+            if not ppde_id:
+                all_success = False
+                continue
+            
             # Add operation permissions based on selected operations
             for operation in ["read", "write", "share"]:
                 progress_text.text(f"Processing: {data_element_name} - {operation}")
@@ -672,9 +738,7 @@ def create_policy():
                 restrictions = operation_restrictions.get(operation) if is_allowed else None
                 
                 success = self.regulatory_metadata_repository.add_policy_purpose_data_usage(
-                    policy_id=selected_policy_id,
-                    purpose_id=selected_purpose_id,
-                    data_element_id=data_element_id,
+                    policy_purpose_data_element_id=ppde_id,
                     operation=operation,
                     allowed=is_allowed,
                     restrictions=restrictions
