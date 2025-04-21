@@ -97,287 +97,172 @@ class AssetsPage:
                             de_data["Data Element"].append(de['name'])
                             de_data["Description"].append(de['description'])
                         st.dataframe(pd.DataFrame(de_data), use_container_width=True)
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        infer_obligations = st.button("Infer Obligations", key=f"infer_obligations_{selected_asset['id']}")
-                    with col2:
-                        recommend_policies = st.button("Recommend Policies", key=f"recommend_policies_{selected_asset['id']}")
-                    with col3:
-                        recommend_risks = st.button("Recommend Risks", key=f"recommend_risks_{selected_asset['id']}")
-                    if infer_obligations:
+                    run_analysis = st.button("Run Data Element Analysis", key=f"run_analysis_{selected_asset['id']}")
+                    if run_analysis:
+                        # 1. Infer sensitivities
                         data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
-                        if data_element_sensitivities:
-                            st.subheader("Data Element Sensitivity Analysis")
-                            sens_data = {
-                                "Data Element": [],
-                                "Sensitivity": [],
-                                "Source": []
-                            }
-                            for de_name, sensitivity_info in data_element_sensitivities.items():
-                                sens_data["Data Element"].append(de_name)
-                                sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
-                                sens_data["Source"].append(sensitivity_info['source'])
-                            st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
-                            self.show_sensitivity_based_obligations(data_element_sensitivities)
-                        else:
+                        if not data_element_sensitivities:
                             st.warning("Could not determine sensitivities for the data elements.")
-                    if recommend_policies:
-                        data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
-                        if data_element_sensitivities:
-                            sensitivity_levels = set(item['sensitivity'] for item in data_element_sensitivities.values())
-                            all_sensitivities = self.glossary_repository.get_sensitivities()
-                            sensitivity_ids = {}
-                            for sensitivity in all_sensitivities:
-                                if sensitivity['name'] in sensitivity_levels:
-                                    sensitivity_ids[sensitivity['name']] = sensitivity['id']
-                            all_obligations = []
-                            for sensitivity_name, sensitivity_id in sensitivity_ids.items():
+                            return
+                        st.subheader("Data Element Sensitivity Analysis")
+                        sens_data = {
+                            "Data Element": [],
+                            "Sensitivity": [],
+                            "Source": []
+                        }
+                        for de_name, sensitivity_info in data_element_sensitivities.items():
+                            sens_data["Data Element"].append(de_name)
+                            sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
+                            sens_data["Source"].append(sensitivity_info['source'])
+                        st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
+
+                        # 2. Derive obligations
+                        st.subheader("Recommended Obligations (by Data Element)")
+                        all_sensitivities = self.glossary_repository.get_sensitivities()
+                        all_obligations = []
+                        obligations_by_de = {}
+                        for de_name, sensitivity_info in data_element_sensitivities.items():
+                            sensitivity = sensitivity_info['sensitivity']
+                            sensitivity_id = next((s['id'] for s in all_sensitivities if s['name'] == sensitivity), None)
+                            if sensitivity_id:
                                 sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
-                                if sensitivity_obligations:
-                                    for so in sensitivity_obligations:
-                                        all_obligations.append({
-                                            "id": so["obligation_id"],
-                                            "name": so["obligation_name"],
-                                            "control_type": so["control_type"],
-                                            "priority": so["priority"]
-                                        })
-                            if all_obligations:
-                                self.show_obligation_based_policies(all_obligations)
-                            else:
-                                st.warning("No obligations found for the sensitivities.")
+                                for so in sensitivity_obligations:
+                                    obligation_row = {
+                                        "id": so["obligation_id"],
+                                        "name": so["obligation_name"],
+                                        "control_type": so["control_type"],
+                                        "priority": so["priority"],
+                                        "data_element_name": de_name
+                                    }
+                                    all_obligations.append(obligation_row)
+                                    # For policies/risks
+                                    obligations_by_de.setdefault(de_name, []).append(obligation_row)
+                        if all_obligations:
+                            df = pd.DataFrame([{
+                                "Data Element": o["data_element_name"],
+                                "Obligation": o["name"],
+                                "Control Type": o["control_type"],
+                                "Priority": o["priority"]
+                            } for o in all_obligations])
+                            st.dataframe(df, use_container_width=True)
                         else:
-                            st.warning("Could not determine sensitivities for the data elements.")
-                    if recommend_risks:
-                        data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
-                        if data_element_sensitivities:
-                            sensitivity_levels = set(item['sensitivity'] for item in data_element_sensitivities.values())
-                            all_sensitivities = self.glossary_repository.get_sensitivities()
-                            sensitivity_ids = {}
-                            for sensitivity in all_sensitivities:
-                                if sensitivity['name'] in sensitivity_levels:
-                                    sensitivity_ids[sensitivity['name']] = sensitivity['id']
-                            all_obligations = []
-                            for sensitivity_name, sensitivity_id in sensitivity_ids.items():
-                                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
-                                if sensitivity_obligations:
-                                    for so in sensitivity_obligations:
-                                        all_obligations.append({
-                                            "id": so["obligation_id"],
-                                            "name": so["obligation_name"],
-                                            "control_type": so["control_type"],
-                                            "priority": so["priority"]
-                                        })
-                            if all_obligations:
-                                self.show_obligation_based_risks(all_obligations)
-                            else:
-                                st.warning("No obligations found for the sensitivities.")
+                            st.info("No obligations defined for these data elements.")
+
+                        # 3. Derive policies
+                        st.subheader("Recommended Policies (by Data Element)")
+                        all_policies = []
+                        for de_name, de_obligations in obligations_by_de.items():
+                            for obligation in de_obligations:
+                                obligation_id = obligation["id"]
+                                obligation_name = obligation["name"]
+                                policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
+                                for policy in policies:
+                                    all_policies.append({
+                                        "Data Element": de_name,
+                                        "Obligation": obligation_name,
+                                        "Policy": policy["name"],
+                                        "Control Type": policy.get("control_type", ""),
+                                        "Relevance Score": policy["relevance_score"]
+                                    })
+                        if all_policies:
+                            df = pd.DataFrame(all_policies)
+                            st.dataframe(df, use_container_width=True)
                         else:
-                            st.warning("Could not determine sensitivities for the data elements.")
+                            st.info("No policies found for the identified obligations.")
+
+                        # 4. Derive risks
+                        st.subheader("Potential Risks (by Data Element)")
+                        all_risks = []
+                        for de_name, de_obligations in obligations_by_de.items():
+                            for obligation in de_obligations:
+                                obligation_id = obligation["id"]
+                                obligation_name = obligation["name"]
+                                risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
+                                for risk in risks:
+                                    all_risks.append({
+                                        "Data Element": de_name,
+                                        "Obligation": obligation_name,
+                                        "Risk": risk["name"],
+                                        "Risk Category": risk["category"],
+                                        "Likelihood": risk["likelihood"],
+                                        "Impact": risk["impact"]
+                                    })
+                        if all_risks:
+                            df = pd.DataFrame(all_risks)
+                            # Add risk rating
+                            def get_risk_rating(row):
+                                if row["Likelihood"] == "High" and row["Impact"] == "High":
+                                    return "Critical"
+                                elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
+                                     (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
+                                    return "High"
+                                elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
+                                     (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
+                                     (row["Likelihood"] == "Low" and row["Impact"] == "High"):
+                                    return "Medium"
+                                else:
+                                    return "Low"
+                            df["Risk Rating"] = df.apply(get_risk_rating, axis=1)
+                            display_columns = ["Data Element", "Obligation", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
+                            st.dataframe(df[display_columns], use_container_width=True)
+                        else:
+                            st.info("No risks identified for the obligations.")
                 else:
                     st.info(f"No data elements associated with {selected_asset['name']}")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     def show_sensitivity_based_obligations(self, data_element_sensitivities):
-        """Show obligations based on data element sensitivities.
-        
-        Args:
-            data_element_sensitivities: Dictionary mapping data element names to sensitivity info dictionaries
-                                        with 'sensitivity' and 'source' keys
-        """
+        """Show obligations based on data element sensitivities. Each row includes the data element name."""
         if not data_element_sensitivities:
             st.warning("No sensitivity information available.")
             return
-        
-        # Get unique sensitivity levels
-        sensitivity_levels = set(item['sensitivity'] for item in data_element_sensitivities.values())
-        
-        # Get sensitivity IDs for these levels
-        all_sensitivities = self.glossary_repository.get_sensitivities()
-        sensitivity_ids = {}
-        for sensitivity in all_sensitivities:
-            if sensitivity['name'] in sensitivity_levels:
-                sensitivity_ids[sensitivity['name']] = sensitivity['id']
-        # Get obligations for these sensitivity levels
-        st.subheader("Recommended Obligations")
-        
+        st.subheader("Recommended Obligations (by Data Element)")
         all_obligations = []
-        for sensitivity_name, sensitivity_id in sensitivity_ids.items():
-            # Get sensitivity obligations
-            sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
-            
-            if sensitivity_obligations:
-                # Group by control type
+        all_sensitivities = self.glossary_repository.get_sensitivities()
+        for de_name, sensitivity_info in data_element_sensitivities.items():
+            sensitivity = sensitivity_info['sensitivity']
+            sensitivity_id = next((s['id'] for s in all_sensitivities if s['name'] == sensitivity), None)
+            if sensitivity_id:
+                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
                 for so in sensitivity_obligations:
                     all_obligations.append({
-                        "Sensitivity": sensitivity_name,
+                        "Data Element": de_name,
+                        "Sensitivity": sensitivity,
                         "Obligation": so["obligation_name"],
                         "Description": so["obligation_description"],
                         "Control Type": so["control_type"],
                         "Priority": so["priority"]
                     })
-        
         if all_obligations:
-            # Create a DataFrame
             df = pd.DataFrame(all_obligations)
-            
-            # Add filters
-            col1, col2 = st.columns(2)
-            with col1:
-                control_types = ["All"] + sorted(list(set(df["Control Type"])))
-                selected_control = st.selectbox(
-                    "Filter by Control Type",
-                    control_types,
-                    key="obligation_control_filter"
-                )
-            
-            with col2:
-                priorities = ["All"] + sorted(list(set(df["Priority"])))
-                selected_priority = st.selectbox(
-                    "Filter by Priority",
-                    priorities,
-                    key="obligation_priority_filter"
-                )
-            
-            # Apply filters
-            filtered_df = df.copy()
-            if selected_control != "All":
-                filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
-            if selected_priority != "All":
-                filtered_df = filtered_df[filtered_df["Priority"] == selected_priority]
-            
-            # Sort by Priority and Control Type
-            priority_order = {"High": 0, "Medium": 1, "Low": 2}
-            filtered_df["Priority Order"] = filtered_df["Priority"].map(priority_order)
-            filtered_df = filtered_df.sort_values(by=["Priority Order", "Control Type"])
-            filtered_df = filtered_df.drop(columns=["Priority Order"])
-            
-            # Display the dataframe
-            st.dataframe(filtered_df, use_container_width=True)
-            
-            # Add explanation
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How the Obligation Inference Algorithm Works</h4>
-                <p>The algorithm follows this functional flow:</p>
-                <ul>
-                    <li><strong>Input:</strong> Data elements from the selected asset</li>
-                    <li><strong>Sensitivity Analysis:</strong> Determine sensitivity level for each data element</li>
-                    <li><strong>Obligation Mapping:</strong> Match sensitivities to relevant security and privacy obligations</li>
-                    <li><strong>Control Categorization:</strong> Group obligations by control type (Encryption, Access Control, etc.)</li>
-                    <li><strong>Priority Assignment:</strong> Assign implementation priority based on data sensitivity</li>
-                    <li><strong>Output:</strong> Prioritized list of security and privacy obligations</li>
-                </ul>
-                <p>The recommendations are prioritized as follows:</p>
-                <ul>
-                    <li><strong>High Priority:</strong> Critical controls that must be implemented to protect sensitive data</li>
-                    <li><strong>Medium Priority:</strong> Important controls that should be implemented in most cases</li>
-                    <li><strong>Low Priority:</strong> Recommended controls that enhance protection but may be optional</li>
-                </ul>
-                <p>These obligations can be used to guide your security and compliance implementation for this asset.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.dataframe(df, use_container_width=True)
         else:
-            st.info("No obligations defined for these sensitivity levels.")
+            st.info("No obligations defined for these data elements.")
 
     def show_obligation_based_policies(self, obligations):
-        """Show policies based on obligations.
-        
-        Args:
-            obligations: List of obligation dictionaries with 'id', 'name', 'control_type', and 'priority' keys
-        """
+        """Show policies based on obligations. Each row includes the data element name if available."""
         if not obligations:
             st.warning("No obligation information available.")
             return
-        
-        st.subheader("Recommended Policies")
-        
-        # Get policies for the given obligations from the repository
+        st.subheader("Recommended Policies (by Data Element)")
         all_policies = []
-        obligation_ids = [o["id"] for o in obligations]
-        
-        # Get policies for each obligation using the repository
-        for obligation_id in obligation_ids:
+        # Try to get data element mapping from obligations if present
+        for obligation in obligations:
+            obligation_id = obligation["id"]
+            obligation_name = obligation.get("name", "Unknown")
+            data_element_name = obligation.get("data_element_name", "Unknown")
             policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
-            obligation_name = next((o["name"] for o in obligations if o["id"] == obligation_id), "Unknown")
-            
             for policy in policies:
                 all_policies.append({
+                    "Data Element": data_element_name,
                     "Obligation": obligation_name,
                     "Policy": policy["name"],
                     "Control Type": policy.get("control_type", ""),
                     "Relevance Score": policy["relevance_score"]
                 })
-        
         if all_policies:
-            # Create a DataFrame
             df = pd.DataFrame(all_policies)
-            
-            # Add filters
-            col1, col2 = st.columns(2)
-            with col1:
-                policy_names = ["All"] + sorted(list(set(df["Policy"])))
-                selected_policy = st.selectbox(
-                    "Filter by Policy",
-                    policy_names,
-                    key="policy_name_filter"
-                )
-            
-            with col2:
-                control_types = ["All"] + sorted(list(set(df["Control Type"])))
-                selected_control = st.selectbox(
-                    "Filter by Control Type",
-                    control_types,
-                    key="policy_control_filter"
-                )
-            
-            # Apply filters
-            filtered_df = df.copy()
-            if selected_policy != "All":
-                filtered_df = filtered_df[filtered_df["Policy"] == selected_policy]
-            if selected_control != "All":
-                filtered_df = filtered_df[filtered_df["Control Type"] == selected_control]
-            
-            # Sort by Relevance Score (descending)
-            filtered_df = filtered_df.sort_values(by=["Relevance Score"], ascending=False)
-            
-            # Display the dataframe
-            st.dataframe(filtered_df, use_container_width=True)
-            
-            # Group policies by type
-            policy_groups = filtered_df.groupby("Policy")["Relevance Score"].max().sort_values(ascending=False)
-            top_policies = policy_groups.index.tolist()
-            
-            # Display top policies summary
-            st.subheader("Policy Implementation Summary")
-            st.markdown("""
-            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                <h4 style="margin-top: 0;">Recommended Policy Implementation</h4>
-                <p>Based on the data elements in this asset and their sensitivity levels, the following policies should be implemented:</p>
-                <ol>
-            """, unsafe_allow_html=True)
-            
-            for policy in top_policies[:5]:  # Show top 5 policies
-                st.markdown(f"<li><strong>{policy}</strong></li>", unsafe_allow_html=True)
-            
-            st.markdown("""
-                </ol>
-                <p>These policies will address the compliance obligations required for the sensitive data in this asset.</p>
-            </div>
-            
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How the Policy Recommendation Algorithm Works</h4>
-                <p>The algorithm follows this functional flow:</p>
-                <ul>
-                    <li><strong>Input:</strong> Security and privacy obligations from sensitivity analysis</li>
-                    <li><strong>Policy Discovery:</strong> Identify organizational policies that address each obligation</li>
-                    <li><strong>Relevance Assessment:</strong> Determine how relevant each policy is to the specific obligations</li>
-                    <li><strong>Policy Prioritization:</strong> Rank policies by their relevance to the identified obligations</li>
-                    <li><strong>Policy Grouping:</strong> Group related policies to provide comprehensive coverage</li>
-                    <li><strong>Output:</strong> Prioritized list of policies to implement for the asset</li>
-                </ul>
-                <p>The relevance score indicates how important each policy is for addressing the identified obligations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.dataframe(df, use_container_width=True)
         else:
             st.info("No policies found for the identified obligations.")            
 
@@ -404,7 +289,7 @@ class AssetsPage:
             
             for risk in risks:
                 all_risks.append({
-                    "Obligation": obligation_name,
+                    "Data Element": obligation_name,
                     "Risk": risk["name"],
                     "Risk Category": risk["category"],
                     "Likelihood": risk["likelihood"],
@@ -473,7 +358,7 @@ class AssetsPage:
             filtered_df = filtered_df.drop(columns=["Rating Order"])
             
             # Display the dataframe with the new Risk Rating column
-            display_columns = ["Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating", "Obligation"]
+            display_columns = ["Data Element", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
             filtered_df = filtered_df[display_columns]
             
             st.dataframe(filtered_df, use_container_width=True)
