@@ -176,7 +176,25 @@ class ProcessingActivitiesPage:
                         st.info(f"No assets associated with {selected_activity['name']}")
                     st.markdown('</div>', unsafe_allow_html=True)
                     if purposes and assets:
-                        st.subheader("Policy Compliance Analysis")
+                        
+                        st.markdown("Check if this processing activity complies with organizational policies.")
+                        purpose = purposes[0]['name'] if purposes else None
+                        all_data_elements = []
+                        for _, asset in assets.items():
+                            for de in asset['data_elements']:
+                                all_data_elements.append(de['name'])
+                        all_data_elements = list(set(all_data_elements))
+                        operation = st.selectbox(
+                            "Select Operation",
+                            options=["read", "write", "share"],
+                            index=0,
+                            key=f"operation_select_{selected_activity['id']}"
+                        )
+                        analyze_button = st.button(
+                            "Analyze Policy Compliance", 
+                            key=f"analyze_btn_{selected_activity['id']}"
+                        )
+
                         st.markdown("""
                         <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
                             <h4 style="margin-top: 0;">How Policy Compliance Analysis Works</h4>
@@ -196,35 +214,12 @@ class ProcessingActivitiesPage:
                             <p>The system then evaluates each data element against policy rules and provides a detailed compliance assessment with recommendations for addressing any violations.</p>
                         </div>
                         """, unsafe_allow_html=True)
-                        st.markdown("Check if this processing activity complies with organizational policies.")
-                        purpose = purposes[0]['name'] if purposes else None
-                        all_data_elements = []
-                        for _, asset in assets.items():
-                            for de in asset['data_elements']:
-                                all_data_elements.append(de['name'])
-                        all_data_elements = list(set(all_data_elements))
-                        operation = st.selectbox(
-                            "Select Operation",
-                            options=["read", "write", "share"],
-                            index=0,
-                            key=f"operation_select_{selected_activity['id']}"
-                        )
-                        analyze_button = st.button(
-                            "Analyze Policy Compliance", 
-                            key=f"analyze_btn_{selected_activity['id']}"
-                        )
+
                         if purpose and all_data_elements:
                             if analyze_button:
                                 st.markdown(f"### Policy Compliance Analysis for {purpose}")
                                 st.markdown(f"**Operation:** {operation.upper()}")
                                 self._analyze_policy_compliance_for_activity(purpose, all_data_elements, operation)
-                            else:
-                                st.markdown("""
-                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                                    <h3 style="color: #7F8C8D;">Analysis Results</h3>
-                                    <p>Policy compliance analysis will appear here after clicking the Analyze button...</p>
-                                </div>
-                                """, unsafe_allow_html=True)
                         else:
                             st.info("Insufficient data for policy compliance analysis.")
 
