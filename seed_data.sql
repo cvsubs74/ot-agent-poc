@@ -1681,10 +1681,9 @@ VALUES
 
 -- Internal (low sensitivity)
 ((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'Low'),
-((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Data Classification'), 'Low'),
 
 -- Public (minimal sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Public'), (SELECT id FROM obligation WHERE name = 'Implement Data Classification'), 'Low');
+-- No obligations required for public data
 
 -- =============================================
 -- SEED SAMPLE RISKS
@@ -1719,7 +1718,7 @@ VALUES
 ('Implement Data Retention Controls', 'Define and enforce data retention periods for all personal data with automated deletion.', 'CCPA Section 1798.100', 'Retention', 'Implemented', FALSE),
 ('Monitor Data Access', 'Implement monitoring systems to detect and alert on suspicious access patterns to sensitive data.', 'ISO 27001', 'Monitoring', 'Open', FALSE),
 ('Implement Least Privilege', 'Ensure users have only the minimum privileges necessary to perform their job functions.', 'NIST SP 800-53', 'Access Control', 'Open', FALSE),
-('Implement Data Classification', 'Classify all data based on sensitivity to ensure appropriate controls are applied.', 'ISO 27001', 'General', 'Open', FALSE),
+-- Removed 'Implement Data Classification' obligation
 ('Conduct Regular Security Assessments', 'Perform regular security assessments to identify and mitigate vulnerabilities.', 'ISO 27001', 'General', 'In Progress', FALSE);
 
 -- =============================================
@@ -1759,8 +1758,7 @@ VALUES
 -- Implement Least Privilege mappings
 ((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Access Control', 1.0),
 
--- Implement Data Classification mappings
-((SELECT id FROM obligation WHERE name = 'Implement Data Classification'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'General', 0.9),
+-- Removed 'Implement Data Classification' mappings
 
 -- Conduct Regular Security Assessments mappings
 ((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'General', 0.7);
@@ -1797,8 +1795,7 @@ VALUES
 -- Implement Least Privilege risk mappings
 ((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
 
--- Implement Data Classification risk mappings
-((SELECT id FROM obligation WHERE name = 'Implement Data Classification'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls')),
+-- Removed 'Implement Data Classification' risk mappings
 
 -- Conduct Regular Security Assessments risk mappings
 ((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls'));
