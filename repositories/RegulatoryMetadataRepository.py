@@ -79,6 +79,37 @@ class RegulatoryMetadataRepository:
         desc = cursor.description
         cursor.close()
         return [dict(zip([col[0] for col in desc], row)) for row in rows]
+        
+    def get_policy_override_role_purpose_data_usages(self, policy_purpose_data_element_id=None, external_role_id=None):
+        """Get policy override role purpose data usages for specific policy_purpose_data_element_id and external_role_id."""
+        cursor = self.connection.cursor()
+        query = '''
+            SELECT o.*, p.policy_id, p.purpose_id, p.data_element_id, 
+                   pol.name as policy_name, pur.name as purpose_name, de.name as data_element_name,
+                   er.name as role_name, er.source_system
+            FROM policy_override_role_purpose_data_usage o
+            JOIN policy_purpose_data_element p ON o.policy_purpose_data_element_id = p.id
+            JOIN policies pol ON p.policy_id = pol.id
+            JOIN purposes pur ON p.purpose_id = pur.id
+            JOIN data_elements de ON p.data_element_id = de.id
+            JOIN external_roles er ON o.external_role_id = er.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if policy_purpose_data_element_id is not None:
+            query += ' AND o.policy_purpose_data_element_id = %s'
+            params.append(policy_purpose_data_element_id)
+            
+        if external_role_id is not None:
+            query += ' AND o.external_role_id = %s'
+            params.append(external_role_id)
+            
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
 
     def delete_policy_override_role_purpose_data_usage(self, override_id):
         cursor = self.connection.cursor()
@@ -104,6 +135,37 @@ class RegulatoryMetadataRepository:
         desc = cursor.description
         cursor.close()
         return [dict(zip([col[0] for col in desc], row)) for row in rows]
+        
+    def get_policy_override_role_purpose_data_retentions(self, policy_purpose_data_element_id=None, external_role_id=None):
+        """Get policy override role purpose data retentions for specific policy_purpose_data_element_id and external_role_id."""
+        cursor = self.connection.cursor()
+        query = '''
+            SELECT o.*, p.policy_id, p.purpose_id, p.data_element_id, 
+                   pol.name as policy_name, pur.name as purpose_name, de.name as data_element_name,
+                   er.name as role_name, er.source_system
+            FROM policy_override_role_purpose_data_retention o
+            JOIN policy_purpose_data_element p ON o.policy_purpose_data_element_id = p.id
+            JOIN policies pol ON p.policy_id = pol.id
+            JOIN purposes pur ON p.purpose_id = pur.id
+            JOIN data_elements de ON p.data_element_id = de.id
+            JOIN external_roles er ON o.external_role_id = er.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if policy_purpose_data_element_id is not None:
+            query += ' AND o.policy_purpose_data_element_id = %s'
+            params.append(policy_purpose_data_element_id)
+            
+        if external_role_id is not None:
+            query += ' AND o.external_role_id = %s'
+            params.append(external_role_id)
+            
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
 
     def delete_policy_override_role_purpose_data_retention(self, override_id):
         cursor = self.connection.cursor()
@@ -125,6 +187,38 @@ class RegulatoryMetadataRepository:
     def get_all_policy_override_role_purpose_data_security(self):
         cursor = self.connection.cursor()
         cursor.execute('SELECT * FROM policy_override_role_purpose_data_security')
+        rows = cursor.fetchall()
+        desc = cursor.description
+        cursor.close()
+        return [dict(zip([col[0] for col in desc], row)) for row in rows]
+        
+    def get_policy_override_role_purpose_data_security(self, policy_purpose_data_element_id=None, external_role_id=None):
+        """Get policy override role purpose data security for specific policy_purpose_data_element_id and external_role_id."""
+        cursor = self.connection.cursor()
+        query = '''
+            SELECT o.*, p.policy_id, p.purpose_id, p.data_element_id, 
+                   pol.name as policy_name, pur.name as purpose_name, de.name as data_element_name,
+                   er.name as role_name, er.source_system, sr.*
+            FROM policy_override_role_purpose_data_security o
+            JOIN policy_purpose_data_element p ON o.policy_purpose_data_element_id = p.id
+            JOIN policies pol ON p.policy_id = pol.id
+            JOIN purposes pur ON p.purpose_id = pur.id
+            JOIN data_elements de ON p.data_element_id = de.id
+            JOIN external_roles er ON o.external_role_id = er.id
+            JOIN security_rules sr ON o.security_rule_id = sr.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if policy_purpose_data_element_id is not None:
+            query += ' AND o.policy_purpose_data_element_id = %s'
+            params.append(policy_purpose_data_element_id)
+            
+        if external_role_id is not None:
+            query += ' AND o.external_role_id = %s'
+            params.append(external_role_id)
+            
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         desc = cursor.description
         cursor.close()

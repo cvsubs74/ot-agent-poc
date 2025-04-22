@@ -202,7 +202,6 @@ class DataMap:
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
             "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
             "Obligation Inference": [5, 6, 7, 8, 9, 15],  # Same tabs as Data Sensitivity Inference + Sensitivity Obligations
-            "Policy Inference": [5, 6, 7, 8, 9, 15, 16],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Policy
             "Risk Inference": [5, 6, 7, 8, 9, 15, 17],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
             "Control Inference": [18, 19, 20]  # Framework Control, Policy Control, Risk Control tabs
         }
@@ -245,9 +244,7 @@ class DataMap:
             from UX.sensitivity_inference_page import SensitivityInferencePage
             SensitivityInferencePage.explain()
 
-        elif selected_inference_api == "Policy Inference":
-            from UX.policy_inference_page import PolicyInferencePage    
-            PolicyInferencePage.explain()
+
 
         elif selected_inference_api == "Obligation Inference":
             from UX.obligation_inference_page import ObligationInferencePage    
@@ -396,6 +393,11 @@ class DataMap:
     def policy_compliance(self):
         """Display the Policy Compliance page with the policy compliance analysis tool."""        
         self.policy_compliance_page.render()
+        
+    def roles_page(self):
+        """Display the External Roles page with information about imported roles."""
+        from UX.roles_page import RolesPage
+        RolesPage(self.glossary_repository, self.regulatory_metadata_repository).render()
 
     def run(self):
         """Main function to run the Streamlit app."""
@@ -453,9 +455,7 @@ class DataMap:
             if st.button("🔒 Obligation Inference", key="obligation_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Obligation API'
             
-            # Policy Inference menu item
-            if st.button("📋 Policy Inference", key="policy_inference_api_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Policy Inference API'
+
             
             # Risk Inference menu item
             if st.button("⚠️ Risk Inference", key="risk_api_btn", use_container_width=True):
@@ -475,6 +475,10 @@ class DataMap:
             # Policies menu item
             if st.button("📋 Policies", key="policies_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policies'
+            
+            # Roles menu item
+            if st.button("👥 Roles", key="roles_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Roles'
             
             # Governance menu item
             if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
@@ -509,10 +513,10 @@ class DataMap:
             'Transfer API': self.transfer_mechanism_page,
             'DSR API': self.data_subject_rights_page,
             'Obligation API': self.obligation_inference_page,
-            'Policy Inference API': self.policy_inference_page,
             'Risk API': self.risk_inference_page,
             'Purposes': self.purposes_page,
             'Policies': self.policies_page,
+            'Roles': self.roles_page,
             'Policy Compliance': self.policy_compliance,
             'Control API': self.control_inference_page,
         }
@@ -568,16 +572,7 @@ class DataMap:
             self.regulatory_metadata_repository
         ).render()
                 
-    def policy_inference_page(self):
-        """Implement the Policy Inference API for access governance.
-        This helps determine whether access to data is permitted based on purpose limitation principles.
-        """
-        from UX.policy_inference_page import PolicyInferencePage
-        
-        PolicyInferencePage(
-            self.glossary_repository,
-            self.regulatory_metadata_repository
-        ).render()
+
 
     def law_inference_page(self):
         """Render the Law Inference page using the new LawInferencePage class."""
