@@ -1160,15 +1160,56 @@ CREATE TABLE IF NOT EXISTS `policy_purpose` (
 
 -- Create Policy Purpose Data Element table
 CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `policy_id` INT NOT NULL,
-    `purpose_id` INT NOT NULL,
-    `data_element_id` INT NOT NULL,
-    `access_allowed` BOOLEAN NOT NULL DEFAULT TRUE,
-    UNIQUE KEY `unique_policy_purpose_data_element` (`policy_id`, `purpose_id`, `data_element_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `purpose_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    UNIQUE(`policy_id`, `purpose_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Usage table for default usage policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_usage` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `operation` VARCHAR(50) NOT NULL,
+    `allowed` BOOLEAN NOT NULL,
+    `restrictions` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`, `operation`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Retention table for default retention policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_retention` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `retention_period` TEXT NOT NULL,
+    `retention_basis` TEXT,
+    `exceptions` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Security table for default security policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_security` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `requires_encryption` BOOLEAN NOT NULL DEFAULT FALSE,
+    `encryption_algorithm` TEXT,
+    `requires_masking` BOOLEAN NOT NULL DEFAULT FALSE,
+    `masking_format` TEXT,
+    `requires_access_control` BOOLEAN NOT NULL DEFAULT FALSE,
+    `access_control_type` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
 );
 
 -- Create Policy Purpose Data Usage table
@@ -2178,3 +2219,37 @@ VALUES
 ((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Privacy Impact Assessment'), 'High'),
 ((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Vulnerability Management'), 'High'),
 ((SELECT id FROM risk WHERE name = 'Inadequate Security Controls'), (SELECT id FROM control WHERE name = 'Security Awareness Training'), 'Medium');
+
+-- Seed Policy Data Element Usage data
+INSERT INTO `policy_data_element_usage` (`policy_id`, `data_element_id`, `operation`, `allowed`, `restrictions`) VALUES
+-- Data Security Policy usage rules
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'read', TRUE, 'Only for employment verification'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'write', TRUE, 'Must be encrypted'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'share', FALSE, 'Prohibited except as required by law'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'read', TRUE, 'Only for payment processing'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'write', TRUE, 'Must be encrypted and tokenized'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'share', FALSE, 'Prohibited except with payment processors'),
+
+-- Data Access Control Policy usage rules
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM data_element WHERE name = 'Email Address'), 'read', TRUE, 'With explicit consent'),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM data_element WHERE name = 'Email Address'), 'write', TRUE, 'Only with opt-in consent'),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM data_element WHERE name = 'Phone Number'), 'read', TRUE, 'With explicit consent'),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM data_element WHERE name = 'Phone Number'), 'share', FALSE, 'Prohibited without specific opt-in');
+
+-- Seed Policy Data Element Retention data
+INSERT INTO `policy_data_element_retention` (`policy_id`, `data_element_id`, `retention_period`, `retention_basis`, `exceptions`) VALUES
+-- Data Retention Policy retention rules
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), '7 years', 'Legal requirement', 'Litigation hold'),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), '2 years after last transaction', 'Business need', 'Ongoing subscription'),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM data_element WHERE name = 'Email Address'), '3 years after account closure', 'Business need', 'Ongoing relationship'),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM data_element WHERE name = 'Phone Number'), '3 years after account closure', 'Business need', 'Ongoing relationship'),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM data_element WHERE name = 'Purchase History'), '5 years', 'Tax requirements', 'Litigation hold');
+
+-- Seed Policy Data Element Security data
+INSERT INTO `policy_data_element_security` (`policy_id`, `data_element_id`, `requires_encryption`, `encryption_algorithm`, `requires_masking`, `masking_format`, `requires_access_control`, `access_control_type`) VALUES
+-- Data Security Policy security rules
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE, 'AES-256', TRUE, 'Show only last 4 digits', TRUE, 'Role-based'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE, 'AES-256', TRUE, 'Show only last 4 digits', TRUE, 'Role-based'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE, 'AES-256', TRUE, 'Show only last 4 digits', TRUE, 'Role-based'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Date of Birth'), FALSE, NULL, TRUE, 'Show only year', TRUE, 'Role-based'),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM data_element WHERE name = 'Email Address'), FALSE, NULL, TRUE, 'Partial - Show only domain', TRUE, 'Role-based');

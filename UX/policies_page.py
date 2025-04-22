@@ -29,6 +29,9 @@ class PoliciesPage:
             "Policy Purpose Data Usage",
             "Policy Purpose Data Retention",
             "Policy Purpose Data Security",
+            "Policy Data Element Usage",
+            "Policy Data Element Retention",
+            "Policy Data Element Security",
             "Roles",
             "Role Purpose Data Usage Overrides",
             "Role Purpose Data Retention Overrides",
@@ -437,8 +440,181 @@ class PoliciesPage:
             else:
                 st.warning("No policy purpose data security rules available.")
 
-        # Role Purpose Data Usage Overrides tab
+        # Policy Data Element Usage tab
+        with tabs[6]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Data Element Usage:</b><br>
+                This construct defines default usage rules for data elements across all purposes. It specifies what operations (collect, store, share, etc.) are allowed for each data element under a specific policy, regardless of purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            usage_rules = self.regulatory_metadata_repository.get_policy_data_element_usage()
+            if usage_rules:
+                # Add filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    policies = sorted(list(set([rule["policy_name"] for rule in usage_rules])))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="pde_usage_policy")
+                with col2:
+                    data_elements = sorted(list(set([rule["data_element_name"] for rule in usage_rules])))
+                    selected_data_element = st.selectbox("Filter by Data Element", ["All"] + data_elements, key="pde_usage_element")
+                with col3:
+                    operations = sorted(list(set([rule["operation"] for rule in usage_rules])))
+                    selected_operation = st.selectbox("Filter by Operation", ["All"] + operations, key="pde_usage_operation")
+                
+                # Apply filters
+                filtered_rules = usage_rules
+                if selected_policy != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["policy_name"] == selected_policy]
+                if selected_data_element != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["data_element_name"] == selected_data_element]
+                if selected_operation != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["operation"] == selected_operation]
+                
+                # Create DataFrame for display
+                usage_data = {
+                    "Policy": [],
+                    "Data Element": [],
+                    "Operation": [],
+                    "Allowed": [],
+                    "Restrictions": []
+                }
+                
+                for rule in filtered_rules:
+                    usage_data["Policy"].append(rule["policy_name"])
+                    usage_data["Data Element"].append(rule["data_element_name"])
+                    usage_data["Operation"].append(rule["operation"])
+                    usage_data["Allowed"].append("Yes" if rule["allowed"] else "No")
+                    usage_data["Restrictions"].append(rule["restrictions"] if rule["restrictions"] else "")
+                
+                # Display the data
+                if usage_data["Policy"]:
+                    st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
+                else:
+                    st.warning("No policy data element usage rules match the selected filters.")
+            else:
+                st.warning("No policy data element usage rules available in the database.")
+        
+        # Policy Data Element Retention tab
         with tabs[7]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Data Element Retention:</b><br>
+                This construct defines default retention periods for data elements across all purposes. It specifies how long each data element should be retained under a specific policy, regardless of purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            retention_rules = self.regulatory_metadata_repository.get_policy_data_element_retention()
+            if retention_rules:
+                # Add filters
+                col1, col2 = st.columns(2)
+                with col1:
+                    policies = sorted(list(set([rule["policy_name"] for rule in retention_rules])))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="pde_retention_policy")
+                with col2:
+                    data_elements = sorted(list(set([rule["data_element_name"] for rule in retention_rules])))
+                    selected_data_element = st.selectbox("Filter by Data Element", ["All"] + data_elements, key="pde_retention_element")
+                
+                # Apply filters
+                filtered_rules = retention_rules
+                if selected_policy != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["policy_name"] == selected_policy]
+                if selected_data_element != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["data_element_name"] == selected_data_element]
+                
+                # Create DataFrame for display
+                retention_data = {
+                    "Policy": [],
+                    "Data Element": [],
+                    "Retention Period": [],
+                    "Retention Basis": [],
+                    "Exceptions": []
+                }
+                
+                for rule in filtered_rules:
+                    retention_data["Policy"].append(rule["policy_name"])
+                    retention_data["Data Element"].append(rule["data_element_name"])
+                    retention_data["Retention Period"].append(rule["retention_period"])
+                    retention_data["Retention Basis"].append(rule["retention_basis"] if rule["retention_basis"] else "")
+                    retention_data["Exceptions"].append(rule["exceptions"] if rule["exceptions"] else "")
+                
+                # Display the data
+                if retention_data["Policy"]:
+                    st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
+                else:
+                    st.warning("No policy data element retention rules match the selected filters.")
+            else:
+                st.warning("No policy data element retention rules available in the database.")
+        
+        # Policy Data Element Security tab
+        with tabs[8]:
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Data Element Security:</b><br>
+                This construct defines default security requirements for data elements across all purposes. It specifies what security controls (encryption, masking, access control) should be applied to each data element under a specific policy, regardless of purpose.
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            security_rules = self.regulatory_metadata_repository.get_policy_data_element_security()
+            if security_rules:
+                # Add filters
+                col1, col2 = st.columns(2)
+                with col1:
+                    policies = sorted(list(set([rule["policy_name"] for rule in security_rules])))
+                    selected_policy = st.selectbox("Filter by Policy", ["All"] + policies, key="pde_security_policy")
+                with col2:
+                    data_elements = sorted(list(set([rule["data_element_name"] for rule in security_rules])))
+                    selected_data_element = st.selectbox("Filter by Data Element", ["All"] + data_elements, key="pde_security_element")
+                
+                # Apply filters
+                filtered_rules = security_rules
+                if selected_policy != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["policy_name"] == selected_policy]
+                if selected_data_element != "All":
+                    filtered_rules = [rule for rule in filtered_rules if rule["data_element_name"] == selected_data_element]
+                
+                # Create DataFrame for display
+                security_data = {
+                    "Policy": [],
+                    "Data Element": [],
+                    "Encryption": [],
+                    "Masking": [],
+                    "Access Control": []
+                }
+                
+                for rule in filtered_rules:
+                    security_data["Policy"].append(rule["policy_name"])
+                    security_data["Data Element"].append(rule["data_element_name"])
+                    
+                    # Encryption info
+                    encryption_info = "No"
+                    if rule["requires_encryption"]:
+                        encryption_info = f"Yes - {rule['encryption_algorithm']}" if rule["encryption_algorithm"] else "Yes"
+                    security_data["Encryption"].append(encryption_info)
+                    
+                    # Masking info
+                    masking_info = "No"
+                    if rule["requires_masking"]:
+                        masking_info = f"Yes - {rule['masking_format']}" if rule["masking_format"] else "Yes"
+                    security_data["Masking"].append(masking_info)
+                    
+                    # Access control info
+                    access_control_info = "No"
+                    if rule["requires_access_control"]:
+                        access_control_info = f"Yes - {rule['access_control_type']}" if rule["access_control_type"] else "Yes"
+                    security_data["Access Control"].append(access_control_info)
+                
+                # Display the data
+                if security_data["Policy"]:
+                    st.dataframe(pd.DataFrame(security_data), use_container_width=True)
+                else:
+                    st.warning("No policy data element security rules match the selected filters.")
+            else:
+                st.warning("No policy data element security rules available in the database.")
+        
+        # Role Purpose Data Usage Overrides tab
+        with tabs[10]:
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Role Purpose Data Usage Overrides:</b><br>
@@ -452,11 +628,11 @@ class PoliciesPage:
                 st.info("No role-purpose data usage overrides defined.")
 
         # Role Purpose Data Retention Overrides tab
-        with tabs[8]:
+        with tabs[11]:
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Role Purpose Data Retention Overrides:</b><br>
-                This construct allows you to define exceptions to default data retention policies for specific external roles and purposes. Use it to specify unique retention periods or justifications for a role and purpose.
+                This construct allows you to define exceptions to default data retention policies for specific external roles and purposes. Use it to set custom retention periods for data elements for a given role and purpose.
             </div>
             ''', unsafe_allow_html=True)
             retention_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_retention()
@@ -466,11 +642,11 @@ class PoliciesPage:
                 st.info("No role-purpose data retention overrides defined.")
 
         # Role Purpose Data Security Overrides tab
-        with tabs[9]:
+        with tabs[12]:
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Role Purpose Data Security Overrides:</b><br>
-                This construct allows you to define exceptions to default data security policies for specific external roles and purposes. Use it to apply special security rules (e.g., masking, encryption) for a role and purpose.
+                This construct allows you to define exceptions to default data security policies for specific external roles and purposes. Use it to specify unique security requirements for a role and purpose.
             </div>
             ''', unsafe_allow_html=True)
             security_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_security()
@@ -480,7 +656,7 @@ class PoliciesPage:
                 st.info("No role-purpose data security overrides defined.")
 
         # External Roles tab
-        with tabs[6]:   
+        with tabs[9]:   
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About External Roles:</b><br>

@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 
 class AssetsPage:
-    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository):
+    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository):
         self.inventory_repository = inventory_repository
         self.glossary_repository = glossary_repository
         self.obligation_repository = obligation_repository
         self.sensitivity_inference = sensitivity_inference
         self.catalog_repository = catalog_repository
+        self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -289,27 +290,90 @@ class AssetsPage:
                         else:
                             st.info("No obligations defined for these data elements.")
 
-                        # 3. Derive policies
-                        st.subheader("Recommended Policies (by Data Element)")
-                        all_policies = []
-                        for de_name, de_obligations in obligations_by_de.items():
-                            for obligation in de_obligations:
-                                obligation_id = obligation["id"]
-                                obligation_name = obligation["name"]
-                                policies = self.obligation_repository.get_policies_for_obligation(obligation_id)
-                                for policy in policies:
-                                    all_policies.append({
-                                        "Data Element": de_name,
-                                        "Obligation": obligation_name,
-                                        "Policy": policy["name"],
-                                        "Control Type": policy.get("control_type", ""),
-                                        "Relevance Score": policy["relevance_score"]
-                                    })
-                        if all_policies:
-                            df = pd.DataFrame(all_policies)
-                            st.dataframe(df, use_container_width=True)
-                        else:
-                            st.info("No policies found for the identified obligations.")
+                        # Get detailed policy recommendations for each data element
+                        st.subheader("Detailed Policy Recommendations")
+                        
+                        # Get unique data elements from the analysis
+                        unique_data_elements = set()
+                        for de_name, _ in obligations_by_de.items():
+                            unique_data_elements.add(de_name)
+                            
+                        if unique_data_elements:
+                            # For each data element, get the policy details
+                            for de_name in unique_data_elements:
+                                # Get the data element ID
+                                data_element = next((de for de in self.glossary_repository.get_data_elements() if de['name'] == de_name), None)
+                                if data_element:
+                                    data_element_id = data_element['id']
+                                    
+                                    # Get policy details for this data element
+                                    policy_details = self.regulatory_metadata_repository.get_data_element_policies(data_element_id)
+                                    
+                                    if any(policy_details.values()):
+                                        with st.expander(f"Policy Details for {de_name}"):
+                                            # Show usage policies
+                                            if policy_details['usage']:
+                                                st.write("**Usage Policies:**")
+                                                usage_data = {
+                                                    "Policy": [],
+                                                    "Operation": [],
+                                                    "Allowed": [],
+                                                    "Restrictions": []
+                                                }
+                                                for usage in policy_details['usage']:
+                                                    usage_data["Policy"].append(usage['policy_name'])
+                                                    usage_data["Operation"].append(usage['operation'])
+                                                    usage_data["Allowed"].append("Yes" if usage['allowed'] else "No")
+                                                    usage_data["Restrictions"].append(usage['restrictions'] or "")
+                                                st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
+                                            
+                                            # Show retention policies
+                                            if policy_details['retention']:
+                                                st.write("**Retention Policies:**")
+                                                retention_data = {
+                                                    "Policy": [],
+                                                    "Retention Period": [],
+                                                    "Retention Basis": [],
+                                                    "Exceptions": []
+                                                }
+                                                for retention in policy_details['retention']:
+                                                    retention_data["Policy"].append(retention['policy_name'])
+                                                    retention_data["Retention Period"].append(retention['retention_period'])
+                                                    retention_data["Retention Basis"].append(retention['retention_basis'] or "")
+                                                    retention_data["Exceptions"].append(retention['exceptions'] or "")
+                                                st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
+                                            
+                                            # Show security policies
+                                            if policy_details['security']:
+                                                st.write("**Security Policies:**")
+                                                security_data = {
+                                                    "Policy": [],
+                                                    "Encryption": [],
+                                                    "Masking": [],
+                                                    "Access Control": []
+                                                }
+                                                for security in policy_details['security']:
+                                                    security_data["Policy"].append(security['policy_name'])
+                                                    
+                                                    # Encryption info
+                                                    encryption_info = "No"
+                                                    if security['requires_encryption']:
+                                                        encryption_info = f"Yes - {security['encryption_algorithm']}" if security['encryption_algorithm'] else "Yes"
+                                                    security_data["Encryption"].append(encryption_info)
+                                                    
+                                                    # Masking info
+                                                    masking_info = "No"
+                                                    if security['requires_masking']:
+                                                        masking_info = f"Yes - {security['masking_format']}" if security['masking_format'] else "Yes"
+                                                    security_data["Masking"].append(masking_info)
+                                                    
+                                                    # Access control info
+                                                    access_control_info = "No"
+                                                    if security['requires_access_control']:
+                                                        access_control_info = f"Yes - {security['access_control_type']}" if security['access_control_type'] else "Yes"
+                                                    security_data["Access Control"].append(access_control_info)
+                                                
+                                                st.dataframe(pd.DataFrame(security_data), use_container_width=True)
 
                         # 4. Derive risks
                         st.subheader("Potential Risks (by Data Element)")

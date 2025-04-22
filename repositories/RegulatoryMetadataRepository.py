@@ -508,7 +508,234 @@ class RegulatoryMetadataRepository:
             return []
         finally:
             cursor.close()
+            
+    def get_policy_purpose_data_retentions(self, policy_purpose_data_element_id=None):
+        """Get policy purpose data retention information."""
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT ppdr.id, ppdr.policy_purpose_data_element_id, ppdr.retention_period, ppdr.retention_basis, 
+                       ppdr.exceptions, ppde.policy_id, p.name as policy_name, ppde.purpose_id, pu.name as purpose_name, 
+                       ppde.data_element_id, de.name as data_element_name
+                FROM policy_purpose_data_retention ppdr
+                JOIN policy_purpose_data_element ppde ON ppdr.policy_purpose_data_element_id = ppde.id
+                JOIN policy p ON ppde.policy_id = p.id
+                JOIN purpose pu ON ppde.purpose_id = pu.id
+                JOIN data_element de ON ppde.data_element_id = de.id
+            """
+            params = []
+            
+            if policy_purpose_data_element_id:
+                query += " WHERE ppdr.policy_purpose_data_element_id = %s"
+                params.append(policy_purpose_data_element_id)
+                
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'id': row[0],
+                    'policy_purpose_data_element_id': row[1],
+                    'retention_period': row[2],
+                    'retention_basis': row[3],
+                    'exceptions': row[4],
+                    'policy_id': row[5],
+                    'policy_name': row[6],
+                    'purpose_id': row[7],
+                    'purpose_name': row[8],
+                    'data_element_id': row[9],
+                    'data_element_name': row[10]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting policy purpose data retentions: {e}")
+            return []
+        finally:
+            cursor.close()
 
+    # Methods for the new policy_data_element tables
+    
+    def get_policy_data_element_usage(self, policy_id=None, data_element_id=None):
+        """Get policy data element usage information.
+        
+        Args:
+            policy_id: Optional policy ID to filter by
+            data_element_id: Optional data element ID to filter by
+            
+        Returns:
+            List of dictionaries containing policy data element usage information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT pdeu.id, pdeu.policy_id, p.name as policy_name, pdeu.data_element_id, 
+                       de.name as data_element_name, pdeu.operation, pdeu.allowed, pdeu.restrictions
+                FROM policy_data_element_usage pdeu
+                JOIN policy p ON pdeu.policy_id = p.id
+                JOIN data_element de ON pdeu.data_element_id = de.id
+            """
+            params = []
+            conditions = []
+            
+            if policy_id:
+                conditions.append("pdeu.policy_id = %s")
+                params.append(policy_id)
+                
+            if data_element_id:
+                conditions.append("pdeu.data_element_id = %s")
+                params.append(data_element_id)
+                
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+                
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'id': row[0],
+                    'policy_id': row[1],
+                    'policy_name': row[2],
+                    'data_element_id': row[3],
+                    'data_element_name': row[4],
+                    'operation': row[5],
+                    'allowed': bool(row[6]),
+                    'restrictions': row[7]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting policy data element usage: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_policy_data_element_retention(self, policy_id=None, data_element_id=None):
+        """Get policy data element retention information.
+        
+        Args:
+            policy_id: Optional policy ID to filter by
+            data_element_id: Optional data element ID to filter by
+            
+        Returns:
+            List of dictionaries containing policy data element retention information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT pder.id, pder.policy_id, p.name as policy_name, pder.data_element_id, 
+                       de.name as data_element_name, pder.retention_period, pder.retention_basis, pder.exceptions
+                FROM policy_data_element_retention pder
+                JOIN policy p ON pder.policy_id = p.id
+                JOIN data_element de ON pder.data_element_id = de.id
+            """
+            params = []
+            conditions = []
+            
+            if policy_id:
+                conditions.append("pder.policy_id = %s")
+                params.append(policy_id)
+                
+            if data_element_id:
+                conditions.append("pder.data_element_id = %s")
+                params.append(data_element_id)
+                
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+                
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'id': row[0],
+                    'policy_id': row[1],
+                    'policy_name': row[2],
+                    'data_element_id': row[3],
+                    'data_element_name': row[4],
+                    'retention_period': row[5],
+                    'retention_basis': row[6],
+                    'exceptions': row[7]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting policy data element retention: {e}")
+            return []
+        finally:
+            cursor.close()
+    
+    def get_policy_data_element_security(self, policy_id=None, data_element_id=None):
+        """Get policy data element security information.
+        
+        Args:
+            policy_id: Optional policy ID to filter by
+            data_element_id: Optional data element ID to filter by
+            
+        Returns:
+            List of dictionaries containing policy data element security information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT pdes.id, pdes.policy_id, p.name as policy_name, pdes.data_element_id, 
+                       de.name as data_element_name, pdes.requires_encryption, pdes.encryption_algorithm,
+                       pdes.requires_masking, pdes.masking_format, pdes.requires_access_control, pdes.access_control_type
+                FROM policy_data_element_security pdes
+                JOIN policy p ON pdes.policy_id = p.id
+                JOIN data_element de ON pdes.data_element_id = de.id
+            """
+            params = []
+            conditions = []
+            
+            if policy_id:
+                conditions.append("pdes.policy_id = %s")
+                params.append(policy_id)
+                
+            if data_element_id:
+                conditions.append("pdes.data_element_id = %s")
+                params.append(data_element_id)
+                
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+                
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'id': row[0],
+                    'policy_id': row[1],
+                    'policy_name': row[2],
+                    'data_element_id': row[3],
+                    'data_element_name': row[4],
+                    'requires_encryption': bool(row[5]),
+                    'encryption_algorithm': row[6],
+                    'requires_masking': bool(row[7]),
+                    'masking_format': row[8],
+                    'requires_access_control': bool(row[9]),
+                    'access_control_type': row[10]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting policy data element security: {e}")
+            return []
+        finally:
+            cursor.close()
+        
+    def get_data_element_policies(self, data_element_id):
+        """Get all policies associated with a data element across all policy types.
+        
+        Args:
+            data_element_id: The data element ID to get policies for
+            
+        Returns:
+            Dictionary containing usage, retention, and security policies for the data element
+        """
+        usage_policies = self.get_policy_data_element_usage(data_element_id=data_element_id)
+        retention_policies = self.get_policy_data_element_retention(data_element_id=data_element_id)
+        security_policies = self.get_policy_data_element_security(data_element_id=data_element_id)
+        
+        return {
+            'usage': usage_policies,
+            'retention': retention_policies,
+            'security': security_policies
+        }
+    
     # Law Jurisdiction methods
     def add_law_jurisdiction(self, law_id, jurisdiction_id):
         """Add a new law-jurisdiction relationship to the database."""
@@ -3233,3 +3460,149 @@ class RegulatoryMetadataRepository:
             self.connection.rollback()
         finally:
             cursor.close()
+"""
+This file contains methods to be added to the RegulatoryMetadataRepository class
+for handling policy data element tables.
+"""
+
+# Add these methods to RegulatoryMetadataRepository class
+
+def get_policy_data_element_usage(self, policy_id=None, data_element_id=None):
+    """Retrieve policy data element usage rules with optional filters.
+    
+    Args:
+        policy_id: Optional policy ID to filter by
+        data_element_id: Optional data element ID to filter by
+        
+    Returns:
+        List of dictionaries containing policy data element usage rules
+    """
+    cursor = self.connection.cursor()
+    try:
+        query = """
+        SELECT p.name as policy_name, de.name as data_element_name,
+               u.operation, u.allowed, u.restrictions
+        FROM policy_data_element_usage u
+        JOIN policy p ON u.policy_id = p.id
+        JOIN data_element de ON u.data_element_id = de.id
+        WHERE 1=1
+        """
+        params = []
+        if policy_id:
+            query += " AND u.policy_id = %s"
+            params.append(policy_id)
+        if data_element_id:
+            query += " AND u.data_element_id = %s"
+            params.append(data_element_id)
+            
+        cursor.execute(query, params)
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "policy_name": row[0],
+                "data_element_name": row[1],
+                "operation": row[2],
+                "allowed": row[3],
+                "restrictions": row[4]
+            })
+        return results
+    except Exception as e:
+        print(f"Error getting policy data element usage: {e}")
+        return []
+    finally:
+        cursor.close()
+
+def get_policy_data_element_retention(self, policy_id=None, data_element_id=None):
+    """Retrieve policy data element retention rules with optional filters.
+    
+    Args:
+        policy_id: Optional policy ID to filter by
+        data_element_id: Optional data element ID to filter by
+        
+    Returns:
+        List of dictionaries containing policy data element retention rules
+    """
+    cursor = self.connection.cursor()
+    try:
+        query = """
+        SELECT p.name as policy_name, de.name as data_element_name,
+               r.retention_period, r.retention_basis, r.exceptions
+        FROM policy_data_element_retention r
+        JOIN policy p ON r.policy_id = p.id
+        JOIN data_element de ON r.data_element_id = de.id
+        WHERE 1=1
+        """
+        params = []
+        if policy_id:
+            query += " AND r.policy_id = %s"
+            params.append(policy_id)
+        if data_element_id:
+            query += " AND r.data_element_id = %s"
+            params.append(data_element_id)
+            
+        cursor.execute(query, params)
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "policy_name": row[0],
+                "data_element_name": row[1],
+                "retention_period": row[2],
+                "retention_basis": row[3],
+                "exceptions": row[4]
+            })
+        return results
+    except Exception as e:
+        print(f"Error getting policy data element retention: {e}")
+        return []
+    finally:
+        cursor.close()
+
+def get_policy_data_element_security(self, policy_id=None, data_element_id=None):
+    """Retrieve policy data element security rules with optional filters.
+    
+    Args:
+        policy_id: Optional policy ID to filter by
+        data_element_id: Optional data element ID to filter by
+        
+    Returns:
+        List of dictionaries containing policy data element security rules
+    """
+    cursor = self.connection.cursor()
+    try:
+        query = """
+        SELECT p.name as policy_name, de.name as data_element_name,
+               s.requires_encryption, s.encryption_algorithm, 
+               s.requires_masking, s.masking_format,
+               s.requires_access_control, s.access_control_type
+        FROM policy_data_element_security s
+        JOIN policy p ON s.policy_id = p.id
+        JOIN data_element de ON s.data_element_id = de.id
+        WHERE 1=1
+        """
+        params = []
+        if policy_id:
+            query += " AND s.policy_id = %s"
+            params.append(policy_id)
+        if data_element_id:
+            query += " AND s.data_element_id = %s"
+            params.append(data_element_id)
+            
+        cursor.execute(query, params)
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "policy_name": row[0],
+                "data_element_name": row[1],
+                "requires_encryption": row[2],
+                "encryption_algorithm": row[3],
+                "requires_masking": row[4],
+                "masking_format": row[5],
+                "requires_access_control": row[6],
+                "access_control_type": row[7]
+            })
+        return results
+    except Exception as e:
+        print(f"Error getting policy data element security: {e}")
+        return []
+    finally:
+        cursor.close()

@@ -238,122 +238,28 @@ class DataMap:
             LawTransferPage.explain()
 
         elif selected_inference_api == "Data Subject Rights Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Data Subject Rights Inference Works</h4>
-                <p>The Data Subject Rights Inference API uses the Data Subject Access Request mapping table to determine rights and response requirements:</p>
-                <ul>
-                    <li>Identifies applicable laws based on data subject location</li>
-                    <li>Determines available rights (access, deletion, portability, etc.)</li>
-                    <li>Calculates response timeframes</li>
-                    <li>Identifies valid exemptions and conditions</li>
-                    <li>Provides guidance on verification requirements</li>
-                </ul>
-                <p>The system helps organizations respond appropriately to data subject requests while maintaining compliance with various privacy regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.data_subject_rights_page import DataSubjectRightsPage
+            DataSubjectRightsPage.explain()
+
         elif selected_inference_api == "Data Sensitivity Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Data Sensitivity Inference Works</h4>
-                <p>The Data Sensitivity Inference API uses multiple sensitivity mapping tables to determine the sensitivity level of data elements in different contexts:</p>
-                <ul>
-                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories, establishing hierarchical relationships.</li>
-                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements under different laws and for different data subject types.</li>
-                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Provides higher-level sensitivity determinations for data categories.</li>
-                    <li><strong>Context Sensitivity</strong>: Adjusts sensitivity based on processing context (e.g., healthcare vs. marketing).</li>
-                </ul>
-                <p>The system considers multiple factors to determine data sensitivity, which then influences other decisions like legal basis selection, security requirements, and risk assessments.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.sensitivity_inference_page import SensitivityInferencePage
+            SensitivityInferencePage.explain()
+
         elif selected_inference_api == "Policy Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Policy Inference Works</h4>
-                <p>The Policy Inference API uses sensitivity and obligation mappings to recommend organizational policies based on data sensitivity and obligations:</p>
-                <ul>
-                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
-                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
-                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
-                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
-                    <li><strong>Obligation Policy</strong>: Maps security and privacy obligations to organizational policies that should be implemented.</li>
-                </ul>
-                <p>The Policy Inference process follows these steps:</p>
-                <ol>
-                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
-                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
-                    <li>Map these obligations to relevant organizational policies using the Obligation Policy mapping</li>
-                    <li>Calculate a relevance score for each policy based on how many obligations it addresses</li>
-                    <li>Present a prioritized list of recommended policies to implement</li>
-                </ol>
-                <p>This approach helps organizations implement a comprehensive policy framework that addresses their specific data protection requirements and ensures compliance with relevant regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.policy_inference_page import PolicyInferencePage    
+            PolicyInferencePage.explain()
+
         elif selected_inference_api == "Obligation Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Obligation Inference Works</h4>
-                <p>The Obligation Inference API uses sensitivity mapping tables to determine what security and privacy controls should be implemented based on data sensitivity:</p>
-                <ul>
-                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for hierarchical classification.</li>
-                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
-                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
-                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to specific security and privacy obligations.</li>
-                </ul>
-                <p>The Obligation Inference process follows these steps:</p>
-                <ol>
-                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
-                    <li>Based on the inferred sensitivity, identify all applicable security and privacy obligations</li>
-                    <li>Group obligations by control type (e.g., Technical, Administrative, Physical)</li>
-                    <li>Prioritize obligations based on their importance (High, Medium, Low)</li>
-                </ol>
-                <p>This approach ensures organizations implement appropriate safeguards proportional to the sensitivity of the data they process, helping maintain compliance with privacy regulations and security best practices.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.obligation_inference_page import ObligationInferencePage    
+            ObligationInferencePage.explain()
+
         elif selected_inference_api == "Risk Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Risk Inference Works</h4>
-                <p>The Risk Inference API uses sensitivity and obligation mappings to identify potential risks if security and privacy obligations are not implemented:</p>
-                <ul>
-                    <li><strong>Data Category Data Element</strong>: Maps data elements to their categories for classification.</li>
-                    <li><strong>Law/Data Subject Type/Data Element Sensitivity</strong>: Determines sensitivity levels for specific data elements.</li>
-                    <li><strong>Law/Data Subject Type/Data Category Sensitivity</strong>: Determines sensitivity levels for data categories.</li>
-                    <li><strong>Sensitivity Obligations</strong>: Maps sensitivity levels to security and privacy obligations.</li>
-                    <li><strong>Obligation Risk</strong>: Maps security and privacy obligations to potential risks if not implemented.</li>
-                </ul>
-                <p>The Risk Inference process follows these steps:</p>
-                <ol>
-                    <li>First, determine the sensitivity level of the data using the Data Sensitivity Inference algorithm</li>
-                    <li>Identify applicable security and privacy obligations based on the sensitivity level</li>
-                    <li>Map these obligations to potential risks using the Obligation Risk mapping</li>
-                    <li>Evaluate the likelihood and impact of each risk</li>
-                    <li>Calculate an overall risk rating (Critical, High, Medium, Low)</li>
-                </ol>
-                <p>This risk-based approach helps organizations prioritize their compliance efforts based on the potential consequences of non-compliance, focusing resources on mitigating the most significant risks first.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.risk_inference_page import RiskInferencePage    
+            RiskInferencePage.explain()
+            
         elif selected_inference_api == "Control Inference":
-            st.markdown("""
-            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">How Control Inference Works</h4>
-                <p>The Control Inference API suggests appropriate security and privacy controls based on frameworks, policies, or risks:</p>
-                <ul>
-                    <li><strong>Framework Control</strong>: Maps security and compliance frameworks to specific controls that help implement the framework requirements.</li>
-                    <li><strong>Policy Control</strong>: Maps organizational policies to specific controls that help enforce those policies.</li>
-                    <li><strong>Risk Control</strong>: Maps identified risks to specific controls that help mitigate those risks.</li>
-                </ul>
-                <p>The Control Inference process follows these steps:</p>
-                <ol>
-                    <li>Identify the input context (framework, policy, or risk) that requires control recommendations</li>
-                    <li>Query the appropriate mapping table (Framework Control, Policy Control, or Risk Control)</li>
-                    <li>Retrieve controls with their relevance scores or mitigation levels</li>
-                    <li>Rank controls based on their effectiveness for the given context</li>
-                    <li>Present a prioritized list of recommended controls</li>
-                </ol>
-                <p>This approach ensures that organizations implement the most effective controls for their specific compliance requirements and risk profile, optimizing their security and privacy investments.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            from UX.control_inference_page import ControlInferencePage    
+            ControlInferencePage.explain()
         
         # Create a mapping from filtered tab index to original tab index
         tab_index_mapping = {i: visible_tab_indices[i] for i in range(len(visible_tab_indices))}
@@ -452,7 +358,8 @@ class DataMap:
             self.glossary_repository,
             self.obligation_repository,
             self.sensitivity_inference,
-            self.catalog_repository
+            self.catalog_repository,
+            self.regulatory_metadata_repository
         ).render()
     
     def processing_activities_section(self):
@@ -586,7 +493,7 @@ class DataMap:
             'Transfer API': self.transfer_mechanism_page,
             'DSR API': self.data_subject_rights_page,
             'Obligation API': self.obligation_inference_page,
-            'Policy Inference API': self.policy_recommendation_page,
+            'Policy Inference API': self.policy_inference_page,
             'Risk API': self.risk_inference_page,
             'Purposes': self.purposes_page,
             'Policies': self.policies_page,
@@ -645,12 +552,16 @@ class DataMap:
             self.regulatory_metadata_repository
         ).render()
                 
-    def policy_inference_api(self):
+    def policy_inference_page(self):
         """Implement the Policy Inference API for access governance.
         This helps determine whether access to data is permitted based on purpose limitation principles.
         """
         from UX.policy_inference_page import PolicyInferencePage
-        PolicyInferencePage(self.glossary_repository).render()
+        
+        PolicyInferencePage(
+            self.glossary_repository,
+            self.regulatory_metadata_repository
+        ).render()
 
     def law_inference_page(self):
         """Render the Law Inference page using the new LawInferencePage class."""
