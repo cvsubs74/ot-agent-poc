@@ -192,7 +192,7 @@ class AssetsPage:
                                             # For each classified column, show policy implementations
                                             classified_columns = [col for col in columns if col['data_element_id'] is not None]
                                             if classified_columns:
-                                                st.subheader("Policy Implementation Status")
+                                                st.markdown("<h4>Policy Implementation Status:</h4>", unsafe_allow_html=True)
                                                 for col in classified_columns:
                                                     policy_implementations = self.catalog_repository.get_policy_implementations_by_catalog(col['id'])
                                                     if policy_implementations:
@@ -271,7 +271,7 @@ class AssetsPage:
                         if not data_element_sensitivities:
                             st.warning("Could not determine sensitivities for the data elements.")
                             return
-                        st.subheader("Data Element Sensitivity Analysis")
+                        st.markdown("<h4>Data Element Sensitivity Analysis:</h4>", unsafe_allow_html=True)
                         sens_data = {
                             "Data Element": [],
                             "Sensitivity": [],
@@ -284,7 +284,7 @@ class AssetsPage:
                         st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
 
                         # 2. Derive obligations
-                        st.subheader("Recommended Obligations (by Data Element)")
+                        st.markdown("<h4>Recommended Obligations:</h4>", unsafe_allow_html=True)
                         all_sensitivities = self.glossary_repository.get_sensitivities()
                         all_obligations = []
                         obligations_by_de = {}
@@ -316,7 +316,7 @@ class AssetsPage:
                             st.info("No obligations defined for these data elements.")
 
                         # Get detailed policy recommendations for each data element
-                        st.subheader("Detailed Policy Recommendations")
+                        st.markdown("<h4>Detailed Policy Recommendations:</h4>", unsafe_allow_html=True)
                         
                         # Get unique data elements from the analysis
                         unique_data_elements = set()
@@ -401,7 +401,7 @@ class AssetsPage:
                                                 st.dataframe(pd.DataFrame(security_data), use_container_width=True)
 
                         # 4. Derive risks
-                        st.subheader("Potential Risks (by Data Element)")
+                        st.markdown("<h4>Potential Risks (by Data Element):</h4>", unsafe_allow_html=True)
                         all_risks = []
                         for de_name, de_obligations in obligations_by_de.items():
                             for obligation in de_obligations:
@@ -472,7 +472,7 @@ class AssetsPage:
         if not obligations:
             st.warning("No obligation information available.")
             return
-        st.subheader("Recommended Policies (by Data Element)")
+        st.markdown("<h4>Recommended Policies (by Data Element):</h4>", unsafe_allow_html=True)
         all_policies = []
         # Try to get data element mapping from obligations if present
         for obligation in obligations:
@@ -504,7 +504,7 @@ class AssetsPage:
             st.warning("No obligation information available.")
             return
         
-        st.subheader("Potential Risks")
+        st.markdown("<h4>Potential Risks:</h4>", unsafe_allow_html=True)
         
         # Get risks for the given obligations from the repository
         all_risks = []
@@ -592,7 +592,7 @@ class AssetsPage:
             st.dataframe(filtered_df, use_container_width=True)
             
             # Display risk summary
-            st.subheader("Risk Assessment Summary")
+            st.markdown("<h4>Risk Assessment Summary:</h4>", unsafe_allow_html=True)
             
             # Count risks by rating
             risk_counts = filtered_df["Risk Rating"].value_counts()

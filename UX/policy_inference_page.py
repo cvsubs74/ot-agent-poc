@@ -163,7 +163,7 @@ class PolicyInferencePage:
                     return
                 
                 # 1. Data Element Level Policies
-                st.subheader("Data Element Level Policies")
+                st.markdown("<h4>Data Element Level Policies:</h4>", unsafe_allow_html=True)
                 st.markdown("These policies apply to the data elements regardless of purpose or role.")
                 
                 # For each data element, get the policy details
@@ -243,7 +243,7 @@ class PolicyInferencePage:
                 
                 # 2. Purpose-Specific Policies
                 if selected_purpose:
-                    st.subheader(f"Purpose-Specific Policies: {selected_purpose}")
+                    st.markdown(f"<h4>Purpose-Specific Policies: {selected_purpose}</h4>", unsafe_allow_html=True)
                     st.markdown("These policies apply to the data elements when used for the selected purpose.")
                     
                     # Get purpose ID
@@ -341,7 +341,7 @@ class PolicyInferencePage:
                 
                 # 3. Role-Specific Overrides
                 if selected_purpose:
-                    st.subheader("Role-Specific Policy Overrides")
+                    st.markdown("<h4>Role-Specific Policy Overrides:</h4>", unsafe_allow_html=True)
                     st.markdown("These overrides apply to specific roles when accessing the data elements for the selected purpose.")
                     
                     # Get external roles
