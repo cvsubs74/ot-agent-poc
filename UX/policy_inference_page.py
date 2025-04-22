@@ -40,6 +40,31 @@ class PolicyInferencePage:
         """Implement the Policy Inference API for access governance.
         This helps determine whether access to data is permitted based on purpose limitation principles.
         """
+        # Add CSS for green expanders - targeting only the expander elements
+        st.markdown("""
+        <style>
+        /* Target only the expander components */
+        div[data-testid="stExpander"] {
+            border: 1px solid #27ae60 !important;
+            border-radius: 4px !important;
+            margin-bottom: 10px !important;
+            background-color: #eaf7ea !important;
+        }
+        
+        /* Target only the header of the expander */
+        div[data-testid="stExpander"] > div:first-child {
+            background-color: #eaf7ea !important;
+            border-left: 5px solid #27ae60 !important;
+        }
+        
+        /* Target only the content area of the expander */
+        div[data-testid="stExpander"] > div:nth-child(2) {
+            border-left: 5px solid #27ae60 !important;
+            background-color: #eaf7ea !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         st.markdown("<div class='page-header'><i class='fas fa-shield-alt'></i> &nbsp;Policy Inference API</div>", unsafe_allow_html=True)
         
         # Description
@@ -150,6 +175,7 @@ class PolicyInferencePage:
                         policy_details = self.regulatory_metadata_repository.get_data_element_policies(data_element_id)
                         
                         if any(policy_details.values()):
+                            
                             with st.expander(f"Policy Details for {de_name}"):
                                 # Show usage policies
                                 if policy_details.get('usage'):
