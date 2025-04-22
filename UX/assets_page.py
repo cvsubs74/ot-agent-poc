@@ -192,7 +192,7 @@ class AssetsPage:
                                             # For each classified column, show policy implementations
                                             classified_columns = [col for col in columns if col['data_element_id'] is not None]
                                             if classified_columns:
-                                                st.markdown("<h4>Policy Implementation Status:</h4>", unsafe_allow_html=True)
+                                                st.markdown("<h5>Policy Implementation Status</h5>", unsafe_allow_html=True)
                                                 for col in classified_columns:
                                                     policy_implementations = self.catalog_repository.get_policy_implementations_by_catalog(col['id'])
                                                     if policy_implementations:
@@ -271,7 +271,7 @@ class AssetsPage:
                         if not data_element_sensitivities:
                             st.warning("Could not determine sensitivities for the data elements.")
                             return
-                        st.markdown("<h4>Data Element Sensitivity Analysis:</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5>Data Element Sensitivity Analysis</h5>", unsafe_allow_html=True)
                         sens_data = {
                             "Data Element": [],
                             "Sensitivity": [],
@@ -284,7 +284,7 @@ class AssetsPage:
                         st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
 
                         # 2. Derive obligations
-                        st.markdown("<h4>Recommended Obligations:</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5>Recommended Obligations</h5>", unsafe_allow_html=True)
                         all_sensitivities = self.glossary_repository.get_sensitivities()
                         all_obligations = []
                         obligations_by_de = {}
@@ -316,7 +316,7 @@ class AssetsPage:
                             st.info("No obligations defined for these data elements.")
 
                         # Get detailed policy recommendations for each data element with significant sensitivities
-                        st.markdown("<h4>Detailed Policy Recommendations:</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5>Detailed Policy Recommendations</h5>", unsafe_allow_html=True)
                         
                         # Define which sensitivities require policies
                         # Using the actual sensitivity values from the database
@@ -349,7 +349,7 @@ class AssetsPage:
                                         with st.expander(f"Policy Details for {de_name}"):
                                             # Show usage policies
                                             if policy_details['usage']:
-                                                    st.write("**Usage Policies:**")
+                                                    st.markdown("<h5>Usage Policies</h5>", unsafe_allow_html=True)
                                                     usage_data = {
                                                         "Policy": [],
                                                         "Operation": [],
@@ -366,7 +366,7 @@ class AssetsPage:
                                             
                                             # Show retention policies
                                             if policy_details['retention']:
-                                                    st.write("**Retention Policies:**")
+                                                    st.markdown("<h5>Retention Policies</h5>", unsafe_allow_html=True)
                                                     retention_data = {
                                                         "Policy": [],
                                                         "Retention Period": [],
@@ -383,7 +383,7 @@ class AssetsPage:
                                             
                                             # Show security policies
                                             if policy_details['security']:
-                                                st.write("**Security Policies:**")
+                                                st.markdown("<h5>Security Policies</h5>", unsafe_allow_html=True)
                                                 security_data = {
                                                     "Policy": [],
                                                     "Encryption": [],
@@ -414,7 +414,7 @@ class AssetsPage:
                                                 st.dataframe(pd.DataFrame(security_data), use_container_width=True)
 
                         # 4. Derive risks
-                        st.markdown("<h4>Potential Risks (by Data Element):</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5>Potential Risks (by Data Element)</h5>", unsafe_allow_html=True)
                         all_risks = []
                         for de_name, de_obligations in obligations_by_de.items():
                             for obligation in de_obligations:
@@ -485,7 +485,7 @@ class AssetsPage:
         if not obligations:
             st.warning("No obligation information available.")
             return
-        st.markdown("<h4>Recommended Policies (by Data Element):</h4>", unsafe_allow_html=True)
+        st.markdown("<h5>Recommended Policies (by Data Element)</h5>", unsafe_allow_html=True)
         all_policies = []
         # Try to get data element mapping from obligations if present
         for obligation in obligations:
@@ -517,7 +517,7 @@ class AssetsPage:
             st.warning("No obligation information available.")
             return
         
-        st.markdown("<h4>Potential Risks:</h4>", unsafe_allow_html=True)
+        st.markdown("<h5>Potential Risks</h5>", unsafe_allow_html=True)
         
         # Get risks for the given obligations from the repository
         all_risks = []
@@ -605,7 +605,7 @@ class AssetsPage:
             st.dataframe(filtered_df, use_container_width=True)
             
             # Display risk summary
-            st.markdown("<h4>Risk Assessment Summary:</h4>", unsafe_allow_html=True)
+            st.markdown("<h5>Risk Assessment Summary</h5>", unsafe_allow_html=True)
             
             # Count risks by rating
             risk_counts = filtered_df["Risk Rating"].value_counts()
@@ -613,7 +613,7 @@ class AssetsPage:
             # Create a summary message based on risk counts
             summary_message = """
             <div style="background-color: #eaf7ea; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #27ae60;">
-                <h4 style="margin-top: 0;">Risk Assessment</h4>
+                <h5 style="margin-top: 0;">Risk Assessment</h5>
                 <p>If the recommended obligations are not implemented, this asset may be exposed to the following risks:</p>
                 <ul>
             """
