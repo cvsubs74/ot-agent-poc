@@ -8,13 +8,13 @@ class LawPage:
         self.obligation_repository = obligation_repository
 
     def render(self):
-        st.subheader("Law Definitions")
-        st.markdown("""
-        <div class="card">
-            <p>A law is a system of rules created and enforced through social or governmental institutions to regulate behavior. 
-            In the context of data protection, laws establish the legal framework for how organizations must handle personal data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Definitions:</b><br>
+            A law is a system of rules created and enforced through social or governmental institutions to regulate behavior. 
+            In the context of data protection, laws establish the legal framework for how organizations must handle personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         laws = self.glossary_repository.get_laws()
         if laws:
             law_data = {
@@ -35,12 +35,13 @@ class JurisdictionsPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Jurisdictions")
-        st.markdown("""
-        <div class="card">
-            <p>Jurisdictions are geographical areas with specific legal authority. In data protection, different jurisdictions may have different laws and regulations governing how personal data must be handled.</p>
+
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Jurisdictions:</b><br>
+            Jurisdictions are geographical areas with specific legal authority. In data protection, different jurisdictions may have different laws and regulations governing how personal data must be handled.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         jurisdictions = self.glossary_repository.get_jurisdictions()
         if jurisdictions:
             jurisdiction_data = {
@@ -57,12 +58,13 @@ class LegalBasisPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Legal Basis")
-        st.markdown("""
-        <div class="card">
-            <p>A legal basis is the lawful ground for processing personal data. Data protection laws typically require organizations to have a valid legal basis before they can process personal data.</p>
+
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Legal Basis:</b><br>
+            A legal basis is the lawful ground for processing personal data. Data protection laws typically require organizations to have a valid legal basis before they can process personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         legal_bases = self.glossary_repository.get_legal_bases()
         if legal_bases:
             legal_basis_data = {
@@ -81,12 +83,12 @@ class DataElementsPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Data Elements")
-        st.markdown("""
-        <div class="card">
-            <p>Data elements are specific pieces of information that can be collected about individuals. They are the building blocks of personal data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Elements:</b><br>
+            Data elements are specific pieces of information that can be collected about individuals. They are the building blocks of personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         data_elements = self.glossary_repository.get_data_elements()
         if data_elements:
             data_element_data = {
@@ -105,12 +107,12 @@ class DataSubjectTypesPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Data Subject Types")
-        st.markdown("""
-        <div class="card">
-            <p>Data subject types refer to the categories of individuals whose data is being processed, such as employees, customers, or patients.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Subject Types:</b><br>
+            Data subject types refer to the categories of individuals whose data is being processed, such as employees, customers, or patients.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         types = self.glossary_repository.get_data_subject_types()
         if types:
             type_data = {
@@ -129,12 +131,12 @@ class DataCategoriesPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Data Categories")
-        st.markdown("""
-        <div class="card">
-            <p>Data categories classify the types of personal data being processed, such as contact information, financial data, or health data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Categories:</b><br>
+            Data categories classify the types of personal data being processed, such as contact information, financial data, or health data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         categories = self.glossary_repository.get_data_categories()
         if categories:
             category_data = {
@@ -153,12 +155,12 @@ class SensitivityPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Sensitivity")
-        st.markdown("""
-        <div class="card">
-            <p>Sensitivity refers to the level of risk or impact associated with processing different types of personal data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Sensitivity:</b><br>
+            Sensitivity refers to the level of risk or impact associated with processing different types of personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         sensitivities = self.glossary_repository.get_sensitivities()
         if sensitivities:
             sensitivity_data = {
@@ -177,12 +179,12 @@ class PurposeCategoriesPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Purpose Categories")
-        st.markdown("""
-        <div class="card">
-            <p>Purpose categories describe the reasons for processing personal data, such as marketing, HR, or compliance.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Purpose Categories:</b><br>
+            Purpose categories describe the reasons for processing personal data, such as marketing, HR, or compliance.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         purposes = self.glossary_repository.get_purpose_categories()
         if purposes:
             purpose_data = {
@@ -201,12 +203,12 @@ class BreachTypesPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Breach Types")
-        st.markdown("""
-        <div class="card">
-            <p>Breach types refer to the different kinds of data breaches that can occur, such as unauthorized access, loss, or disclosure.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Breach Types:</b><br>
+            Breach types refer to the different kinds of data breaches that can occur, such as unauthorized access, loss, or disclosure.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         breaches = self.glossary_repository.get_breach_types()
         if breaches:
             breach_data = {
@@ -225,12 +227,12 @@ class ObligationsPage:
         self.obligation_repository = obligation_repository
 
     def render(self):
-        st.subheader("Obligations")
-        st.markdown("""
-        <div class="card">
-            <p>Obligations are the legal or regulatory requirements that organizations must fulfill when processing personal data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Obligations:</b><br>
+            Obligations are the legal or regulatory requirements that organizations must fulfill when processing personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         # Create columns for filters and actions
         col1, col2, col3 = st.columns([1, 1, 1])
         
@@ -297,12 +299,12 @@ class RisksPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Risks")
-        st.markdown("""
-        <div class="card">
-            <p>Risks are potential threats or vulnerabilities that could impact the security or privacy of personal data.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Risks:</b><br>
+            Risks are potential threats or vulnerabilities that could impact the security or privacy of personal data.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         risks = self.glossary_repository.get_risks()
         if risks:
             risk_data = {
@@ -321,12 +323,12 @@ class FrameworksPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Frameworks")
-        st.markdown("""
-        <div class="card">
-            <p>Frameworks are structured sets of guidelines or best practices for managing data privacy and security.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Frameworks:</b><br>
+            Frameworks are structured sets of guidelines or best practices for managing data privacy and security.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         frameworks = self.glossary_repository.get_frameworks()
         if frameworks:
             framework_data = {
@@ -345,12 +347,12 @@ class ControlsPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.subheader("Controls")
-        st.markdown("""
-        <div class="card">
-            <p>Controls are measures put in place to mitigate risks and ensure compliance with data protection requirements.</p>
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Controls:</b><br>
+            Controls are measures put in place to mitigate risks and ensure compliance with data protection requirements.
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
         controls = self.glossary_repository.get_controls()
         if controls:
             control_data = {

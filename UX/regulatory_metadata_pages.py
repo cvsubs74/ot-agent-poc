@@ -31,12 +31,12 @@ class LawLegalBasisPage:
         )
 
     def render(self):
-        st.markdown("""
-            <div class="card">
-                <h3>Law Legal Basis</h3>
-                <p>This section maps data protection laws to their applicable legal bases for processing personal data.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Legal Basis:</b><br>
+            This section maps data protection laws to their applicable legal bases for processing personal data. These mappings help organizations understand which legal grounds are valid for data processing under different regulatory frameworks.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get law legal basis data from repository
         law_legal_bases = self.regulatory_metadata_repository.get_law_legal_bases()
@@ -85,12 +85,12 @@ class RiskControlPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Risk Control</h3>
-                <p>This section maps identified risks to specific controls that help mitigate those risks.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Risk Control:</b><br>
+            This section maps identified risks to specific controls that help mitigate those risks. These mappings provide a comprehensive view of risk management strategies and their implementation through appropriate controls.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all risks from the repository
         risks = self.glossary_repository.get_risks()
@@ -196,12 +196,12 @@ class PolicyControlPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Policy Control</h3>
-                <p>This section maps organizational policies to specific controls that help enforce those policies.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Policy Control:</b><br>
+            This section maps organizational policies to specific controls that help enforce those policies. These mappings show how policies are implemented through concrete security and privacy controls.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all policies from the repository
         policies = self.glossary_repository.get_policies()
@@ -305,12 +305,12 @@ class FrameworkControlPage:
         self.glossary_repository = glossary_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Framework Control</h3>
-                <p>This section maps security and compliance frameworks to specific controls that help implement the framework requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Framework Control:</b><br>
+            This section maps security and compliance frameworks to specific controls that help implement the framework requirements. These mappings show how different security and privacy frameworks are implemented through concrete controls.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all frameworks from the repository
         frameworks = self.glossary_repository.get_frameworks()
@@ -415,12 +415,12 @@ class ObligationRiskPage:
         self.obligation_repository = obligation_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Obligation-Risk Mapping</h3>
-                <p>This section maps obligations to potential risks, establishing which risks may materialize if specific obligations are not fulfilled.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Obligation-Risk Mapping:</b><br>
+            This section maps obligations to potential risks, establishing which risks may materialize if specific obligations are not fulfilled. These mappings help organizations understand the consequences of non-compliance with regulatory obligations.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all obligations
         obligations = self.obligation_repository.get_obligations()
@@ -531,12 +531,12 @@ class ObligationPolicyPage:
         self.obligation_repository = obligation_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Obligation-Policy Mapping</h3>
-                <p>This section maps obligations to organizational policies, establishing which policies address specific compliance requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Obligation-Policy Mapping:</b><br>
+            This section maps obligations to organizational policies, establishing which policies address specific compliance requirements. These mappings help organizations understand how their internal policies support regulatory compliance.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all obligations
         obligations = self.obligation_repository.get_obligations()
@@ -628,12 +628,12 @@ class SensitivityObligationsPage:
         self.obligation_repository = obligation_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Sensitivity Obligations Mapping</h3>
-                <p>This section defines standard security and privacy obligations that should be applied based on data sensitivity levels.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Sensitivity Obligations Mapping:</b><br>
+            This section defines standard security and privacy obligations that should be applied based on data sensitivity levels. These mappings help organizations implement appropriate safeguards for different types of data based on their sensitivity classification.
+        </div>
+        ''', unsafe_allow_html=True)
 
         # Get all sensitivities
         sensitivities = self.glossary_repository.get_sensitivities()
@@ -698,12 +698,12 @@ class PolicyPurposeDataUsagePage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Policy Purpose Data Usage Mapping</h3>
-                <p>This section defines how data can be used (read, write, share) for each purpose-policy-data element combination, with specific restrictions.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Policy Purpose Data Usage Mapping:</b><br>
+            This section defines how data can be used (read, write, share) for each purpose-policy-data element combination, with specific restrictions. These mappings help organizations implement appropriate data usage controls based on their policies and purposes.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get policy purpose data usage data from repository
         policy_purpose_data_usages = self.regulatory_metadata_repository.get_policy_purpose_data_usages()
@@ -771,12 +771,12 @@ class PolicyPurposeDataElementPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Policy Purpose Data Element Mapping</h3>
-                <p>This section defines which data elements can be accessed for specific policy-purpose combinations, a key component of purpose-based access control.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Policy Purpose Data Element Mapping:</b><br>
+            This section defines which data elements can be accessed for specific policy-purpose combinations, a key component of purpose-based access control. These mappings are essential for implementing proper data access controls in compliance with privacy regulations.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get policy purpose data element data from repository
         policy_purpose_data_elements = self.regulatory_metadata_repository.get_policy_purpose_data_elements()
@@ -833,12 +833,12 @@ class PolicyPurposePage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Policy to Purpose Mapping</h3>
-                <p>This section maps organizational policies to business purposes, establishing which purposes are governed by which policies.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Policy to Purpose Mapping:</b><br>
+            This section maps organizational policies to business purposes, establishing which purposes are governed by which policies. These mappings help organizations ensure that all data processing activities are covered by appropriate policies.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get policy purpose data from repository
         policy_purposes = self.regulatory_metadata_repository.get_policy_purposes()
@@ -885,12 +885,12 @@ class LegalBasisRequirementsPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Legal Basis Requirements</h3>
-                <p>This section provides detailed compliance requirements for each legal basis, helping organizations understand what they need to do to properly rely on a specific legal basis for processing.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Legal Basis Requirements:</b><br>
+            This section provides detailed compliance requirements for each legal basis, helping organizations understand what they need to do to properly rely on a specific legal basis for processing.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get legal basis requirements from repository
         legal_basis_requirements = self.regulatory_metadata_repository.get_legal_basis_requirements()
@@ -929,13 +929,12 @@ class LawPurposeCategoryLegalBasisPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Law Purpose Category Legal Basis</h3>
-                <p>This section maps data protection laws to purpose categories and their applicable legal bases, helping organizations 
-                determine the appropriate legal basis for different processing purposes under various laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Purpose Category Legal Basis:</b><br>
+            This section maps data protection laws to purpose categories and their applicable legal bases, helping organizations determine the appropriate legal basis for different processing purposes under various laws. These mappings are essential for the Legal Basis Inference API, providing recommendations on which legal grounds to use for specific processing activities.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get law purpose category legal basis data from repository
         law_purpose_legal_bases = self.regulatory_metadata_repository.get_law_purpose_category_legal_bases()
@@ -988,12 +987,12 @@ class DataSubjectTypeDataElementSensitivityPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Data Subject Type Data Element Sensitivity</h3>
-                <p>This section maps data subject types to specific data elements and their sensitivity levels, independent of specific laws.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Subject Type Data Element Sensitivity:</b><br>
+            This section maps data subject types to specific data elements and their sensitivity levels, independent of specific laws.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get mappings from repository
         mappings = self.regulatory_metadata_repository.get_data_subject_type_data_element_sensitivities()
@@ -1049,12 +1048,12 @@ class DataSubjectTypeDataCategorySensitivityPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps data subject types to data categories and their sensitivity levels, independent of specific laws.</p>
+        st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Data Subject Type Data Category Sensitivity:</b><br>
+                This section maps data subject types to data categories and their sensitivity levels, independent of specific laws.
             </div>
-            """, unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
         
         # Get mappings from repository
         mappings = self.regulatory_metadata_repository.get_data_subject_type_data_category_sensitivities()
@@ -1110,12 +1109,12 @@ class DataCategoryDataElementPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Data Category Data Element</h3>
-                <p>This section maps data categories to their constituent data elements, providing a hierarchical view of data classification.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Category Data Element:</b><br>
+            This section maps data categories to their constituent data elements, providing a hierarchical view of data classification. These mappings help organize data elements into logical groups for more effective policy application and sensitivity analysis.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get data category data element mappings from repository
         data_category_elements = self.regulatory_metadata_repository.get_data_category_data_elements()
@@ -1162,12 +1161,12 @@ class LawDataSubjectTypeDataCategorySensitivityPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Law Data Subject Type Data Category Sensitivity</h3>
-                <p>This section maps laws to data subject types, data categories, and their sensitivity levels, providing a comprehensive view of data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Data Subject Type Data Category Sensitivity:</b><br>
+            This section maps laws to data subject types, data categories, and their sensitivity levels, providing a comprehensive view of data protection requirements. These mappings are used by the Data Sensitivity Inference API to determine appropriate sensitivity classifications for different categories of data.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get mappings from repository
         mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_category_sensitivities()
@@ -1231,12 +1230,12 @@ class LawDataSubjectTypeDataElementSensitivityPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Law Data Subject Type Data Element Sensitivity</h3>
-                <p>This section maps laws to data subject types, data elements, and their sensitivity levels, providing a comprehensive view of data protection requirements.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Data Subject Type Data Element Sensitivity:</b><br>
+            This section maps laws to data subject types, data elements, and their sensitivity levels, providing a comprehensive view of data protection requirements. These mappings are crucial for the Data Sensitivity Inference API, helping determine the appropriate sensitivity level for specific data elements under different regulatory frameworks.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get mappings from repository
         mappings = self.regulatory_metadata_repository.get_law_data_subject_type_data_element_sensitivities()
@@ -1321,12 +1320,12 @@ class DataSubjectAccessRequestPage:
         )
 
     def render(self):
-        st.markdown("""
-            <div class=\"card\">
-                <h3>Data Subject Access Request Requirements</h3>
-                <p>This section provides information about data subject rights and access request requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Data Subject Access Request Requirements:</b><br>
+            This section provides information about data subject rights and access request requirements across different data protection regulations. It outlines the rights individuals have regarding their personal data and how organizations must respond to these requests.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get DSAR data from repository
         dsar_guidances = self.regulatory_metadata_repository.get_data_subject_right_implementation_steps()
@@ -1396,12 +1395,12 @@ class LawTransferPage:
         )
 
     def render(self):
-        st.markdown("""
-            <div class="card">
-                <h3>Law Transfer Requirements</h3>
-                <p>This section provides information about cross-border data transfer requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Transfer Requirements:</b><br>
+            This section provides information about cross-border data transfer requirements across different data protection regulations. It outlines the conditions under which personal data can be transferred to countries outside the jurisdiction of the originating law.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get law transfer data from repository
         law_transfers = self.regulatory_metadata_repository.get_law_transfers()
@@ -1452,12 +1451,12 @@ class LawIncidentBreachNotificationPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class="card">
-                <h3>Law Incident Breach Notification</h3>
-                <p>This section provides information about breach notification requirements across different data protection regulations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law Incident Breach Notification:</b><br>
+            This section provides information about breach notification requirements across different data protection regulations. It outlines when and how organizations must notify authorities and affected individuals about data breaches, including timeframes and content requirements.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get law incident breach guidance data from repository
         law_breach_guidances = self.regulatory_metadata_repository.get_law_incident_breach_guidances()
@@ -1510,13 +1509,12 @@ class LawJurisdictionPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
-        st.markdown("""
-            <div class="card">
-                <h3>Law to Jurisdiction Mapping</h3>
-                <p>This section maps data protection laws to their applicable jurisdictions, helping organizations 
-                understand which laws apply in which geographic areas.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('''
+        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+            <b>About Law to Jurisdiction Mapping:</b><br>
+            This section maps data protection laws to their applicable jurisdictions, helping organizations understand which laws apply in which geographic areas. These mappings are essential for determining the territorial scope of various data protection regulations.
+        </div>
+        ''', unsafe_allow_html=True)
         
         # Get law jurisdiction data from repository
         law_jurisdictions = self.regulatory_metadata_repository.get_law_jurisdictions()
