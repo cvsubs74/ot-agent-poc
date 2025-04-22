@@ -596,15 +596,6 @@ class DataMap:
             self.obligation_repository
         ).render()
             
-    def policy_recommendation_page(self):
-        """Render the Policy Recommendation API page using the new PolicyRecommendationPage class."""
-        from UX.policy_recommendation_page import PolicyRecommendationPage
-        PolicyRecommendationPage(
-            self.glossary_repository,
-            self.obligation_repository,
-            self.sensitivity_inference
-        ).render()
-                    
     def risk_inference_page(self):
         """Render the Risk Inference page using the new RiskInferencePage class."""
         
