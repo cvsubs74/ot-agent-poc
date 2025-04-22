@@ -69,6 +69,7 @@ from repositories.RegulatoryMetadataRepository import RegulatoryMetadataReposito
 from repositories.InventoryRepository import InventoryRepository
 from repositories.DatabaseManager import DatabaseManager
 from repositories.ObligationRepository import ObligationRepository
+from repositories.CatalogRepository import CatalogRepository
 
 class DataMap:
     def __init__(self):
@@ -78,6 +79,7 @@ class DataMap:
         self.regulatory_metadata_repository = RegulatoryMetadataRepository(self.database_manager.connection)
         self.inventory_repository = InventoryRepository(self.database_manager.connection)
         self.obligation_repository = ObligationRepository(self.database_manager.connection)
+        self.catalog_repository = CatalogRepository(self.database_manager.connection)
         
         # Initialize inference classes
         self.sensitivity_inference = SensitivityInference(  
@@ -449,7 +451,8 @@ class DataMap:
             self.inventory_repository,
             self.glossary_repository,
             self.obligation_repository,
-            self.sensitivity_inference
+            self.sensitivity_inference,
+            self.catalog_repository
         ).render()
     
     def processing_activities_section(self):

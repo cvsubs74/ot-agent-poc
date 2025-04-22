@@ -548,6 +548,46 @@ CREATE TABLE IF NOT EXISTS `asset_data_element` (
     FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
 );
 
+-- Create Catalog table for database metadata
+CREATE TABLE IF NOT EXISTS `catalog` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `asset_id` INT NOT NULL,
+    `schema_name` VARCHAR(255) NOT NULL,
+    `table_name` VARCHAR(255) NOT NULL,
+    `column_name` VARCHAR(255) NOT NULL,
+    `data_type` VARCHAR(100) NOT NULL,
+    `data_element_id` INT,
+    `sample_data` TEXT,
+    `last_scanned` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_column` (`asset_id`, `schema_name`, `table_name`, `column_name`)
+);
+
+-- Create Policy Implementation table to track implementation status
+CREATE TABLE IF NOT EXISTS `policy_implementation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `catalog_id` INT NOT NULL,
+    `policy_id` INT NOT NULL,
+    `is_masked` BOOLEAN DEFAULT FALSE,
+    `masking_format` VARCHAR(255),
+    `is_encrypted` BOOLEAN DEFAULT FALSE,
+    `encryption_algorithm` VARCHAR(255),
+    `has_access_control` BOOLEAN DEFAULT FALSE,
+    `access_control_type` VARCHAR(255),
+    `has_retention_policy` BOOLEAN DEFAULT FALSE,
+    `retention_period` VARCHAR(100),
+    `has_audit_logging` BOOLEAN DEFAULT FALSE,
+    `audit_level` VARCHAR(50),
+    `implementation_status` ENUM('Not Implemented', 'Partially Implemented', 'Fully Implemented') DEFAULT 'Not Implemented',
+    `last_verified` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`catalog_id`) REFERENCES `catalog`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_policy_implementation` (`catalog_id`, `policy_id`)
+);
+
 -- Create Processing Activity table
 CREATE TABLE IF NOT EXISTS `processing_activity` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -586,19 +626,91 @@ INSERT INTO `asset` (`name`, `description`) VALUES
 ('CRM System', 'Customer Relationship Management system containing customer data and interactions'),
 ('ERP System', 'Enterprise Resource Planning system for managing business processes'),
 ('HR Portal', 'Human Resources portal for employee data management'),
-('Marketing Platform', 'Platform for managing marketing campaigns and customer engagement'),
-('Financial Database', 'Database containing financial records and transactions');
+('Marketing Database', 'Database containing customer marketing data and campaign information'),
+('Financial System', 'Financial management system containing transaction and payment data');
+
+-- Seed Catalog data
+INSERT INTO `catalog` (`asset_id`, `schema_name`, `table_name`, `column_name`, `data_type`, `data_element_id`, `sample_data`) VALUES
+-- CRM System
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'customer_id', 'INT', (SELECT id FROM data_element WHERE name = 'Customer ID'), '10001'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'first_name', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Name'), 'John'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'last_name', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Name'), 'Smith'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'email', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Email Address'), 'john.smith@example.com'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'phone', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Phone Number'), '555-123-4567'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'customers', 'address', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Address'), '123 Main St, Anytown, CA 94001'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'purchases', 'purchase_id', 'INT', NULL, '50001'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'purchases', 'customer_id', 'INT', (SELECT id FROM data_element WHERE name = 'Customer ID'), '10001'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'purchases', 'purchase_date', 'DATE', NULL, '2025-01-15'),
+((SELECT id FROM asset WHERE name = 'CRM System'), 'crm', 'purchases', 'amount', 'DECIMAL', (SELECT id FROM data_element WHERE name = 'Purchase History'), '129.99'),
+
+-- HR Portal
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'employee_id', 'INT', NULL, '5001'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'first_name', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Name'), 'Jane'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'last_name', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Name'), 'Doe'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'ssn', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Social Security Number'), 'XXX-XX-1234'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'dob', 'DATE', (SELECT id FROM data_element WHERE name = 'Date of Birth'), '1985-06-15'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'salary', 'DECIMAL', NULL, '85000.00'),
+((SELECT id FROM asset WHERE name = 'HR Portal'), 'hr', 'employees', 'bank_account', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Bank Account Number'), 'XXXX1234'),
+
+-- Financial System
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'transactions', 'transaction_id', 'INT', NULL, '75001'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'transactions', 'customer_id', 'INT', (SELECT id FROM data_element WHERE name = 'Customer ID'), '10001'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'transactions', 'amount', 'DECIMAL', NULL, '500.00'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'transactions', 'transaction_date', 'DATE', NULL, '2025-03-10'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'payments', 'payment_id', 'INT', NULL, '30001'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'payments', 'credit_card_number', 'VARCHAR', (SELECT id FROM data_element WHERE name = 'Credit Card Number'), 'XXXX-XXXX-XXXX-5678'),
+((SELECT id FROM asset WHERE name = 'Financial System'), 'finance', 'payments', 'expiry_date', 'VARCHAR', NULL, '06/28');
+
+-- Seed Asset_Data_Element relationships based on catalog classifications
+INSERT IGNORE INTO `asset_data_element` (`asset_id`, `data_element_id`) 
+SELECT DISTINCT c.asset_id, c.data_element_id 
+FROM catalog c 
+WHERE c.data_element_id IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1 FROM asset_data_element ade 
+    WHERE ade.asset_id = c.asset_id 
+    AND ade.data_element_id = c.data_element_id
+);
+
+-- Seed Policy Implementation data
+INSERT INTO `policy_implementation` (`catalog_id`, `policy_id`, `is_masked`, `masking_format`, `is_encrypted`, `encryption_algorithm`, 
+                                   `has_access_control`, `access_control_type`, `has_retention_policy`, `retention_period`, 
+                                   `has_audit_logging`, `audit_level`, `implementation_status`) VALUES
+-- CRM System - Email Address (Data Security Policy)
+((SELECT id FROM catalog WHERE asset_id = (SELECT id FROM asset WHERE name = 'CRM System') AND column_name = 'email'), 
+ (SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ TRUE, 'Partial - Show only domain', TRUE, 'AES-256', TRUE, 'Role-based', TRUE, '2 years', TRUE, 'Full', 'Fully Implemented'),
+
+-- CRM System - Phone Number (Data Security Policy)
+((SELECT id FROM catalog WHERE asset_id = (SELECT id FROM asset WHERE name = 'CRM System') AND column_name = 'phone'), 
+ (SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ TRUE, 'Last 4 digits only', FALSE, NULL, TRUE, 'Role-based', TRUE, '2 years', TRUE, 'Full', 'Partially Implemented'),
+
+-- HR Portal - SSN (Data Security Policy)
+((SELECT id FROM catalog WHERE asset_id = (SELECT id FROM asset WHERE name = 'HR Portal') AND column_name = 'ssn'), 
+ (SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ TRUE, 'Show only last 4 digits', TRUE, 'AES-256', TRUE, 'Role-based', TRUE, '7 years', TRUE, 'Full', 'Fully Implemented'),
+
+-- HR Portal - Salary (Data Access Control Policy) - Note: salary no longer has a data_element_id
+((SELECT id FROM catalog WHERE asset_id = (SELECT id FROM asset WHERE name = 'HR Portal') AND column_name = 'salary'), 
+ (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ TRUE, 'Full masking for non-HR', FALSE, NULL, TRUE, 'Role-based', TRUE, '7 years', TRUE, 'Full', 'Partially Implemented'),
+
+-- Financial System - Credit Card Number (Data Security Policy)
+((SELECT id FROM catalog WHERE asset_id = (SELECT id FROM asset WHERE name = 'Financial System') AND column_name = 'credit_card_number'), 
+ (SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ TRUE, 'Show only last 4 digits', TRUE, 'AES-256', TRUE, 'Role-based', TRUE, '2 years', TRUE, 'Full', 'Fully Implemented');
 
 -- Seed Asset Data Element relationships
-INSERT INTO `asset_data_element` (`asset_id`, `data_element_id`)
+INSERT IGNORE INTO `asset_data_element` (`asset_id`, `data_element_id`)
 SELECT a.id, de.id
 FROM `asset` a, `data_element` de
 WHERE 
-    (a.name = 'CRM System' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Customer ID', 'Purchase History')) OR
-    (a.name = 'ERP System' AND de.name IN ('Full Name', 'Email Address', 'Customer ID', 'Purchase History')) OR
-    (a.name = 'HR Portal' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Address', 'Date of Birth', 'Social Security Number')) OR
-    (a.name = 'Marketing Platform' AND de.name IN ('Full Name', 'Email Address', 'Phone Number', 'Customer ID', 'IP Address', 'Device ID')) OR
-    (a.name = 'Financial Database' AND de.name IN ('Full Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number'));
+    (a.name = 'CRM System' AND de.name IN ('Name', 'Email Address', 'Phone Number', 'Address', 'Customer ID', 'Purchase History')) OR
+    (a.name = 'ERP System' AND de.name IN ('Name', 'Email Address', 'Customer ID', 'Purchase History')) OR
+    (a.name = 'HR Portal' AND de.name IN ('Name', 'Email Address', 'Phone Number', 'Address', 'Date of Birth', 'Social Security Number', 'Bank Account Number')) OR
+    (a.name = 'Marketing Platform' AND de.name IN ('Name', 'Email Address', 'Phone Number', 'Customer ID', 'IP Address', 'Device ID')) OR
+    (a.name = 'Financial System' AND de.name IN ('Name', 'Customer ID', 'Credit Card Number', 'Bank Account Number'));
 
 -- Seed Processing Activity data
 INSERT INTO `processing_activity` (`name`, `description`, `status`, `start_date`, `end_date`) VALUES

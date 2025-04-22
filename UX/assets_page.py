@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 
 class AssetsPage:
-    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference):
+    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository):
         self.inventory_repository = inventory_repository
         self.glossary_repository = glossary_repository
         self.obligation_repository = obligation_repository
         self.sensitivity_inference = sensitivity_inference
+        self.catalog_repository = catalog_repository
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -98,22 +99,147 @@ class AssetsPage:
                             de_data["Data Element"].append(de['name'])
                             de_data["Description"].append(de['description'])
                         st.dataframe(pd.DataFrame(de_data), use_container_width=True)
-                    run_analysis = st.button("Run Data Element Analysis", key=f"run_analysis_{selected_asset['id']}")
-                    # Show info box about analysis workflow
-                    st.markdown('''
-                    <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
-                        <h4 style="margin-top: 0; color: #229954;">How Policy Recommendation and Risk Analysis Work</h4>
-                        <ul style="margin-bottom: 0;">
-                            <li><strong>Input:</strong> The analysis starts with the data elements associated with each asset.</li>
-                                <li><strong>Sensitivity Inference:</strong> Sensitivity levels for each data element are inferred using regulatory mappings and business logic.</li>
-                                <li><strong>Obligation Mapping:</strong> Based on sensitivities, relevant security and privacy obligations are determined for each data element.</li>
-                                <li><strong>Policy Recommendation:</strong> For each obligation, recommended policies and controls are identified to help ensure compliance.</li>
-                                <li><strong>Risk Analysis:</strong> Potential risks are derived for each obligation if not properly implemented, including likelihood and impact assessment.</li>
-                                <li><strong>Risk Rating:</strong> Risks are categorized as Critical, High, Medium, or Low based on a matrix of likelihood and impact.</li>
-                                <li><strong>Summary:</strong> The workflow provides a prioritized list of obligations, recommended policies, and potential risks to guide remediation and compliance actions.</li>
-                            </ul>
-                        </div>''', unsafe_allow_html=True)                    
-                    if run_analysis:
+                
+                # Add catalog functionality
+                catalog_entries = self.catalog_repository.get_catalog_entries_by_asset(selected_asset['id'])
+                
+                # Add a scan button
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button("🔍 Scan Database", key=f"scan_btn_{selected_asset['id']}"):
+                        with st.spinner(f"Scanning {selected_asset['name']} database structure..."):
+                            num_entries = self.catalog_repository.scan_asset(selected_asset['id'])
+                            # Refresh catalog entries after scan
+                            catalog_entries = self.catalog_repository.get_catalog_entries_by_asset(selected_asset['id'])
+                            st.success(f"Scan complete! Found {num_entries} database columns.")
+                
+                with col1:
+                    st.write(f"Database Catalog for {selected_asset['name']}")
+                
+                # Display catalog data
+                if catalog_entries:
+                    with st.expander(f"Database Catalog ({len(catalog_entries)} columns)", expanded=True):
+                        # Group catalog entries by schema and table
+                        schemas = {}
+                        for entry in catalog_entries:
+                            schema_name = entry['schema_name']
+                            table_name = entry['table_name']
+                            
+                            if schema_name not in schemas:
+                                schemas[schema_name] = {}
+                            
+                            if table_name not in schemas[schema_name]:
+                                schemas[schema_name][table_name] = []
+                            
+                            schemas[schema_name][table_name].append(entry)
+                        
+                        # Create tabs for each schema
+                        if len(schemas) > 0:
+                            schema_tabs = st.tabs(list(schemas.keys()))
+                            
+                            for i, (schema_name, tables) in enumerate(schemas.items()):
+                                with schema_tabs[i]:
+                                    # Create tabs for each table in the schema
+                                    table_tabs = st.tabs(list(tables.keys()))
+                                    
+                                    for j, (table_name, columns) in enumerate(tables.items()):
+                                        with table_tabs[j]:
+                                            # Create a dataframe for the columns
+                                            columns_data = {
+                                                "Column": [],
+                                                "Data Type": [],
+                                                "Classification": [],
+                                                "Sample Data": [],
+                                                "Last Scanned": []
+                                            }
+                                            
+                                            for col in columns:
+                                                columns_data["Column"].append(col['column_name'])
+                                                columns_data["Data Type"].append(col['data_type'])
+                                                columns_data["Classification"].append(col['data_element_name'] if col['data_element_name'] else "Unclassified")
+                                                columns_data["Sample Data"].append(col['sample_data'] if col['sample_data'] else "")
+                                                columns_data["Last Scanned"].append(col['last_scanned'])
+                                            
+                                            # Display the columns dataframe
+                                            st.dataframe(pd.DataFrame(columns_data), use_container_width=True)
+                                            
+                                            # For each classified column, show policy implementations
+                                            classified_columns = [col for col in columns if col['data_element_id'] is not None]
+                                            if classified_columns:
+                                                st.subheader("Policy Implementation Status")
+                                                for col in classified_columns:
+                                                    policy_implementations = self.catalog_repository.get_policy_implementations_by_catalog(col['id'])
+                                                    if policy_implementations:
+                                                        st.write(f"**{col['column_name']}** ({col['data_element_name']})")
+                                                        
+                                                        # Create a dataframe for the policy implementations
+                                                        policy_data = {
+                                                            "Policy": [],
+                                                            "Status": [],
+                                                            "Masking": [],
+                                                            "Encryption": [],
+                                                            "Access Control": [],
+                                                            "Retention": [],
+                                                            "Audit Logging": []
+                                                        }
+                                                        
+                                                        for impl in policy_implementations:
+                                                            policy_data["Policy"].append(impl['policy_name'])
+                                                            policy_data["Status"].append(impl['implementation_status'])
+                                                            
+                                                            # Masking info
+                                                            masking_info = "No"
+                                                            if impl['is_masked']:
+                                                                masking_info = f"Yes - {impl['masking_format']}" if impl['masking_format'] else "Yes"
+                                                            policy_data["Masking"].append(masking_info)
+                                                            
+                                                            # Encryption info
+                                                            encryption_info = "No"
+                                                            if impl['is_encrypted']:
+                                                                encryption_info = f"Yes - {impl['encryption_algorithm']}" if impl['encryption_algorithm'] else "Yes"
+                                                            policy_data["Encryption"].append(encryption_info)
+                                                            
+                                                            # Access control info
+                                                            access_control_info = "No"
+                                                            if impl['has_access_control']:
+                                                                access_control_info = f"Yes - {impl['access_control_type']}" if impl['access_control_type'] else "Yes"
+                                                            policy_data["Access Control"].append(access_control_info)
+                                                            
+                                                            # Retention info
+                                                            retention_info = "No"
+                                                            if impl['has_retention_policy']:
+                                                                retention_info = f"Yes - {impl['retention_period']}" if impl['retention_period'] else "Yes"
+                                                            policy_data["Retention"].append(retention_info)
+                                                            
+                                                            # Audit logging info
+                                                            audit_info = "No"
+                                                            if impl['has_audit_logging']:
+                                                                audit_info = f"Yes - {impl['audit_level']}" if impl['audit_level'] else "Yes"
+                                                            policy_data["Audit Logging"].append(audit_info)
+                                                        
+                                                        # Display the policy implementations dataframe
+                                                        st.dataframe(pd.DataFrame(policy_data), use_container_width=True)
+                else:
+                    st.info(f"No catalog data available for {selected_asset['name']}. Click 'Scan Database' to discover database structure.")
+                
+                run_analysis = st.button("Run Asset Analysis", key=f"run_analysis_{selected_asset['id']}")
+                # Show info box about analysis workflow
+                st.markdown('''
+                <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
+                    <h4 style="margin-top: 0; color: #229954;">How Policy Recommendation and Risk Analysis Work</h4>
+                    <ul style="margin-bottom: 0;">
+                        <li><strong>Input:</strong> The analysis starts with the data elements associated with each asset.</li>
+                        <li><strong>Sensitivity Inference:</strong> Sensitivity levels for each data element are inferred using regulatory mappings and business logic.</li>
+                        <li><strong>Obligation Mapping:</strong> Based on sensitivities, relevant security and privacy obligations are determined for each data element.</li>
+                        <li><strong>Policy Recommendation:</strong> For each obligation, recommended policies and controls are identified to help ensure compliance.</li>
+                        <li><strong>Risk Analysis:</strong> Potential risks are derived for each obligation if not properly implemented, including likelihood and impact assessment.</li>
+                        <li><strong>Risk Rating:</strong> Risks are categorized as Critical, High, Medium, or Low based on a matrix of likelihood and impact.</li>
+                        <li><strong>Summary:</strong> The workflow provides a prioritized list of obligations, recommended policies, and potential risks to guide remediation and compliance actions.</li>
+                    </ul>
+                </div>
+                ''', unsafe_allow_html=True)                    
+                
+                if run_analysis:
                         # 1. Infer sensitivities
                         data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
                         if not data_element_sensitivities:
@@ -222,8 +348,6 @@ class AssetsPage:
                             st.dataframe(df[display_columns], use_container_width=True)
                         else:
                             st.info("No risks identified for the obligations.")
-                else:
-                    st.info(f"No data elements associated with {selected_asset['name']}")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     def show_sensitivity_based_obligations(self, data_element_sensitivities):
