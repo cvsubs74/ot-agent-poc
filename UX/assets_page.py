@@ -315,17 +315,28 @@ class AssetsPage:
                         else:
                             st.info("No obligations defined for these data elements.")
 
-                        # Get detailed policy recommendations for each data element
+                        # Get detailed policy recommendations for each data element with significant sensitivities
                         st.markdown("<h4>Detailed Policy Recommendations:</h4>", unsafe_allow_html=True)
                         
-                        # Get unique data elements from the analysis
-                        unique_data_elements = set()
-                        for de_name, _ in obligations_by_de.items():
-                            unique_data_elements.add(de_name)
+                        # Define which sensitivities require policies
+                        # Using the actual sensitivity values from the database
+                        sensitivities_requiring_policies = ["Internal", "Confidential", "Restricted", "Special Category"]
+                        
+                        # Filter data elements based on their sensitivity
+                        policy_required_elements = {}
+                        
+                        for de_name, sensitivity_info in data_element_sensitivities.items():
+                            sensitivity = sensitivity_info['sensitivity']
+                            if sensitivity in sensitivities_requiring_policies:
+                                policy_required_elements[de_name] = sensitivity
+                        
+                        if not policy_required_elements:
+                            st.info("No data elements with sensitivities that require specific policies were found.")
+                        else:
+                            st.write(f"Found {len(policy_required_elements)} data elements that require specific policies based on their sensitivity.")
                             
-                        if unique_data_elements:
-                            # For each data element, get the policy details
-                            for de_name in unique_data_elements:
+                            # For each data element with significant sensitivity, get the policy details
+                            for de_name, sensitivity in policy_required_elements.items():
                                 # Get the data element ID
                                 data_element = next((de for de in self.glossary_repository.get_data_elements() if de['name'] == de_name), None)
                                 if data_element:
@@ -335,38 +346,40 @@ class AssetsPage:
                                     policy_details = self.regulatory_metadata_repository.get_data_element_policies(data_element_id)
                                     
                                     if any(policy_details.values()):
-                                        with st.expander(f"Policy Details for {de_name}"): 
+                                        with st.expander(f"Policy Details for {de_name}"):
                                             # Show usage policies
                                             if policy_details['usage']:
-                                                st.write("**Usage Policies:**")
-                                                usage_data = {
-                                                    "Policy": [],
-                                                    "Operation": [],
-                                                    "Allowed": [],
-                                                    "Restrictions": []
-                                                }
-                                                for usage in policy_details['usage']:
-                                                    usage_data["Policy"].append(usage['policy_name'])
-                                                    usage_data["Operation"].append(usage['operation'])
-                                                    usage_data["Allowed"].append("Yes" if usage['allowed'] else "No")
-                                                    usage_data["Restrictions"].append(usage['restrictions'] or "")
-                                                st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
+                                                    st.write("**Usage Policies:**")
+                                                    usage_data = {
+                                                        "Policy": [],
+                                                        "Operation": [],
+                                                        "Allowed": [],
+                                                        "Restrictions": []
+                                                    }
+                                                    for usage in policy_details['usage']:
+                                                        usage_data["Policy"].append(usage['policy_name'])
+                                                        usage_data["Operation"].append(usage['operation'])
+                                                        usage_data["Allowed"].append("Yes" if usage['allowed'] else "No")
+                                                        usage_data["Restrictions"].append(usage['restrictions'] or "")
+                                                        
+                                                    st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
                                             
                                             # Show retention policies
                                             if policy_details['retention']:
-                                                st.write("**Retention Policies:**")
-                                                retention_data = {
-                                                    "Policy": [],
-                                                    "Retention Period": [],
-                                                    "Retention Basis": [],
-                                                    "Exceptions": []
-                                                }
-                                                for retention in policy_details['retention']:
-                                                    retention_data["Policy"].append(retention['policy_name'])
-                                                    retention_data["Retention Period"].append(retention['retention_period'])
-                                                    retention_data["Retention Basis"].append(retention['retention_basis'] or "")
-                                                    retention_data["Exceptions"].append(retention['exceptions'] or "")
-                                                st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
+                                                    st.write("**Retention Policies:**")
+                                                    retention_data = {
+                                                        "Policy": [],
+                                                        "Retention Period": [],
+                                                        "Retention Basis": [],
+                                                        "Exceptions": []
+                                                    }
+                                                    for retention in policy_details['retention']:
+                                                        retention_data["Policy"].append(retention['policy_name'])
+                                                        retention_data["Retention Period"].append(retention['retention_period'])
+                                                        retention_data["Retention Basis"].append(retention['retention_basis'] or "")
+                                                        retention_data["Exceptions"].append(retention['exceptions'] or "")
+                                                        
+                                                    st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
                                             
                                             # Show security policies
                                             if policy_details['security']:
