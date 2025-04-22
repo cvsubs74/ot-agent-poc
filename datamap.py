@@ -273,65 +273,81 @@ class DataMap:
         
                 # Law Legal Basis tab
                 elif tab_idx == 1:
+                    from UX.regulatory_metadata_pages import LawLegalBasisPage
                     LawLegalBasisPage(self.regulatory_metadata_repository).render()
         
                 # Law Incident Breach Notification tab
                 elif tab_idx == 2:
+                    from UX.regulatory_metadata_pages import LawIncidentBreachNotificationPage
                     LawIncidentBreachNotificationPage(self.regulatory_metadata_repository).render()
         
                 # Law Transfer tab
                 elif tab_idx == 3:
+                    from UX.regulatory_metadata_pages import LawTransferPage
                     LawTransferPage(self.regulatory_metadata_repository).render()
 
                 elif tab_idx == 4:                        
+                    from UX.regulatory_metadata_pages import DataSubjectAccessRequestPage
                     DataSubjectAccessRequestPage(self.regulatory_metadata_repository).render()
         
                 # Data Category Data Element tab
                 elif tab_idx == 5:
+                    from UX.regulatory_metadata_pages import DataCategoryDataElementPage
                     DataCategoryDataElementPage(self.regulatory_metadata_repository).render()
         
                 # Law Data Subject Type Data Element Sensitivity tab
                 elif tab_idx == 6:
+                    from UX.regulatory_metadata_pages import LawDataSubjectTypeDataElementSensitivityPage
                     LawDataSubjectTypeDataElementSensitivityPage(self.regulatory_metadata_repository).render()
         
                 # Law Data Subject Type Data Category Sensitivity tab
                 elif tab_idx == 7:                        
+                    from UX.regulatory_metadata_pages import LawDataSubjectTypeDataCategorySensitivityPage
                     LawDataSubjectTypeDataCategorySensitivityPage(self.regulatory_metadata_repository).render()
         
                 # Data Subject Type Data Category Sensitivity tab
                 elif tab_idx == 8:
+                    from UX.regulatory_metadata_pages import DataSubjectTypeDataCategorySensitivityPage
                     DataSubjectTypeDataCategorySensitivityPage(self.regulatory_metadata_repository).render()
         
                 # Data Subject Type Data Element Sensitivity tab
                 elif tab_idx == 9:
+                    from UX.regulatory_metadata_pages import DataSubjectTypeDataElementSensitivityPage
                     DataSubjectTypeDataElementSensitivityPage(self.regulatory_metadata_repository).render()
             
                 # Law Purpose Category Legal Basis tab
                 elif tab_idx == 10:
+                    from UX.regulatory_metadata_pages import LawPurposeCategoryLegalBasisPage
                     LawPurposeCategoryLegalBasisPage(self.regulatory_metadata_repository).render()
                 
                 # Legal Basis Requirements tab
                 elif tab_idx == 11:
+                    from UX.regulatory_metadata_pages import LegalBasisRequirementsPage
                     LegalBasisRequirementsPage(self.regulatory_metadata_repository).render()
                 
                 # Policy Purpose tab
                 elif tab_idx == 12:
+                    from UX.regulatory_metadata_pages import PolicyPurposePage
                     PolicyPurposePage(self.regulatory_metadata_repository).render()
                 
                 # Policy Purpose Data Element tab
                 elif tab_idx == 13:
+                    from UX.regulatory_metadata_pages import PolicyPurposeDataElementPage
                     PolicyPurposeDataElementPage(self.regulatory_metadata_repository).render()
                 
                 # Policy Purpose Data Usage tab
                 elif tab_idx == 14:
+                    from UX.regulatory_metadata_pages import PolicyPurposeDataUsagePage
                     PolicyPurposeDataUsagePage(self.regulatory_metadata_repository).render()
                  
                 # Sensitivity Obligations tab
                 elif tab_idx == 15:
+                    from UX.regulatory_metadata_pages import SensitivityObligationsPage
                     SensitivityObligationsPage(self.glossary_repository, self.obligation_repository).render()
                 
                 # Obligation Policy tab
                 elif tab_idx == 16:
+                    from UX.regulatory_metadata_pages import ObligationPolicyPage
                     ObligationPolicyPage(self.glossary_repository, self.obligation_repository).render()
                 
                 # Obligation Risk tab

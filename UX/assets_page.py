@@ -12,31 +12,6 @@ class AssetsPage:
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
-        # Add CSS for green expanders - targeting only the expander elements
-        st.markdown("""
-        <style>
-        /* Target only the expander components */
-        div[data-testid="stExpander"] {
-            border: 1px solid #27ae60 !important;
-            border-radius: 4px !important;
-            margin-bottom: 10px !important;
-            background-color: #eaf7ea !important;
-        }
-        
-        /* Target only the header of the expander */
-        div[data-testid="stExpander"] > div:first-child {
-            background-color: #eaf7ea !important;
-            border-left: 5px solid #27ae60 !important;
-        }
-        
-        /* Target only the content area of the expander */
-        div[data-testid="stExpander"] > div:nth-child(2) {
-            border-left: 5px solid #27ae60 !important;
-            background-color: #eaf7ea !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
         st.markdown("<div class='page-header'><i class='fas fa-database'></i> &nbsp;Assets</div>", unsafe_allow_html=True)
         st.markdown('''
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db;">
