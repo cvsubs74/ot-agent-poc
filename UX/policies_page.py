@@ -32,10 +32,6 @@ class PoliciesPage:
             "Policy Data Element Usage",
             "Policy Data Element Retention",
             "Policy Data Element Security",
-            "Roles",
-            "Role Purpose Data Usage Overrides",
-            "Role Purpose Data Retention Overrides",
-            "Role Purpose Data Security Overrides",
         ])
         
         # Policies tab
@@ -613,69 +609,9 @@ class PoliciesPage:
             else:
                 st.warning("No policy data element security rules available in the database.")
         
-        # Role Purpose Data Usage Overrides tab
-        with tabs[10]:
-            st.markdown('''
-            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-                <b>About Role Purpose Data Usage Overrides:</b><br>
-                This construct allows you to define exceptions to default data usage policies for specific external roles and purposes. Use it to grant or restrict operations (read, write, share, etc.) on data elements for a given role and purpose.
-            </div>
-            ''', unsafe_allow_html=True)
-            usage_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_usage()
-            if usage_overrides:
-                st.dataframe(pd.DataFrame(usage_overrides), use_container_width=True)
-            else:
-                st.info("No role-purpose data usage overrides defined.")
 
-        # Role Purpose Data Retention Overrides tab
-        with tabs[11]:
-            st.markdown('''
-            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-                <b>About Role Purpose Data Retention Overrides:</b><br>
-                This construct allows you to define exceptions to default data retention policies for specific external roles and purposes. Use it to set custom retention periods for data elements for a given role and purpose.
-            </div>
-            ''', unsafe_allow_html=True)
-            retention_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_retention()
-            if retention_overrides:
-                st.dataframe(pd.DataFrame(retention_overrides), use_container_width=True)
-            else:
-                st.info("No role-purpose data retention overrides defined.")
 
-        # Role Purpose Data Security Overrides tab
-        with tabs[12]:
-            st.markdown('''
-            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-                <b>About Role Purpose Data Security Overrides:</b><br>
-                This construct allows you to define exceptions to default data security policies for specific external roles and purposes. Use it to specify unique security requirements for a role and purpose.
-            </div>
-            ''', unsafe_allow_html=True)
-            security_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_security()
-            if security_overrides:
-                st.dataframe(pd.DataFrame(security_overrides), use_container_width=True)
-            else:
-                st.info("No role-purpose data security overrides defined.")
 
-        # External Roles tab
-        with tabs[9]:   
-            st.markdown('''
-            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-                <b>About External Roles:</b><br>
-                This construct provides a unified view of roles imported from external systems (such as Snowflake or Databricks). It supports access governance by enabling oversight and management of external privileges within the organization.
-            </div>
-            ''', unsafe_allow_html=True)
-            roles = self.glossary_repository.get_external_roles()
-            if roles:
-                st.table([
-                    {
-                        "Name": r[1],
-                        "Description": r[2],
-                        "Source System": r[3],
-                        "Source Role Name": r[4]
-                    }
-                    for r in roles
-                ])
-            else:
-                st.info("No external roles have been imported yet.")
 
 def create_policy():
     # Add a section for defining new policies on purposes

@@ -5,7 +5,6 @@ class ObligationRepository:
     def __init__(self, connection):
         """Initialize the ObligationRepository with a database connection."""
         self.connection = connection
-        self.setup_tables()
         
     def setup_tables(self):
         """Create all the necessary tables for obligations if they don't exist."""

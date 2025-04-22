@@ -5,10 +5,13 @@ class InventoryRepository:
     def __init__(self, connection):
         """Initialize the InventoryRepository with a database connection."""
         self.connection = connection
-        self.setup_tables()
         
     def setup_tables(self):
         """Create all the necessary tables for the inventory if they don't exist."""
+        # Skip table creation in test mode
+        if self.connection is None:
+            return
+            
         self.create_asset_table()
         self.create_policy_table()
         self.create_asset_data_element_table()

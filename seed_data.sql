@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_retention (
     policy_purpose_data_element_id INTEGER NOT NULL,
     external_role_id INTEGER NOT NULL, -- Added for role-specific override
     retention_period TEXT NOT NULL,     -- e.g., "3 years", "Indefinite", "End of Session"
-    retention_justification TEXT,
+    retention_basis TEXT,               -- e.g., "Legal requirement", "Business need", "Contractual obligation"
     UNIQUE(policy_purpose_data_element_id, external_role_id),
     FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
     FOREIGN KEY (external_role_id) REFERENCES external_roles(id)

@@ -306,7 +306,7 @@ class PolicyCompliancePage:
                     role_ret = role_retention_overrides[data_element]
                     retention_decisions["Retention Period"].append(role_ret["retention_period"] or "-")
                     retention_decisions["Retention Trigger"].append(role_ret.get("retention_trigger") or "-")
-                    retention_decisions["Retention Basis"].append(role_ret.get("retention_justification") or "-")
+                    retention_decisions["Retention Basis"].append(role_ret.get("retention_basis") or "-")
                     retention_decisions["Exceptions"].append(role_ret.get("exceptions") or "-")
                     role_override_applied = "Yes"
                 else:
