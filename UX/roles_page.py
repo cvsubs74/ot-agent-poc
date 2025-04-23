@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import random
+import time
 
 class RolesPage:
     def __init__(self, glossary_repository, regulatory_metadata_repository):
@@ -80,6 +81,8 @@ class RolesPage:
                         self.glossary_repository.add_external_role(*role)
                     
                     st.success(f"Successfully imported {len(snowflake_roles)} Snowflake roles")
+                    time.sleep(2)
+                    st.rerun()
             
             with col2:
                 # Databricks roles import
@@ -97,6 +100,8 @@ class RolesPage:
                         self.glossary_repository.add_external_role(*role)
                     
                     st.success(f"Successfully imported {len(databricks_roles)} Databricks roles")
+                    time.sleep(2)
+                    st.rerun()
             
             # Display existing roles
             st.markdown("<h5>External Roles</h5>", unsafe_allow_html=True)
