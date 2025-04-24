@@ -620,7 +620,13 @@ class RolesPage:
                 button_text = "Create Role Policy Overrides" if not is_all_roles else "Create Policy Overrides is disabled for 'All' selection"
                 button_disabled = is_all_roles  # Disable the button if "All" is selected
                 
-
+                # Ensure the policy override tables exist with the correct structure
+                try:
+                    # Create the security policy overrides table
+                    self.regulatory_metadata_repository.create_policy_override_role_purpose_data_security_table()
+                    print("DEBUG - Security policy overrides table created or verified")
+                except Exception as e:
+                    print(f"ERROR creating security policy overrides table: {e}")
                 
                 if st.button(button_text, key="create_overrides", disabled=button_disabled):
                     if len(role_data["ID"]) > 0 and selected_purpose and not is_all_roles:
@@ -659,9 +665,14 @@ class RolesPage:
                                                 st.session_state.edited_policies['usage'][policy_key]['ppde_id'] = ppde_id
                                                 
                                                 # Create the override with edited values
-                                                self.regulatory_metadata_repository.add_policy_override_role_purpose_data_usage(
-                                                    ppde_id, selected_role_id, operation, allowed, restrictions
-                                                )
+                                                try:
+                                                    self.regulatory_metadata_repository.add_policy_override_role_purpose_data_usage(
+                                                        ppde_id, selected_role_id, operation, allowed, restrictions
+                                                    )
+                                                    # Explicitly commit after each override
+                                                    self.regulatory_metadata_repository.connection.commit()
+                                                except Exception as e:
+                                                    print(f"Error creating usage policy override: {e}")
                                             else:
                                                 # If no edited values, use defaults
                                                 allowed = True if operation == "read" else False
@@ -680,9 +691,14 @@ class RolesPage:
                                                         break
                                                 
                                                 # Create the override with default values
-                                                self.regulatory_metadata_repository.add_policy_override_role_purpose_data_usage(
-                                                    ppde_id, selected_role_id, operation, allowed, restrictions
-                                                )
+                                                try:
+                                                    self.regulatory_metadata_repository.add_policy_override_role_purpose_data_usage(
+                                                        ppde_id, selected_role_id, operation, allowed, restrictions
+                                                    )
+                                                    # Explicitly commit after each override
+                                                    self.regulatory_metadata_repository.connection.commit()
+                                                except Exception as e:
+                                                    print(f"Error creating default usage policy override: {e}")
                                     
                                     # Create retention override using edited values
                                     if policy["policy_type"] == "Retention":
@@ -700,9 +716,14 @@ class RolesPage:
                                             st.session_state.edited_policies['retention'][policy_key]['ppde_id'] = ppde_id
                                             
                                             # Create the override with edited values
-                                            self.regulatory_metadata_repository.add_policy_override_role_purpose_data_retention(
-                                                ppde_id, selected_role_id, retention_period, retention_basis
-                                            )
+                                            try:
+                                                self.regulatory_metadata_repository.add_policy_override_role_purpose_data_retention(
+                                                    ppde_id, selected_role_id, retention_period, retention_basis
+                                                )
+                                                # Explicitly commit after each override
+                                                self.regulatory_metadata_repository.connection.commit()
+                                            except Exception as e:
+                                                print(f"Error creating retention policy override: {e}")
                                         else:
                                             # If no edited values, use defaults
                                             retention_period = f"{random.randint(30, 90)} days"
@@ -724,9 +745,14 @@ class RolesPage:
                                                     retention_basis = ret_policy["retention_basis"]
                                             
                                             # Create the override with default values
-                                            self.regulatory_metadata_repository.add_policy_override_role_purpose_data_retention(
-                                                ppde_id, selected_role_id, retention_period, retention_basis
-                                            )
+                                            try:
+                                                self.regulatory_metadata_repository.add_policy_override_role_purpose_data_retention(
+                                                    ppde_id, selected_role_id, retention_period, retention_basis
+                                                )
+                                                # Explicitly commit after each override
+                                                self.regulatory_metadata_repository.connection.commit()
+                                            except Exception as e:
+                                                print(f"Error creating default retention policy override: {e}")
                                     
                                     # Create security override using edited values
                                     if policy["policy_type"] == "Security":
@@ -746,9 +772,28 @@ class RolesPage:
                                             masking_required = edited_policy['masking_required']
                                             
                                             # Create the override with the edited settings
-                                            self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
-                                                ppde_id, selected_role_id, encryption_required, masking_required
-                                            )
+                                            try:
+                                                # Debug output
+                                                print(f"DEBUG - Creating security override with: ppde_id={ppde_id}, role_id={selected_role_id}, encryption={encryption_required}, masking={masking_required}")
+                                                
+                                                # Check if values are valid
+                                                if ppde_id is None or selected_role_id is None:
+                                                    print(f"ERROR - Invalid values for security override: ppde_id={ppde_id}, role_id={selected_role_id}")
+                                                else:
+                                                    # Convert boolean values if needed
+                                                    encryption_required = bool(encryption_required)
+                                                    masking_required = bool(masking_required)
+                                                    
+                                                    self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
+                                                        ppde_id, selected_role_id, encryption_required, masking_required
+                                                    )
+                                                    # Explicitly commit after each override
+                                                    self.regulatory_metadata_repository.connection.commit()
+                                                    print(f"DEBUG - Successfully committed security override to database")
+                                            except Exception as e:
+                                                print(f"Error creating security policy override: {e}")
+                                                import traceback
+                                                traceback.print_exc()
                                         else:
                                             # If no edited values, use default encryption and masking settings
                                             encryption_required = True
@@ -767,11 +812,52 @@ class RolesPage:
                                                     break
                                             
                                             # Create the override with default values
-                                            self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
-                                                ppde_id, selected_role_id, encryption_required, masking_required
-                                            )
+                                            try:
+                                                # Debug output
+                                                print(f"DEBUG - Creating default security override with: ppde_id={ppde_id}, role_id={selected_role_id}, encryption={encryption_required}, masking={masking_required}")
+                                                
+                                                # Check if values are valid
+                                                if ppde_id is None or selected_role_id is None:
+                                                    print(f"ERROR - Invalid values for default security override: ppde_id={ppde_id}, role_id={selected_role_id}")
+                                                else:
+                                                    # Convert boolean values if needed
+                                                    encryption_required = bool(encryption_required)
+                                                    masking_required = bool(masking_required)
+                                                    
+                                                    self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
+                                                        ppde_id, selected_role_id, encryption_required, masking_required
+                                                    )
+                                                    # Explicitly commit after each override
+                                                    self.regulatory_metadata_repository.connection.commit()
+                                                    print(f"DEBUG - Successfully committed default security override to database")
+                                            except Exception as e:
+                                                print(f"Error creating default security policy override: {e}")
+                                                import traceback
+                                                traceback.print_exc()
                         
-                        st.success(f"Successfully created policy overrides for {selected_role_name}")
+                        # Ensure all changes are committed to the database
+                        try:
+                            # Explicitly commit any pending transactions
+                            self.regulatory_metadata_repository.connection.commit()
+                            
+                            # Clear the edited policies from session state to ensure fresh data on reload
+                            if 'edited_policies' in st.session_state:
+                                st.session_state.edited_policies = {
+                                    'usage': {},
+                                    'retention': {},
+                                    'security': {}
+                                }
+                            
+                            # Add a flag to indicate that overrides were just created
+                            st.session_state.overrides_created = True
+                            st.session_state.selected_role_id = selected_role_id
+                            st.session_state.selected_purpose_id = selected_purpose
+                            
+                            st.success(f"Successfully created policy overrides for {selected_role_name}")
+                            time.sleep(1)  # Shorter delay for better UX
+                            st.rerun()  # Rerun the app to refresh all data
+                        except Exception as e:
+                            st.error(f"Error committing changes to database: {e}")
                     else:
                         st.warning("No roles available to create overrides for")
             else:
@@ -779,6 +865,11 @@ class RolesPage:
         
         # Usage Policy Overrides tab
         with tabs[2]:
+            # Check if we just created overrides and should show a notification
+            if 'overrides_created' in st.session_state and st.session_state.overrides_created:
+                st.success("Policy overrides have been created successfully. They are now visible in this tab.")
+                # We don't reset the flag here as it will be shown in all tabs
+                
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Usage Policy Overrides:</b><br>
@@ -868,6 +959,11 @@ class RolesPage:
         
         # Retention Policy Overrides tab
         with tabs[3]:
+            # Check if we just created overrides and should show a notification
+            if 'overrides_created' in st.session_state and st.session_state.overrides_created:
+                st.success("Policy overrides have been created successfully. They are now visible in this tab.")
+                # We don't reset the flag here as it will be shown in all tabs
+                
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Retention Policy Overrides:</b><br>
@@ -957,6 +1053,12 @@ class RolesPage:
         
         # Security Policy Overrides tab
         with tabs[4]:
+            # Check if we just created overrides and should show a notification
+            if 'overrides_created' in st.session_state and st.session_state.overrides_created:
+                st.success("Policy overrides have been created successfully. They are now visible in this tab.")
+                # Reset the flag after showing the notification
+                st.session_state.overrides_created = False
+                
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Security Policy Overrides:</b><br>
@@ -998,13 +1100,31 @@ class RolesPage:
                 )
                 
             # Get and display filtered security policy overrides
+            # Force refresh of data from database
             security_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_security()
+            
+            # If we have selected role and purpose from the session state (after creating overrides),
+            # use those values for the filters
+            if 'selected_role_id' in st.session_state and 'selected_purpose_id' in st.session_state:
+                if st.session_state.selected_role_id is not None and st.session_state.selected_purpose_id is not None:
+                    selected_role = st.session_state.selected_role_id
+                    selected_purpose = st.session_state.selected_purpose_id
+                    # Clear these values after using them
+                    st.session_state.selected_role_id = None
+                    st.session_state.selected_purpose_id = None
+            
             if security_overrides:
                 # Filter the overrides based on selected purpose and role
                 filtered_overrides = []
                 for override in security_overrides:
-                    purpose_match = selected_purpose == "All" or override.get("purpose_id") == selected_purpose
-                    role_match = selected_role == "All" or override.get("role_id") == selected_role
+                    # Check if the required keys exist
+                    purpose_id = override.get("purpose_id")
+                    external_role_id = override.get("external_role_id")
+                    
+                    # More flexible matching
+                    purpose_match = selected_purpose == "All" or str(purpose_id) == str(selected_purpose)
+                    role_match = selected_role == "All" or str(external_role_id) == str(selected_role)
+                    
                     if purpose_match and role_match:
                         filtered_overrides.append(override)
                 
@@ -1019,7 +1139,10 @@ class RolesPage:
                         "data_element_name": "Data Element",
                         "encryption_required": "Encryption Required",
                         "masking_required": "Masking Required",
-                        "purpose_name": "Purpose"
+                        "purpose_name": "Purpose",
+                        "policy_name": "Policy",
+                        "external_role_id": "Role ID",
+                        "purpose_id": "Purpose ID"
                     }
                     
                     for col in column_mapping.keys():

@@ -340,6 +340,7 @@ class RegulatoryMetadataRepository:
                 masking_required=VALUES(masking_required)
             ''', (policy_purpose_data_element_id, external_role_id, encryption_required, masking_required))
             self.connection.commit()
+            print(f"Successfully added security policy override for ppde_id={policy_purpose_data_element_id}, role_id={external_role_id}")
         except Exception as e:
             print(f"Error adding policy override role purpose data security: {e}")
             self.connection.rollback()
