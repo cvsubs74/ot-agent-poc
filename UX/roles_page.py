@@ -11,7 +11,7 @@ class RolesPage:
 
     def render(self):
         """Display the External Roles page with information about imported roles."""
-        # Add CSS for green expanders - targeting only the expander elements
+        # Add CSS for green expanders and blue form buttons
         st.markdown("""
         <style>
         /* Target only the expander components */
@@ -32,6 +32,23 @@ class RolesPage:
         div[data-testid="stExpander"] > div:nth-child(2) {
             border-left: 5px solid #27ae60 !important;
             background-color: #eaf7ea !important;
+        }
+        
+        /* Style for form submit buttons only */
+        div[data-testid="stForm"] button[type="submit"] {
+            background-color: #3498db !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        /* Hover effect for form submit buttons */
+        div[data-testid="stForm"] button[type="submit"]:hover {
+            background-color: #2980b9 !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -115,27 +132,29 @@ class RolesPage:
                 else:
                     st.info("No external roles found in the system.")
         
-        # Purpose-Role Mappings tab
+        # Purpose Role tab
         with tabs[1]:
-            st.markdown("<h5>Purpose-Role Mappings</h5>", unsafe_allow_html=True)
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-                <b>About Purpose-Role Mappings:</b><br>
-                This construct allows you to associate purposes with external roles. This helps in determining which roles are allowed to perform specific purposes.
+                <b>About Purpose-Role:</b><br>
+                Purpose-Role mappings define which external roles are authorized to use data for specific purposes. This tab allows you to create mappings and define policy overrides for specific role-purpose combinations.
             </div>
             ''', unsafe_allow_html=True)
             
-            # Create two columns for the form and the existing mappings
-            col1, col2 = st.columns([1, 2])
+            col1, col2 = st.columns(2)
             
             with col1:
                 st.markdown("<h6>Add Purpose-Role Mapping</h6>", unsafe_allow_html=True)
                 
-                # Get all purposes for the dropdown
+                # Get purposes for dropdown
                 purposes = self.glossary_repository.get_purposes()
+                
+                # Create a dictionary mapping purpose names to IDs for the selectbox
                 purpose_options = {}
                 for purpose in purposes:
-                    purpose_options[purpose["name"]] = purpose["id"]
+                    purpose_id = purpose["id"]
+                    purpose_name = purpose["name"]
+                    purpose_options[purpose_name] = purpose_id
                 
                 # Get all assets for the dropdown
                 assets = self.glossary_repository.get_assets()
@@ -189,6 +208,8 @@ class RolesPage:
                         key="roles_multiselect"
                     )
                     
+
+                    
                     submit_button = st.form_submit_button(label="Add Mapping")
                     
                     if submit_button and selected_purpose and selected_roles:
@@ -241,6 +262,8 @@ class RolesPage:
                             key="mapping_select"
                         )
                         
+
+                        
                         delete_button = st.form_submit_button(label="Delete Mapping")
                         
                         if delete_button and selected_mapping:
@@ -253,11 +276,15 @@ class RolesPage:
                             st.rerun()
                 else:
                     st.info("No purpose-role mappings defined yet.")
-        
-        # Usage Policy Overrides tab
-        with tabs[2]:
-            st.markdown("<h5>Usage Policy Overrides</h5>", unsafe_allow_html=True)
-            st.markdown('''Usage policy overrides define how data can be used for specific purposes.''')
+                    
+            # Policy Override functionality
+            st.markdown("<h5>Policy Overrides</h5>", unsafe_allow_html=True)
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Policy Overrides:</b><br>
+                This section allows you to define exceptions to default policies for specific external roles and purposes. Select a policy and a role to override values.
+            </div>
+            ''', unsafe_allow_html=True)
             
             # Get purposes for dropdown
             purposes = self.glossary_repository.get_purposes()
@@ -283,10 +310,6 @@ class RolesPage:
                     role_data["Source System"].append(role[3] if role[3] else "")
                     role_data["Source Role Name"].append(role[4] if role[4] else "")
                     
-                # Display the roles in a dataframe
-                role_df = pd.DataFrame(role_data)
-                st.dataframe(role_df, use_container_width=True)
-                
                 # Select role and purpose
                 col1, col2 = st.columns(2)
                 with col1:
@@ -325,12 +348,6 @@ class RolesPage:
                     
                     # Get policies
                     policies = self.glossary_repository.get_policies()
-                    
-                    # Display a message indicating what we're showing
-                    if is_all_roles:
-                        st.info(f"Showing purpose-level policies for {purpose_options.get(selected_purpose, '')}")
-                    else:
-                        st.info(f"Showing role-specific policies for {selected_role_name} with purpose {purpose_options.get(selected_purpose, '')}")
                     
                     # Get and display existing usage policies with edit options
                     access_policies = [p for p in policies if p["policy_type"] == "Access Control"]
@@ -603,6 +620,8 @@ class RolesPage:
                 button_text = "Create Role Policy Overrides" if not is_all_roles else "Create Policy Overrides is disabled for 'All' selection"
                 button_disabled = is_all_roles  # Disable the button if "All" is selected
                 
+
+                
                 if st.button(button_text, key="create_overrides", disabled=button_disabled):
                     if len(role_data["ID"]) > 0 and selected_purpose and not is_all_roles:
                         selected_role_id = role_data["ID"][selected_role_idx]
@@ -759,134 +778,267 @@ class RolesPage:
                 st.info("No external roles have been imported yet. Import roles first to create overrides.")
         
         # Usage Policy Overrides tab
-        with tabs[1]:
-            st.markdown("<h5>Usage Policy Overrides</h5>", unsafe_allow_html=True)
+        with tabs[2]:
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Usage Policy Overrides:</b><br>
-                This construct allows you to define exceptions to default data usage policies for specific external roles and purposes. Use it to grant or restrict operations (read, write, share, etc.) on data elements for a given role and purpose.
+                This tab displays existing usage policy overrides. To create or modify policy overrides, please use the Policy Overrides section in the Purpose Role tab.
             </div>
             ''', unsafe_allow_html=True)
             
+            # Get purposes for dropdown
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = {"All": "All"}
+            for purpose in purposes:
+                purpose_id = purpose["id"]
+                purpose_name = purpose["name"]
+                purpose_options[purpose_id] = purpose_name
+            
+            # Get roles for dropdown
+            roles = self.glossary_repository.get_external_roles()
+            role_options = {"All": "All"}
+            for role in roles:
+                role_id, role_name = role[0], role[1]
+                role_options[role_id] = role_name
+            
+            # Create filters
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_purpose = st.selectbox(
+                    "Filter by Purpose:",
+                    options=list(purpose_options.keys()),
+                    format_func=lambda x: purpose_options.get(x, ""),
+                    key="usage_purpose_filter"
+                )
+            
+            with col2:
+                selected_role = st.selectbox(
+                    "Filter by Role:",
+                    options=list(role_options.keys()),
+                    format_func=lambda x: role_options.get(x, ""),
+                    key="usage_role_filter"
+                )
+                
+            # Get and display filtered usage policy overrides
             usage_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_usage()
             if usage_overrides:
-                # Create a DataFrame from the data
-                df = pd.DataFrame(usage_overrides)
+                # Filter the overrides based on selected purpose and role
+                filtered_overrides = []
+                for override in usage_overrides:
+                    purpose_match = selected_purpose == "All" or override.get("purpose_id") == selected_purpose
+                    role_match = selected_role == "All" or override.get("role_id") == selected_role
+                    if purpose_match and role_match:
+                        filtered_overrides.append(override)
                 
-                # Check which columns exist in the dataframe
-                columns_to_display = []
-                column_mapping = {
-                    "role_name": "Role",
-                    "data_element_name": "Data Element",
-                    "operation": "Operation",
-                    "allowed": "Allowed",
-                    "restrictions": "Restrictions",
-                    "purpose_name": "Purpose"
-                }
-                
-                for col in column_mapping.keys():
-                    if col in df.columns:
-                        columns_to_display.append(col)
-                
-                if columns_to_display:
-                    # Create a DataFrame with only the columns that exist
-                    display_df = df[columns_to_display]
+                if filtered_overrides:
+                    # Create a DataFrame from the filtered data
+                    df = pd.DataFrame(filtered_overrides)
                     
-                    # Rename columns for better display
-                    display_df.columns = [column_mapping[col] for col in columns_to_display]
+                    # Check which columns exist in the dataframe
+                    columns_to_display = []
+                    column_mapping = {
+                        "role_name": "Role",
+                        "data_element_name": "Data Element",
+                        "operation": "Operation",
+                        "allowed": "Allowed",
+                        "restrictions": "Restrictions",
+                        "purpose_name": "Purpose"
+                    }
                     
-                    # Set the table style to left-align all columns
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    for col in column_mapping.keys():
+                        if col in df.columns:
+                            columns_to_display.append(col)
+                    
+                    if columns_to_display:
+                        # Create a DataFrame with only the columns that exist
+                        display_df = df[columns_to_display]
+                        
+                        # Rename columns for better display
+                        display_df.columns = [column_mapping[col] for col in columns_to_display]
+                        
+                        # Set the table style to left-align all columns
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    else:
+                        # If none of the expected columns exist, just display the raw data
+                        st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
-                    # If none of the expected columns exist, just display the raw data
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.info("No usage policy overrides match the selected filters.")
             else:
                 st.info("No role-purpose data usage overrides defined yet.")
         
         # Retention Policy Overrides tab
         with tabs[3]:
-            st.markdown("<h5>Retention Policy Overrides</h5>", unsafe_allow_html=True)
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Retention Policy Overrides:</b><br>
-                This construct allows you to define exceptions to default data retention policies for specific external roles and purposes. Use it to set custom retention periods for data elements for a given role and purpose.
+                This tab displays existing retention policy overrides. To create or modify policy overrides, please use the Policy Overrides section in the Purpose Role tab.
             </div>
             ''', unsafe_allow_html=True)
             
+            # Get purposes for dropdown
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = {"All": "All"}
+            for purpose in purposes:
+                purpose_id = purpose["id"]
+                purpose_name = purpose["name"]
+                purpose_options[purpose_id] = purpose_name
+            
+            # Get roles for dropdown
+            roles = self.glossary_repository.get_external_roles()
+            role_options = {"All": "All"}
+            for role in roles:
+                role_id, role_name = role[0], role[1]
+                role_options[role_id] = role_name
+            
+            # Create filters
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_purpose = st.selectbox(
+                    "Filter by Purpose:",
+                    options=list(purpose_options.keys()),
+                    format_func=lambda x: purpose_options.get(x, ""),
+                    key="retention_purpose_filter"
+                )
+            
+            with col2:
+                selected_role = st.selectbox(
+                    "Filter by Role:",
+                    options=list(role_options.keys()),
+                    format_func=lambda x: role_options.get(x, ""),
+                    key="retention_role_filter"
+                )
+                
+            # Get and display filtered retention policy overrides
             retention_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_retention()
             if retention_overrides:
-                # Create a DataFrame from the data
-                df = pd.DataFrame(retention_overrides)
+                # Filter the overrides based on selected purpose and role
+                filtered_overrides = []
+                for override in retention_overrides:
+                    purpose_match = selected_purpose == "All" or override.get("purpose_id") == selected_purpose
+                    role_match = selected_role == "All" or override.get("role_id") == selected_role
+                    if purpose_match and role_match:
+                        filtered_overrides.append(override)
                 
-                # Check which columns exist in the dataframe
-                columns_to_display = []
-                column_mapping = {
-                    "role_name": "Role",
-                    "data_element_name": "Data Element",
-                    "retention_period": "Retention Period",
-                    "retention_basis": "Retention Basis",
-                    "purpose_name": "Purpose"
-                }
-                
-                for col in column_mapping.keys():
-                    if col in df.columns:
-                        columns_to_display.append(col)
-                
-                if columns_to_display:
-                    # Create a DataFrame with only the columns that exist
-                    display_df = df[columns_to_display]
+                if filtered_overrides:
+                    # Create a DataFrame from the filtered data
+                    df = pd.DataFrame(filtered_overrides)
                     
-                    # Rename columns for better display
-                    display_df.columns = [column_mapping[col] for col in columns_to_display]
+                    # Check which columns exist in the dataframe
+                    columns_to_display = []
+                    column_mapping = {
+                        "role_name": "Role",
+                        "data_element_name": "Data Element",
+                        "retention_period": "Retention Period",
+                        "retention_basis": "Retention Basis",
+                        "purpose_name": "Purpose"
+                    }
                     
-                    # Set the table style to left-align all columns
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    for col in column_mapping.keys():
+                        if col in df.columns:
+                            columns_to_display.append(col)
+                    
+                    if columns_to_display:
+                        # Create a DataFrame with only the columns that exist
+                        display_df = df[columns_to_display]
+                        
+                        # Rename columns for better display
+                        display_df.columns = [column_mapping[col] for col in columns_to_display]
+                        
+                        # Set the table style to left-align all columns
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    else:
+                        # If none of the expected columns exist, just display the raw data
+                        st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
-                    # If none of the expected columns exist, just display the raw data
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.info("No retention policy overrides match the selected filters.")
             else:
                 st.info("No role-purpose data retention overrides defined yet.")
         
+        
         # Security Policy Overrides tab
         with tabs[4]:
-            st.markdown("<h5>Security Policy Overrides</h5>", unsafe_allow_html=True)
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
                 <b>About Security Policy Overrides:</b><br>
-                This construct allows you to define exceptions to default data security policies for specific external roles and purposes. Use it to specify unique security requirements for a role and purpose.
+                This tab displays existing security policy overrides. To create or modify policy overrides, please use the Policy Overrides section in the Purpose Role tab.
             </div>
             ''', unsafe_allow_html=True)
             
+            # Get purposes for dropdown
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = {"All": "All"}
+            for purpose in purposes:
+                purpose_id = purpose["id"]
+                purpose_name = purpose["name"]
+                purpose_options[purpose_id] = purpose_name
+            
+            # Get roles for dropdown
+            roles = self.glossary_repository.get_external_roles()
+            role_options = {"All": "All"}
+            for role in roles:
+                role_id, role_name = role[0], role[1]
+                role_options[role_id] = role_name
+            
+            # Create filters
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_purpose = st.selectbox(
+                    "Filter by Purpose:",
+                    options=list(purpose_options.keys()),
+                    format_func=lambda x: purpose_options.get(x, ""),
+                    key="security_purpose_filter"
+                )
+            
+            with col2:
+                selected_role = st.selectbox(
+                    "Filter by Role:",
+                    options=list(role_options.keys()),
+                    format_func=lambda x: role_options.get(x, ""),
+                    key="security_role_filter"
+                )
+                
+            # Get and display filtered security policy overrides
             security_overrides = self.regulatory_metadata_repository.get_all_policy_override_role_purpose_data_security()
             if security_overrides:
-                # Create a DataFrame from the data
-                df = pd.DataFrame(security_overrides)
+                # Filter the overrides based on selected purpose and role
+                filtered_overrides = []
+                for override in security_overrides:
+                    purpose_match = selected_purpose == "All" or override.get("purpose_id") == selected_purpose
+                    role_match = selected_role == "All" or override.get("role_id") == selected_role
+                    if purpose_match and role_match:
+                        filtered_overrides.append(override)
                 
-                # Check which columns exist in the dataframe
-                columns_to_display = []
-                column_mapping = {
-                    "role_name": "Role",
-                    "data_element_name": "Data Element",
-                    "encryption_required": "Encryption Required",
-                    "masking_required": "Masking Required",
-                    "purpose_name": "Purpose"
-                }
-                
-                for col in column_mapping.keys():
-                    if col in df.columns:
-                        columns_to_display.append(col)
-                
-                if columns_to_display:
-                    # Create a DataFrame with only the columns that exist
-                    display_df = df[columns_to_display]
+                if filtered_overrides:
+                    # Create a DataFrame from the filtered data
+                    df = pd.DataFrame(filtered_overrides)
                     
-                    # Rename columns for better display
-                    display_df.columns = [column_mapping[col] for col in columns_to_display]
+                    # Check which columns exist in the dataframe
+                    columns_to_display = []
+                    column_mapping = {
+                        "role_name": "Role",
+                        "data_element_name": "Data Element",
+                        "encryption_required": "Encryption Required",
+                        "masking_required": "Masking Required",
+                        "purpose_name": "Purpose"
+                    }
                     
-                    # Set the table style to left-align all columns
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    for col in column_mapping.keys():
+                        if col in df.columns:
+                            columns_to_display.append(col)
+                    
+                    if columns_to_display:
+                        # Create a DataFrame with only the columns that exist
+                        display_df = df[columns_to_display]
+                        
+                        # Rename columns for better display
+                        display_df.columns = [column_mapping[col] for col in columns_to_display]
+                        
+                        # Set the table style to left-align all columns
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    else:
+                        # If none of the expected columns exist, just display the raw data
+                        st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
-                    # If none of the expected columns exist, just display the raw data
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.info("No security policy overrides match the selected filters.")
             else:
                 st.info("No role-purpose data security overrides defined yet.")
