@@ -200,7 +200,7 @@ class RolesPage:
                                 st.success(f"Added mapping between {selected_purpose} and {role_name}")
                             else:
                                 st.warning(f"Mapping between {selected_purpose} and {role_name} already exists or could not be added")
-                        st.experimental_rerun()
+                        st.rerun()
             
             with col2:
                 st.markdown("<h6>Existing Purpose-Role Mappings</h6>", unsafe_allow_html=True)
@@ -250,7 +250,7 @@ class RolesPage:
                                 st.success(f"Deleted mapping: {selected_mapping}")
                             else:
                                 st.error(f"Failed to delete mapping: {selected_mapping}")
-                            st.experimental_rerun()
+                            st.rerun()
                 else:
                     st.info("No purpose-role mappings defined yet.")
         
