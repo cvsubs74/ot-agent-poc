@@ -1285,7 +1285,8 @@ INSERT INTO purpose (name, description, purpose_category_id, risk_level) VALUES
 ('Payment Processing', 'Processing financial transactions', (SELECT id FROM purpose_category WHERE name = 'Financial'), 'High'),
 ('Service Delivery', 'Providing core services to users', (SELECT id FROM purpose_category WHERE name = 'Operations'), 'Medium'),
 ('Research and Development', 'Developing new products and features', (SELECT id FROM purpose_category WHERE name = 'Product Development'), 'Medium'),
-('Employee Management', 'Managing employee data and performance', (SELECT id FROM purpose_category WHERE name = 'HR'), 'Medium');
+('Employee Management', 'Managing employee data and performance', (SELECT id FROM purpose_category WHERE name = 'HR'), 'Medium'),
+('Default Role Assignment', 'Default purpose for newly created roles with baseline policies', (SELECT id FROM purpose_category WHERE name = 'Operations'), 'Medium');
 
 -- Insert policy-purpose relationships
 INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
@@ -1298,10 +1299,187 @@ INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Payment Processing')),
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Service Delivery')),
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Research and Development')),
-((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management'));
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Employee Management')),
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), (SELECT id FROM purpose WHERE name = 'Default Role Assignment')),
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), (SELECT id FROM purpose WHERE name = 'Default Role Assignment')),
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Default Role Assignment'));
 
 -- Insert policy-purpose-data element relationships for all purposes
 INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id, access_allowed) VALUES
+
+-- Default Role Assignment purpose with all data elements for Data Access Control Policy
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Biometric Data'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE),
+
+-- Default Role Assignment purpose with all data elements for Data Retention Policy
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Biometric Data'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Retention Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE),
+
+-- Default Role Assignment purpose with all data elements for Data Security Policy
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Full Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Name'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Email Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Phone Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'IP Address'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Social Security Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Credit Card Number'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Date of Birth'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Biometric Data'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Customer ID'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Purchase History'), TRUE),
+
+((SELECT id FROM policy WHERE name = 'Data Security Policy'), 
+ (SELECT id FROM purpose WHERE name = 'Default Role Assignment'),
+ (SELECT id FROM data_element WHERE name = 'Bank Account Number'), TRUE),
+
+-- Original policy-purpose-data element relationships
+
 -- Customer Support purpose
 ((SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 
  (SELECT id FROM purpose WHERE name = 'Customer Support'),
@@ -1570,6 +1748,50 @@ INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id,
 
 -- Insert policy-purpose-data usage rules for all purposes
 INSERT INTO policy_purpose_data_usage (policy_purpose_data_element_id, operation, allowed, restrictions) VALUES
+
+-- Default Role Assignment purpose
+-- Full Name
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'write', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'share', TRUE, 'Only with authorized parties'),
+
+-- Name
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Name')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Name')), 'write', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Name')), 'share', TRUE, 'Only with authorized parties'),
+
+-- Email Address
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'write', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'share', TRUE, 'Only with authorized parties'),
+
+-- Phone Number
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'write', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), 'share', TRUE, 'Only with authorized parties'),
+
+-- Address
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'read', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'write', TRUE, NULL),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), 'share', TRUE, 'Only with authorized parties'),
+
+-- Sensitive data elements with more restrictive defaults
+-- Social Security Number
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'read', TRUE, 'Only for identity verification'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'write', TRUE, 'Only for initial collection'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'share', FALSE, NULL),
+
+-- Credit Card Number
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'read', TRUE, 'Only for payment processing'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'write', TRUE, 'Only for initial collection'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), 'share', FALSE, NULL),
+
+-- Bank Account Number
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), 'read', TRUE, 'Only for payment processing'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), 'write', TRUE, 'Only for initial collection'),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), 'share', FALSE, NULL),
+
+-- Customer Support purpose
 -- Customer Support purpose
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), 'read', TRUE, NULL),
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Access Control Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), 'read', TRUE, NULL),
@@ -2179,6 +2401,26 @@ DELETE FROM policy_purpose_data_security;
 INSERT INTO policy_purpose_data_security
     (`policy_purpose_data_element_id`, `encryption_required`, `encryption_algorithm`, `masking_required`, `masking_format`, `access_logging`) 
 VALUES
+-- Default Role Assignment
+-- Standard data elements with basic security
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Phone Number')), TRUE, 'AES-256', TRUE, '###-###-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Address')), TRUE, 'AES-256', TRUE, '#### ***** St, City, ST #####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), TRUE, 'AES-256', TRUE, '######', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Date of Birth')), TRUE, 'AES-256', TRUE, '##/##/####', TRUE),
+
+-- Highly sensitive data elements with stronger security
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), TRUE, 'AES-256', TRUE, '###-##-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), TRUE, 'AES-256', TRUE, '####-####-####-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Bank Account Number')), TRUE, 'AES-256', TRUE, '########', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Default Role Assignment') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Biometric Data')), TRUE, 'AES-256', TRUE, NULL, TRUE),
+
+-- Customer Support
 -- Customer Support
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
