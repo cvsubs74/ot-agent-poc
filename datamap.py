@@ -68,6 +68,7 @@ from repositories.GlossaryRepository import GlossaryRepository
 from repositories.RegulatoryMetadataRepository import RegulatoryMetadataRepository
 from repositories.InventoryRepository import InventoryRepository
 from repositories.DatabaseManager import DatabaseManager
+from repositories.PolicyRepository import PolicyRepository
 from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
 
@@ -80,6 +81,7 @@ class DataMap:
         self.inventory_repository = InventoryRepository(self.database_manager.connection)
         self.obligation_repository = ObligationRepository(self.database_manager.connection)
         self.catalog_repository = CatalogRepository(self.database_manager.connection)
+        self.policy_repository = PolicyRepository(self.database_manager.connection)
         
         # Initialize inference classes
         self.sensitivity_inference = SensitivityInference(  
@@ -397,7 +399,7 @@ class DataMap:
     def roles_page(self):
         """Display the External Roles page with information about imported roles."""
         from UX.roles_page import RolesPage
-        RolesPage(self.glossary_repository, self.regulatory_metadata_repository).render()
+        RolesPage(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
 
     def run(self):
         """Main function to run the Streamlit app."""

@@ -2,58 +2,49 @@
 -- This script creates and populates all tables for the GlossaryRepository and RegulatoryMetadataRepository
 
 -- Drop existing tables if they exist (in reverse order of creation to handle foreign key constraints)
-DROP TABLE IF EXISTS default_security_settings;
-DROP TABLE IF EXISTS risk_control;
-DROP TABLE IF EXISTS policy_control;
 DROP TABLE IF EXISTS framework_control;
+DROP TABLE IF EXISTS policy_control;
+DROP TABLE IF EXISTS risk_control;
 DROP TABLE IF EXISTS obligation_risk;
 DROP TABLE IF EXISTS obligation_policy;
+DROP TABLE IF EXISTS risk;
 DROP TABLE IF EXISTS sensitivity_obligation;
 DROP TABLE IF EXISTS obligation;
-DROP TABLE IF EXISTS policy_purpose_data_security;
+DROP TABLE IF EXISTS purpose_role;
 DROP TABLE IF EXISTS policy_purpose_data_retention;
-DROP TABLE IF EXISTS policy_override_role_purpose_data_security;
-DROP TABLE IF EXISTS policy_override_role_purpose_data_retention;
-DROP TABLE IF EXISTS policy_override_role_purpose_data_usage;
 DROP TABLE IF EXISTS policy_purpose_data_usage;
-DROP TABLE IF EXISTS policy_data_element_security;
-DROP TABLE IF EXISTS policy_data_element_retention;
-DROP TABLE IF EXISTS policy_data_element_usage;
 DROP TABLE IF EXISTS policy_purpose_data_element;
 DROP TABLE IF EXISTS policy_purpose;
-DROP TABLE IF EXISTS control;
-DROP TABLE IF EXISTS framework;
-DROP TABLE IF EXISTS purpose;
-DROP TABLE IF EXISTS policy;
-DROP TABLE IF EXISTS policy_implementation;
-DROP TABLE IF EXISTS catalog;
-DROP TABLE IF EXISTS asset_data_element;
-DROP TABLE IF EXISTS processing_activity_asset_data_element;
-DROP TABLE IF EXISTS processing_activity_purpose;
-DROP TABLE IF EXISTS processing_activity;
-DROP TABLE IF EXISTS asset;
-DROP TABLE IF EXISTS law_transfer;
-DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
-DROP TABLE IF EXISTS law_purpose_category_legal_basis;
 DROP TABLE IF EXISTS data_subject_right_exemptions;
 DROP TABLE IF EXISTS data_subject_right_implementation_steps;
 DROP TABLE IF EXISTS legal_basis_requirements;
+DROP TABLE IF EXISTS law_purpose_category_legal_basis;
+DROP TABLE IF EXISTS law_data_subject_access_request_notification_requirements;
+DROP TABLE IF EXISTS law_transfer;
+
+DROP TABLE IF EXISTS data_subject_type_data_element_sensitivity;
+DROP TABLE IF EXISTS data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS law_data_subject_type_data_category_sensitivity;
+DROP TABLE IF EXISTS law_data_subject_type_data_element_sensitivity;
+DROP TABLE IF EXISTS data_category_data_element;
 DROP TABLE IF EXISTS law_incident_breach_guidance;
 DROP TABLE IF EXISTS law_legal_basis;
 DROP TABLE IF EXISTS law_jurisdiction;
-DROP TABLE IF EXISTS law_data_subject_type_data_element_sensitivity;
-DROP TABLE IF EXISTS law_data_subject_type_data_category_sensitivity;
-DROP TABLE IF EXISTS data_subject_type_data_element_sensitivity;
-DROP TABLE IF EXISTS data_subject_type_data_category_sensitivity;
-DROP TABLE IF EXISTS data_category_data_element;
-DROP TABLE IF EXISTS data_category;
+DROP TABLE IF EXISTS obligation;
+DROP TABLE IF EXISTS policy;
+DROP TABLE IF EXISTS asset;
+
 DROP TABLE IF EXISTS sensitivity;
+DROP TABLE IF EXISTS data_category;
 DROP TABLE IF EXISTS data_subject_type;
-DROP TABLE IF EXISTS external_roles;
 DROP TABLE IF EXISTS data_element;
+DROP TABLE IF EXISTS breach_type;
+DROP TABLE IF EXISTS purpose_category;
 DROP TABLE IF EXISTS legal_basis;
 DROP TABLE IF EXISTS jurisdiction;
 DROP TABLE IF EXISTS law;
+DROP TABLE IF EXISTS framework;
+DROP TABLE IF EXISTS control;
 
 -- =============================================
 -- GLOSSARY TABLES
@@ -92,6 +83,15 @@ CREATE TABLE IF NOT EXISTS `data_element` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Update default masking formats for sensitive data elements
+UPDATE data_element SET default_masking_format = 'XXXX-XXXX-XXXX-####' WHERE name = 'Credit Card Number';
+UPDATE data_element SET default_masking_format = 'XXXXXXXXXXXX####' WHERE name = 'Bank Account Number';
+UPDATE data_element SET default_masking_format = 'XXX-XX-XXXX' WHERE name = 'Social Security Number';
+UPDATE data_element SET default_masking_format = '****####' WHERE name = 'Phone Number';
+UPDATE data_element SET default_masking_format = '****@domain.com' WHERE name = 'Email Address';
+UPDATE data_element SET default_masking_format = 'IP: XXX.XXX.XXX.XXX' WHERE name = 'IP Address';
+UPDATE data_element SET default_masking_format = 'Device: XXXXXXXX' WHERE name = 'Device ID';
+
 -- Create external_roles table for external system roles
 CREATE TABLE IF NOT EXISTS `external_roles` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,8 +99,41 @@ CREATE TABLE IF NOT EXISTS `external_roles` (
     `description` TEXT,
     `source_system` VARCHAR(255) NOT NULL,
     `source_role_name` VARCHAR(255) NOT NULL,
-    UNIQUE(`source_system`, `source_role_name`)
+    `asset_id` INT,
+    UNIQUE(`source_system`, `source_role_name`),
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`)
 );
+
+-- Insert sample external roles
+INSERT INTO `external_roles` (`name`, `description`, `source_system`, `source_role_name`, `asset_id`) VALUES
+('Marketing Analyst', 'Role for marketing data analysis', 'Snowflake', 'MKTG_ANALYST', (SELECT id FROM asset WHERE name = 'Marketing Database')),
+('Customer Service Rep', 'Role for customer support', 'Snowflake', 'CUST_SERVICE', (SELECT id FROM asset WHERE name = 'CRM System')),
+('Marketing Analyst', 'Role for marketing data analysis', 'Databricks', 'marketing_analyst', (SELECT id FROM asset WHERE name = 'Marketing Database')),
+('Data Engineer', 'Role for data pipeline management', 'Databricks', 'data_engineer', (SELECT id FROM asset WHERE name = 'ERP System')),
+('HR Admin', 'Role for HR data management', 'AWS', 'hr-admin', (SELECT id FROM asset WHERE name = 'HR Portal')),
+('Finance Manager', 'Role for financial data access', 'AWS', 'finance-manager', (SELECT id FROM asset WHERE name = 'Financial System'));
+
+-- Create purpose_role table to map purposes to external roles
+CREATE TABLE IF NOT EXISTS `purpose_role` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `purpose_id` INT NOT NULL,
+    `external_role_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE(`purpose_id`, `external_role_id`),
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`),
+    FOREIGN KEY (`external_role_id`) REFERENCES `external_roles`(`id`)
+);
+
+-- Insert sample purpose-role mappings (will be populated after purposes and external roles are created)
+INSERT INTO `purpose_role` (`purpose_id`, `external_role_id`) VALUES
+-- Will be populated after the purpose and external_roles tables are populated
+(1, 1), -- Marketing Campaigns - Snowflake Marketing Analyst
+(1, 3), -- Marketing Campaigns - Databricks Marketing Analyst
+(2, 2), -- Customer Support - Snowflake Customer Service Rep
+(3, 4), -- Research and Development - Databricks Data Engineer
+(4, 5), -- Employee Management - AWS HR Admin
+(5, 6); -- Payment Processing - AWS Finance Manager
 
 -- Create Data Subject Type table
 CREATE TABLE IF NOT EXISTS `data_subject_type` (
@@ -158,6 +191,41 @@ CREATE TABLE IF NOT EXISTS `risk` (
 -- =============================================
 -- REGULATORY METADATA TABLES
 -- =============================================
+
+-- Override table for Data Usage rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_usage (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    operation VARCHAR(50) NOT NULL,            -- e.g., read, write, share, delete
+    allowed BOOLEAN NOT NULL,
+    restrictions TEXT,                  -- e.g., justification, conditions
+    UNIQUE(policy_purpose_data_element_id, external_role_id, operation),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
+
+-- Override table for Data Retention rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_retention (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    retention_period TEXT NOT NULL,     -- e.g., "3 years", "Indefinite", "End of Session"
+    retention_basis TEXT,               -- e.g., "Legal requirement", "Business need", "Contractual obligation"
+    UNIQUE(policy_purpose_data_element_id, external_role_id),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
+
+-- Override table for Data Security rules based on Role + Purpose + Data Element
+CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_security (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    policy_purpose_data_element_id INTEGER NOT NULL,
+    external_role_id INTEGER NOT NULL, -- Added for role-specific override
+    UNIQUE(policy_purpose_data_element_id, external_role_id),
+    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
+    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
+);
 
 -- Create Law Jurisdiction table
 CREATE TABLE IF NOT EXISTS `law_jurisdiction` (
@@ -253,6 +321,10 @@ CREATE TABLE IF NOT EXISTS `data_subject_type_data_element_sensitivity` (
     FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE
 );
 
+
+
+
+
 -- Create Law Transfer table
 CREATE TABLE IF NOT EXISTS `law_transfer` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -319,6 +391,174 @@ CREATE TABLE IF NOT EXISTS `data_subject_right_exemptions` (
     `exemption` TEXT NOT NULL,
     FOREIGN KEY (`law_id`) REFERENCES `law`(`id`) ON DELETE CASCADE
 );
+
+
+
+-- =============================================
+-- SEED GLOSSARY DATA
+-- =============================================
+
+-- Seed Law data
+INSERT INTO `law` (`name`, `description`, `scope`) VALUES
+('GDPR', 'General Data Protection Regulation - A comprehensive data protection law in the EU.', 'Applies to organizations processing personal data of individuals in the EU, regardless of the organization\'s location.'),
+('CCPA', 'California Consumer Privacy Act - Enhances privacy rights and consumer protection for residents of California.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
+('CPRA', 'California Privacy Rights Act - Expands and amends the CCPA, introducing additional privacy protections.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
+('LGPD', 'Lei Geral de Proteção de Dados - Brazil\'s General Data Protection Law.', 'Applies to any business or organization that processes the personal data of individuals in Brazil, regardless of where the organization is based.'),
+('PIPEDA', 'Personal Information Protection and Electronic Documents Act - Canada\'s federal privacy law for private-sector organizations.', 'Applies to private-sector organizations across Canada that collect, use or disclose personal information in the course of commercial activities.');
+
+-- Seed Jurisdiction data
+INSERT INTO `jurisdiction` (`name`) VALUES
+('European Union'),
+('California, USA'),
+('Brazil'),
+('Canada'),
+('United Kingdom'),
+('Australia'),
+('Japan'),
+('South Korea'),
+('India'),
+('China');
+
+-- Seed Legal Basis data
+INSERT INTO `legal_basis` (`name`, `description`) VALUES
+('Consent', 'The data subject has given clear consent for processing their personal data for a specific purpose.'),
+('Contract', 'Processing is necessary for the performance of a contract with the data subject or to take steps to enter into a contract.'),
+('Legal Obligation', 'Processing is necessary for compliance with a legal obligation to which the controller is subject.'),
+('Vital Interests', 'Processing is necessary to protect the vital interests of the data subject or another person.'),
+('Public Task', 'Processing is necessary for the performance of a task carried out in the public interest or in the exercise of official authority.'),
+('Legitimate Interests', 'Processing is necessary for the purposes of legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or rights of the data subject.');
+
+-- Seed Legal Basis Requirements data
+INSERT INTO `legal_basis_requirements` (`legal_basis_id`, `requirement`) VALUES
+-- Consent requirements
+(1, 'Must be freely given, specific, informed, and unambiguous'),
+(1, 'Clear affirmative action required (no pre-ticked boxes)'),
+(1, 'Must be as easy to withdraw as to give consent'),
+(1, 'Keep records of when and how consent was obtained'),
+(1, 'For children, obtain parental/guardian consent where required'),
+(1, 'Regular review and refresh of consent may be necessary'),
+-- Contract requirements
+(2, 'Processing must be necessary for the performance of a contract'),
+(2, 'The data subject must be a party to the contract'),
+(2, 'Only collect data that is necessary for the contract'),
+(2, 'Document the necessity of each data element for the contract'),
+-- Legal Obligation requirements
+(3, 'Processing must be necessary to comply with a legal obligation'),
+(3, 'The legal obligation must be clearly documented'),
+(3, 'Only process data specifically required by the legal obligation'),
+(3, 'Maintain records of the specific legal requirements'),
+-- Vital Interests requirements
+(4, 'Processing must be necessary to protect someone\'s life'),
+(4, 'Generally only applies in emergency medical situations'),
+(4, 'Document why no other legal basis was available'),
+(4, 'Switch to another legal basis once the emergency is over'),
+-- Public Task requirements
+(5, 'Processing must be necessary for a task in the public interest'),
+(5, 'Must have a clear basis in law'),
+(5, 'Document the specific public interest being served'),
+(5, 'Consider if a less intrusive approach is possible'),
+-- Legitimate Interest requirements
+(6, 'Conduct and document a legitimate interest assessment (LIA)'),
+(6, 'Identify a specific legitimate interest'),
+(6, 'Ensure processing is necessary for that interest'),
+(6, 'Balance your interests against the individual\'s rights'),
+(6, 'Provide clear information about the legitimate interest in privacy notices');
+
+-- Seed Data Element data
+INSERT INTO `data_element` (`name`, `description`) VALUES
+('Full Name', 'An individual\'s complete name including first, middle, and last name.'),
+('Name', 'An individual\'s first name, last name, or full name.'),
+('Email Address', 'An individual\'s email address used for electronic communication.'),
+('Phone Number', 'An individual\'s telephone number used for voice communication.'),
+('Address', 'An individual\'s physical address including street, city, state, and postal code.'),
+('IP Address', 'A unique identifier assigned to a device connected to a network.'),
+('Device ID', 'A unique identifier assigned to a specific device.'),
+('Social Security Number', 'A unique identifier assigned to an individual for tax and identification purposes in the United States.'),
+('Credit Card Number', 'A unique number assigned to a credit card for payment processing.'),
+('Date of Birth', 'An individual\'s date of birth.'),
+('Biometric Data', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
+('Customer ID', 'A unique identifier assigned to a customer within an organization\'s systems.'),
+('Purchase History', 'Records of past purchases made by a customer.'),
+('Bank Account Number', 'A unique identifier for a customer\'s bank account.');
+
+-- Seed Data Subject Type data
+INSERT INTO `data_subject_type` (`name`, `description`) VALUES
+('Customer', 'An individual who purchases goods or services from an organization.'),
+('Employee', 'An individual who works for an organization under an employment contract.'),
+('Contractor', 'An individual who provides services to an organization but is not an employee.'),
+('Job Applicant', 'An individual who applies for a job at an organization.'),
+('Website Visitor', 'An individual who visits an organization\'s website.'),
+('Minor', 'An individual under the age of 18 or the age of majority in their jurisdiction.'),
+('Patient', 'An individual receiving medical care or treatment.'),
+('Student', 'An individual enrolled in an educational institution.');
+
+-- Seed Data Category data
+INSERT INTO `data_category` (`name`, `description`) VALUES
+('Personal Identifiers', 'Information that can directly identify an individual, such as name, email address, or phone number.'),
+('Financial Information', 'Information related to an individual\'s financial status, such as bank account details, credit card numbers, or income.'),
+('Health Information', 'Information related to an individual\'s health status, medical history, or treatment.'),
+('Biometric Information', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
+('Location Data', 'Information about an individual\'s physical location, such as GPS coordinates or IP address geolocation.'),
+('Online Activity', 'Information about an individual\'s online behavior, such as browsing history or search queries.'),
+('Employment Information', 'Information related to an individual\'s employment, such as job title, salary, or performance reviews.'),
+('Education Information', 'Information related to an individual\'s education, such as degrees, grades, or academic records.');
+
+-- Seed Sensitivity data
+INSERT INTO `sensitivity` (`name`, `description`) VALUES
+('Public', 'Information that is publicly available and poses minimal risk if disclosed.'),
+('Internal', 'Information that is intended for internal use within an organization but poses minimal risk if disclosed.'),
+('Confidential', 'Information that requires protection and poses moderate risk if disclosed.'),
+('Restricted', 'Information that requires strict protection and poses significant risk if disclosed.'),
+('Special Category', 'Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin.');
+
+-- Seed Purpose Category data
+INSERT INTO `purpose_category` (`name`, `description`) VALUES
+('Contractual Necessity', 'Processing necessary for the performance of a contract with the data subject'),
+('Legal Compliance', 'Processing necessary for compliance with a legal obligation'),
+('Vital Interests', 'Processing necessary to protect vital interests of the data subject or another person'),
+('Public Interest', 'Processing necessary for the performance of a task carried out in the public interest'),
+('Legitimate Business Interests', 'Processing necessary for the legitimate interests pursued by the controller or a third party'),
+('Marketing and Advertising', 'Processing for direct marketing, advertising, and promotional activities'),
+('Research and Development', 'Processing for scientific, historical research, or statistical purposes'),
+('Service Provision', 'Processing necessary to provide the requested service to the data subject'),
+('Security and Fraud Prevention', 'Processing for security, fraud detection, prevention, and investigation'),
+('Analytics and Improvement', 'Processing for analytics, measurement, and service improvement'),
+('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
+('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
+
+-- Seed Breach Type data
+INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
+-- Cyber Attacks category
+('Phishing Attack', 'Cybercriminals impersonate trusted entities to deceive individuals into providing sensitive information such as usernames, passwords, and credit card details.', 'Cyber Attack'),
+('Malware Attack', 'Harmful programs such as viruses, spyware, and Trojans that infiltrate systems through infected email attachments, malicious websites, or removable media.', 'Cyber Attack'),
+('Ransomware Attack', 'Malware that encrypts a victim''s files, making them inaccessible without a decryption key, followed by a ransom demand for the key.', 'Cyber Attack'),
+('SQL Injection', 'Attackers insert malicious SQL code into a database query, allowing them to access, modify, or delete database contents.', 'Cyber Attack'),
+('Man-in-the-Middle Attack', 'The attacker intercepts and manipulates communication between two parties without their knowledge.', 'Cyber Attack'),
+('Denial of Service (DoS)', 'Attacks that aim to disrupt the normal functioning of a network, service, or website by overwhelming it with a flood of traffic.', 'Cyber Attack'),
+('Distributed Denial of Service (DDoS)', 'Similar to DoS but using multiple compromised systems to launch the attack, making it more powerful and harder to mitigate.', 'Cyber Attack'),
+('Advanced Persistent Threat (APT)', 'Highly sophisticated and persistent attacks, often conducted by well-funded cybercriminals or nation-states, aiming to infiltrate and control networks for prolonged periods.', 'Cyber Attack'),
+('Zero-day Exploit', 'Attacks that exploit previously unknown vulnerabilities in software or hardware before developers have had a chance to create and release patches.', 'Cyber Attack'),
+('Credential Stuffing', 'Attackers use stolen account credentials from one service to gain unauthorized access to other services where users have reused the same credentials.', 'Cyber Attack'),
+('API Abuse', 'Exploiting vulnerabilities in application programming interfaces to gain unauthorized access to data or functionality.', 'Cyber Attack'),
+
+-- Insider Threats category
+('Malicious Insider', 'Data theft or sabotage by a disgruntled employee or contractor with legitimate access to systems and data.', 'Insider Threat'),
+('Accidental Exposure', 'Unintentional disclosure of sensitive information by employees through mistakes or negligence.', 'Insider Threat'),
+('Privilege Misuse', 'Authorized users accessing data or systems beyond what is necessary for their job functions.', 'Insider Threat'),
+('Compromised Insider', 'An employee whose credentials have been stolen or who has been manipulated through social engineering.', 'Insider Threat'),
+
+-- Physical Breaches category
+('Device Theft', 'Theft of physical devices such as laptops, smartphones, or storage media containing sensitive data.', 'Physical Breach'),
+('Unauthorized Physical Access', 'Gaining unauthorized entry to facilities where sensitive data is stored or processed.', 'Physical Breach'),
+('Dumpster Diving', 'Retrieving discarded documents or media containing sensitive information from trash containers.', 'Physical Breach'),
+('Tailgating', 'Following an authorized person into a secure area without proper authentication.', 'Physical Breach'),
+
+-- Supply Chain Breaches category
+('Third-Party Vendor Breach', 'Security incidents at third-party vendors that compromise data they process or store on behalf of their clients.', 'Supply Chain Breach'),
+('Software Supply Chain Attack', 'Compromising software updates or components to distribute malware to target organizations, as seen in the SolarWinds attack.', 'Supply Chain Breach'),
+('Hardware Supply Chain Attack', 'Tampering with hardware components during manufacturing or distribution to introduce vulnerabilities or backdoors.', 'Supply Chain Breach');
+
+
 
 -- =============================================
 -- INVENTORY TABLES
@@ -414,452 +654,6 @@ CREATE TABLE IF NOT EXISTS `processing_activity_asset_data_element` (
     FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
 );
-
--- Create Policy table
-CREATE TABLE IF NOT EXISTS `policy` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `policy_type` VARCHAR(100),
-    `status` VARCHAR(50),
-    `effective_date` DATE,
-    `expiration_date` DATE,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Purpose table
-CREATE TABLE IF NOT EXISTS `purpose` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `purpose_category_id` INT,
-    `risk_level` VARCHAR(50),
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
-);
-
--- Create Framework table
-CREATE TABLE IF NOT EXISTS `framework` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `version` VARCHAR(50),
-    `category` VARCHAR(100),
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Control table
-CREATE TABLE IF NOT EXISTS `control` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `control_type` VARCHAR(100),
-    `implementation_status` VARCHAR(50),
-    `priority` VARCHAR(50),
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Policy Purpose table
-CREATE TABLE IF NOT EXISTS `policy_purpose` (
-    `policy_id` INT NOT NULL,
-    `purpose_id` INT NOT NULL,
-    PRIMARY KEY (`policy_id`, `purpose_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
-);
-
--- Create Policy Purpose Data Element table
-CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
-    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
-    `policy_id` INTEGER NOT NULL,
-    `purpose_id` INTEGER NOT NULL,
-    `data_element_id` INTEGER NOT NULL,
-    UNIQUE(`policy_id`, `purpose_id`, `data_element_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
-    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`),
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
-);
-
--- Create Policy Data Element Usage table for default usage policies
-CREATE TABLE IF NOT EXISTS `policy_data_element_usage` (
-    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
-    `policy_id` INTEGER NOT NULL,
-    `data_element_id` INTEGER NOT NULL,
-    `operation` VARCHAR(50) NOT NULL,
-    `allowed` BOOLEAN NOT NULL,
-    `restrictions` TEXT,
-    UNIQUE(`policy_id`, `data_element_id`, `operation`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
-);
-
--- Create Policy Data Element Retention table for default retention policies
-CREATE TABLE IF NOT EXISTS `policy_data_element_retention` (
-    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
-    `policy_id` INTEGER NOT NULL,
-    `data_element_id` INTEGER NOT NULL,
-    `retention_period` TEXT NOT NULL,
-    `retention_basis` TEXT,
-    `exceptions` TEXT,
-    UNIQUE(`policy_id`, `data_element_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
-);
-
--- Create Policy Data Element Security table for default security policies
-CREATE TABLE IF NOT EXISTS `policy_data_element_security` (
-    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
-    `policy_id` INTEGER NOT NULL,
-    `data_element_id` INTEGER NOT NULL,
-    `requires_encryption` BOOLEAN NOT NULL DEFAULT FALSE,
-    `encryption_algorithm` TEXT,
-    `requires_masking` BOOLEAN NOT NULL DEFAULT FALSE,
-    `masking_format` TEXT,
-    `requires_access_control` BOOLEAN NOT NULL DEFAULT FALSE,
-    `access_control_type` TEXT,
-    UNIQUE(`policy_id`, `data_element_id`),
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
-    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
-);
-
--- Create Policy Purpose Data Usage table
-CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
-    `policy_purpose_data_element_id` INT NOT NULL,
-    `operation` VARCHAR(50) NOT NULL,
-    `allowed` BOOLEAN NOT NULL DEFAULT FALSE,
-    `restrictions` TEXT,
-    PRIMARY KEY (`policy_purpose_data_element_id`, `operation`),
-    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS `policy_purpose_data_retention` (
-    `policy_purpose_data_element_id` INT NOT NULL,
-    `retention_period` VARCHAR(100) NOT NULL,
-    `retention_trigger` VARCHAR(100) NOT NULL DEFAULT 'Collection',
-    `retention_basis` VARCHAR(255),
-    `exceptions` TEXT,
-    PRIMARY KEY (`policy_purpose_data_element_id`),
-    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
-);
-
--- Override table for Data Usage rules based on Role + Purpose + Data Element
-CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_usage (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    policy_purpose_data_element_id INTEGER NOT NULL,
-    external_role_id INTEGER NOT NULL, -- Added for role-specific override
-    operation VARCHAR(50) NOT NULL,            -- e.g., read, write, share, delete
-    allowed BOOLEAN NOT NULL,
-    restrictions TEXT,                  -- e.g., justification, conditions
-    UNIQUE(policy_purpose_data_element_id, external_role_id, operation),
-    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
-    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
-);
-
--- Override table for Data Retention rules based on Role + Purpose + Data Element
-CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_retention (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    policy_purpose_data_element_id INTEGER NOT NULL,
-    external_role_id INTEGER NOT NULL, -- Added for role-specific override
-    retention_period TEXT NOT NULL,     -- e.g., "3 years", "Indefinite", "End of Session"
-    retention_basis TEXT,               -- e.g., "Legal requirement", "Business need", "Contractual obligation"
-    UNIQUE(policy_purpose_data_element_id, external_role_id),
-    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
-    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
-);
-
--- Override table for Data Security rules based on Role + Purpose + Data Element
-CREATE TABLE IF NOT EXISTS policy_override_role_purpose_data_security (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    policy_purpose_data_element_id INTEGER NOT NULL,
-    external_role_id INTEGER NOT NULL, -- Added for role-specific override
-    UNIQUE(policy_purpose_data_element_id, external_role_id),
-    FOREIGN KEY (policy_purpose_data_element_id) REFERENCES policy_purpose_data_element(id),
-    FOREIGN KEY (external_role_id) REFERENCES external_roles(id)
-);
-
--- =============================================
--- REGULATORY INTELLIGENCE TABLES
--- =============================================
-
--- Create Obligation table
-CREATE TABLE IF NOT EXISTS `obligation` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT,
-    `source` VARCHAR(255),
-    `control_type` VARCHAR(100),
-    `status` VARCHAR(50) DEFAULT 'Open',
-    `policy_id` INT NULL,
-    `risk_accepted` BOOLEAN DEFAULT FALSE,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE SET NULL
-);
-
--- Create Sensitivity Obligation mapping table
-CREATE TABLE IF NOT EXISTS `sensitivity_obligation` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `sensitivity_id` INT NOT NULL,
-    `obligation_id` INT NOT NULL,
-    `priority` VARCHAR(50) DEFAULT 'Medium',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_sensitivity_obligation` (`sensitivity_id`, `obligation_id`)
-);
-
--- Create Obligation Policy mapping table
-CREATE TABLE IF NOT EXISTS `obligation_policy` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `obligation_id` INT NOT NULL,
-    `policy_id` INT NOT NULL,
-    `control_type` VARCHAR(100),
-    `relevance_score` FLOAT DEFAULT 1.0,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_obligation_policy` (`obligation_id`, `policy_id`)
-);
-
--- Create Obligation Risk mapping table
-CREATE TABLE IF NOT EXISTS `obligation_risk` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `obligation_id` INT NOT NULL,
-    `risk_id` INT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_obligation_risk` (`obligation_id`, `risk_id`)
-);
-
--- Create Framework Control mapping table
-CREATE TABLE IF NOT EXISTS `framework_control` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `framework_id` INT NOT NULL,
-    `control_id` INT NOT NULL,
-    `relevance_score` FLOAT DEFAULT 1.0,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`framework_id`) REFERENCES `framework`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_framework_control` (`framework_id`, `control_id`)
-);
-
--- Create Policy Control mapping table
-CREATE TABLE IF NOT EXISTS `policy_control` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `policy_id` INT NOT NULL,
-    `control_id` INT NOT NULL,
-    `relevance_score` FLOAT DEFAULT 1.0,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_policy_control` (`policy_id`, `control_id`)
-);
-
--- Create Risk Control mapping table
-CREATE TABLE IF NOT EXISTS `risk_control` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `risk_id` INT NOT NULL,
-    `control_id` INT NOT NULL,
-    `mitigation_level` VARCHAR(50) DEFAULT 'Medium',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_risk_control` (`risk_id`, `control_id`)
-);
-
--- =============================================
--- DEFAULT SECURITY SETTINGS TABLE
-CREATE TABLE IF NOT EXISTS `default_security_settings` (
-    `id`                           INT PRIMARY KEY DEFAULT 1, -- Assuming a single row for global defaults
-    `default_encryption_algorithm` VARCHAR(100),
-    `created_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT `pk_default_settings` CHECK (`id` = 1) -- Ensure only one row can exist
-);
-
--- POLICY PURPOSE DATA SECURITY TABLE
-CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
-    `policy_purpose_data_element_id` INT NOT NULL,
-    `encryption_required`  BOOLEAN     NOT NULL DEFAULT FALSE,
-    `encryption_algorithm` VARCHAR(100),
-    `masking_required`     BOOLEAN     NOT NULL DEFAULT FALSE,
-    `masking_format`       VARCHAR(100),
-    `access_logging`       BOOLEAN     NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (`policy_purpose_data_element_id`),
-    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
-);
-
--- =============================================
--- SEED GLOSSARY DATA
--- =============================================
-
--- Seed Law data
-INSERT INTO `law` (`name`, `description`, `scope`) VALUES
-('GDPR', 'General Data Protection Regulation - A comprehensive data protection law in the EU.', 'Applies to organizations processing personal data of individuals in the EU, regardless of the organization\'s location.'),
-('CCPA', 'California Consumer Privacy Act - Enhances privacy rights and consumer protection for residents of California.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
-('CPRA', 'California Privacy Rights Act - Expands and amends the CCPA, introducing additional privacy protections.', 'Applies to for-profit businesses that collect personal information from California residents and meet certain thresholds.'),
-('LGPD', 'Lei Geral de Proteção de Dados - Brazil\'s General Data Protection Law.', 'Applies to any business or organization that processes the personal data of individuals in Brazil, regardless of where the organization is based.'),
-('PIPEDA', 'Personal Information Protection and Electronic Documents Act - Canada\'s federal privacy law for private-sector organizations.', 'Applies to private-sector organizations across Canada that collect, use or disclose personal information in the course of commercial activities.');
-
--- Seed Jurisdiction data
-INSERT INTO `jurisdiction` (`name`) VALUES
-('European Union'),
-('California, USA'),
-('Brazil'),
-('Canada'),
-('United Kingdom'),
-('Australia'),
-('Japan'),
-('South Korea'),
-('India'),
-('China');
-
--- Seed Legal Basis data
-INSERT INTO `legal_basis` (`name`, `description`) VALUES
-('Consent', 'The data subject has given clear consent for processing their personal data for a specific purpose.'),
-('Contract', 'Processing is necessary for the performance of a contract with the data subject or to take steps to enter into a contract.'),
-('Legal Obligation', 'Processing is necessary for compliance with a legal obligation to which the controller is subject.'),
-('Vital Interests', 'Processing is necessary to protect the vital interests of the data subject or another person.'),
-('Public Task', 'Processing is necessary for the performance of a task carried out in the public interest or in the exercise of official authority.'),
-('Legitimate Interests', 'Processing is necessary for the purposes of legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or rights of the data subject.');
-
--- Seed Legal Basis Requirements data
-INSERT INTO `legal_basis_requirements` (`legal_basis_id`, `requirement`) VALUES
--- Consent requirements
-(1, 'Must be freely given, specific, informed, and unambiguous'),
-(1, 'Clear affirmative action required (no pre-ticked boxes)'),
-(1, 'Must be as easy to withdraw as to give consent'),
-(1, 'Keep records of when and how consent was obtained'),
-(1, 'For children, obtain parental/guardian consent where required'),
-(1, 'Regular review and refresh of consent may be necessary'),
--- Contract requirements
-(2, 'Processing must be necessary for the performance of a contract'),
-(2, 'The data subject must be a party to the contract'),
-(2, 'Only collect data that is necessary for the contract'),
-(2, 'Document the necessity of each data element for the contract'),
--- Legal Obligation requirements
-(3, 'Processing must be necessary to comply with a legal obligation'),
-(3, 'The legal obligation must be clearly documented'),
-(3, 'Only process data specifically required by the legal obligation'),
-(3, 'Maintain records of the specific legal requirements'),
--- Vital Interests requirements
-(4, 'Processing must be necessary to protect someone\'s life'),
-(4, 'Generally only applies in emergency medical situations'),
-(4, 'Document why no other legal basis was available'),
-(4, 'Switch to another legal basis once the emergency is over'),
--- Public Task requirements
-(5, 'Processing must be necessary for a task in the public interest'),
-(5, 'Must have a clear basis in law'),
-(5, 'Document the specific public interest being served'),
-(5, 'Consider if a less intrusive approach is possible'),
--- Legitimate Interest requirements
-(6, 'Conduct and document a legitimate interest assessment (LIA)'),
-(6, 'Identify a specific legitimate interest'),
-(6, 'Ensure processing is necessary for that interest'),
-(6, 'Balance your interests against the individual\'s rights'),
-(6, 'Provide clear information about the legitimate interest in privacy notices');
-
--- Seed Data Element data
-INSERT INTO `data_element` (`name`, `description`) VALUES
-('Full Name', 'An individual\'s complete name including first, middle, and last name.'),
-('Name', 'An individual\'s first name, last name, or full name.'),
-('Email Address', 'An individual\'s email address used for electronic communication.'),
-('Phone Number', 'An individual\'s telephone number used for voice communication.'),
-('Address', 'An individual\'s physical address including street, city, state, and postal code.'),
-('IP Address', 'A unique identifier assigned to a device connected to a network.'),
-('Device ID', 'A unique identifier assigned to a specific device.'),
-('Social Security Number', 'A unique identifier assigned to an individual for tax and identification purposes in the United States.'),
-('Credit Card Number', 'A unique number assigned to a credit card for payment processing.'),
-('Date of Birth', 'An individual\'s date of birth.'),
-('Biometric Data', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
-('Customer ID', 'A unique identifier assigned to a customer within an organization\'s systems.'),
-('Purchase History', 'Records of past purchases made by a customer.'),
-('Bank Account Number', 'A unique identifier for a customers bank account.');
-
--- Update default masking formats for sensitive data elements
-UPDATE data_element SET default_masking_format = 'XXXX-XXXX-XXXX-####' WHERE name = 'Credit Card Number';
-UPDATE data_element SET default_masking_format = 'XXXXXXXXXXXX####' WHERE name = 'Bank Account Number';
-UPDATE data_element SET default_masking_format = 'XXX-XX-XXXX' WHERE name = 'Social Security Number';
-UPDATE data_element SET default_masking_format = '****####' WHERE name = 'Phone Number';
-UPDATE data_element SET default_masking_format = '****@domain.com' WHERE name = 'Email Address';
-UPDATE data_element SET default_masking_format = 'IP: XXX.XXX.XXX.XXX' WHERE name = 'IP Address';
-UPDATE data_element SET default_masking_format = 'Device: XXXXXXXX' WHERE name = 'Device ID';
--- Seed Data Subject Type data
-INSERT INTO `data_subject_type` (`name`, `description`) VALUES
-('Customer', 'An individual who purchases goods or services from an organization.'),
-('Employee', 'An individual who works for an organization under an employment contract.'),
-('Contractor', 'An individual who provides services to an organization but is not an employee.'),
-('Job Applicant', 'An individual who applies for a job at an organization.'),
-('Website Visitor', 'An individual who visits an organization\'s website.'),
-('Minor', 'An individual under the age of 18 or the age of majority in their jurisdiction.'),
-('Patient', 'An individual receiving medical care or treatment.'),
-('Student', 'An individual enrolled in an educational institution.');
-
--- Seed Data Category data
-INSERT INTO `data_category` (`name`, `description`) VALUES
-('Personal Identifiers', 'Information that can directly identify an individual, such as name, email address, or phone number.'),
-('Financial Information', 'Information related to an individual\'s financial status, such as bank account details, credit card numbers, or income.'),
-('Health Information', 'Information related to an individual\'s health status, medical history, or treatment.'),
-('Biometric Information', 'Physical or behavioral characteristics that can be used to identify an individual, such as fingerprints or facial recognition data.'),
-('Location Data', 'Information about an individual\'s physical location, such as GPS coordinates or IP address geolocation.'),
-('Online Activity', 'Information about an individual\'s online behavior, such as browsing history or search queries.'),
-('Employment Information', 'Information related to an individual\'s employment, such as job title, salary, or performance reviews.'),
-('Education Information', 'Information related to an individual\'s education, such as degrees, grades, or academic records.');
-
--- Seed Sensitivity data
-INSERT INTO `sensitivity` (`name`, `description`) VALUES
-('Public', 'Information that is publicly available and poses minimal risk if disclosed.'),
-('Internal', 'Information that is intended for internal use within an organization but poses minimal risk if disclosed.'),
-('Confidential', 'Information that requires protection and poses moderate risk if disclosed.'),
-('Restricted', 'Information that requires strict protection and poses significant risk if disclosed.'),
-('Special Category', 'Information that is considered sensitive under data protection laws, such as health data, biometric data, or data revealing racial or ethnic origin.');
-
--- Seed Purpose Category data
-INSERT INTO `purpose_category` (`name`, `description`) VALUES
-('Contractual Necessity', 'Processing necessary for the performance of a contract with the data subject'),
-('Legal Compliance', 'Processing necessary for compliance with a legal obligation'),
-('Vital Interests', 'Processing necessary to protect vital interests of the data subject or another person'),
-('Public Interest', 'Processing necessary for the performance of a task carried out in the public interest'),
-('Legitimate Business Interests', 'Processing necessary for the legitimate interests pursued by the controller or a third party'),
-('Marketing and Advertising', 'Processing for direct marketing, advertising, and promotional activities'),
-('Research and Development', 'Processing for scientific, historical research, or statistical purposes'),
-('Service Provision', 'Processing necessary to provide the requested service to the data subject'),
-('Security and Fraud Prevention', 'Processing for security, fraud detection, prevention, and investigation'),
-('Analytics and Improvement', 'Processing for analytics, measurement, and service improvement'),
-('Employment Management', 'Processing related to employment, workforce management, and HR functions'),
-('Healthcare Provision', 'Processing for healthcare services, treatment, and management');
-
--- Seed Breach Type data
-INSERT INTO `breach_type` (`name`, `description`, `category`) VALUES
--- Cyber Attacks category
-('Phishing Attack', 'Cybercriminals impersonate trusted entities to deceive individuals into providing sensitive information such as usernames, passwords, and credit card details.', 'Cyber Attack'),
-('Malware Attack', 'Harmful programs such as viruses, spyware, and Trojans that infiltrate systems through infected email attachments, malicious websites, or removable media.', 'Cyber Attack'),
-('Ransomware Attack', 'Malware that encrypts a victim''s files, making them inaccessible without a decryption key, followed by a ransom demand for the key.', 'Cyber Attack'),
-('SQL Injection', 'Attackers insert malicious SQL code into a database query, allowing them to access, modify, or delete database contents.', 'Cyber Attack'),
-('Man-in-the-Middle Attack', 'The attacker intercepts and manipulates communication between two parties without their knowledge.', 'Cyber Attack'),
-('Denial of Service (DoS)', 'Attacks that aim to disrupt the normal functioning of a network, service, or website by overwhelming it with a flood of traffic.', 'Cyber Attack'),
-('Distributed Denial of Service (DDoS)', 'Similar to DoS but using multiple compromised systems to launch the attack, making it more powerful and harder to mitigate.', 'Cyber Attack'),
-('Advanced Persistent Threat (APT)', 'Highly sophisticated and persistent attacks, often conducted by well-funded cybercriminals or nation-states, aiming to infiltrate and control networks for prolonged periods.', 'Cyber Attack'),
-('Zero-day Exploit', 'Attacks that exploit previously unknown vulnerabilities in software or hardware before developers have had a chance to create and release patches.', 'Cyber Attack'),
-('Credential Stuffing', 'Attackers use stolen account credentials from one service to gain unauthorized access to other services where users have reused the same credentials.', 'Cyber Attack'),
-('API Abuse', 'Exploiting vulnerabilities in application programming interfaces to gain unauthorized access to data or functionality.', 'Cyber Attack'),
-
--- Insider Threats category
-('Malicious Insider', 'Data theft or sabotage by a disgruntled employee or contractor with legitimate access to systems and data.', 'Insider Threat'),
-('Accidental Exposure', 'Unintentional disclosure of sensitive information by employees through mistakes or negligence.', 'Insider Threat'),
-('Privilege Misuse', 'Authorized users accessing data or systems beyond what is necessary for their job functions.', 'Insider Threat'),
-('Compromised Insider', 'An employee whose credentials have been stolen or who has been manipulated through social engineering.', 'Insider Threat'),
-
--- Physical Breaches category
-('Device Theft', 'Theft of physical devices such as laptops, smartphones, or storage media containing sensitive data.', 'Physical Breach'),
-('Unauthorized Physical Access', 'Gaining unauthorized entry to facilities where sensitive data is stored or processed.', 'Physical Breach'),
-('Dumpster Diving', 'Retrieving discarded documents or media containing sensitive information from trash containers.', 'Physical Breach'),
-('Tailgating', 'Following an authorized person into a secure area without proper authentication.', 'Physical Breach'),
-
--- Supply Chain Breaches category
-('Third-Party Vendor Breach', 'Security incidents at third-party vendors that compromise data they process or store on behalf of their clients.', 'Supply Chain Breach'),
-('Software Supply Chain Attack', 'Compromising software updates or components to distribute malware to target organizations, as seen in the SolarWinds attack.', 'Supply Chain Breach'),
-('Hardware Supply Chain Attack', 'Tampering with hardware components during manufacturing or distribution to introduce vulnerabilities or backdoors.', 'Supply Chain Breach');
 
 -- Seed Asset data
 INSERT INTO `asset` (`name`, `description`) VALUES
@@ -1056,6 +850,10 @@ SELECT l.id,
 FROM `law` l
 WHERE l.name IN ('GDPR', 'CCPA', 'LGPD', 'PIPEDA');
 
+-- =============================================
+-- SEED ADDITIONAL REGULATORY METADATA
+-- =============================================
+
 -- Seed Data Category Data Element relationships
 INSERT INTO `data_category_data_element` (`data_category_id`, `data_element_id`)
 SELECT dc.id, de.id
@@ -1124,6 +922,8 @@ WHERE
     (dst.name = 'Patient' AND de.name = 'Name' AND s.name = 'Confidential') OR
     (dst.name = 'Patient' AND de.name = 'Biometric Data' AND s.name = 'Special Category') OR
     (dst.name = 'Website Visitor' AND de.name = 'IP Address' AND s.name = 'Internal');
+
+
 
 -- Seed Law Transfer data
 INSERT INTO `law_transfer` (`law_id`, `adequacy_countries`, `transfer_mechanisms`, `additional_requirements`)
@@ -1306,8 +1106,56 @@ INSERT INTO `data_subject_right_exemptions` (`law_id`, `right_type`, `exemption`
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Complete a transaction, provide a good or service requested by the consumer'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Detect security incidents or protect against malicious activities'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Debug to identify and repair errors'),
-((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Exercise free speech or ensure another consumers right to exercise free speech'),
+((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Exercise free speech or ensure another consumer\'s right to exercise free speech'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Comply with legal obligations');
+
+-- =============================================
+-- POLICY INFERENCE API TABLES
+-- =============================================
+
+-- Create Policy table
+CREATE TABLE IF NOT EXISTS `policy` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `policy_type` VARCHAR(100),
+    `status` VARCHAR(50),
+    `effective_date` DATE,
+    `expiration_date` DATE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Purpose table
+CREATE TABLE IF NOT EXISTS `purpose` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `purpose_category_id` INT,
+    `risk_level` VARCHAR(50),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`purpose_category_id`) REFERENCES `purpose_category`(`id`) ON DELETE SET NULL
+);
+
+-- Create Framework table
+CREATE TABLE IF NOT EXISTS `framework` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `version` VARCHAR(50),
+    `category` VARCHAR(100),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Control table
+CREATE TABLE IF NOT EXISTS `control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `control_type` VARCHAR(100),
+    `implementation_status` VARCHAR(50),
+    `priority` VARCHAR(50),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Seed Framework data
 INSERT INTO `framework` (`name`, `description`, `version`, `category`) VALUES
@@ -1334,6 +1182,89 @@ INSERT INTO `control` (`name`, `description`, `control_type`, `implementation_st
 ('Network Segmentation', 'Segment networks to isolate systems processing sensitive data from the general network', 'Technical', 'Partially Implemented', 'Medium'),
 ('Data Backup', 'Regularly backup data and test restoration procedures', 'Technical', 'Implemented', 'Medium'),
 ('Disaster Recovery', 'Develop and maintain a disaster recovery plan for systems processing personal data', 'Administrative', 'Implemented', 'Medium');
+
+-- Create Policy Purpose table
+CREATE TABLE IF NOT EXISTS `policy_purpose` (
+    `policy_id` INT NOT NULL,
+    `purpose_id` INT NOT NULL,
+    PRIMARY KEY (`policy_id`, `purpose_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
+);
+
+-- Create Policy Purpose Data Element table
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_element` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `purpose_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    UNIQUE(`policy_id`, `purpose_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Usage table for default usage policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_usage` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `operation` VARCHAR(50) NOT NULL,
+    `allowed` BOOLEAN NOT NULL,
+    `restrictions` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`, `operation`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Retention table for default retention policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_retention` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `retention_period` TEXT NOT NULL,
+    `retention_basis` TEXT,
+    `exceptions` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Data Element Security table for default security policies
+CREATE TABLE IF NOT EXISTS `policy_data_element_security` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `policy_id` INTEGER NOT NULL,
+    `data_element_id` INTEGER NOT NULL,
+    `requires_encryption` BOOLEAN NOT NULL DEFAULT FALSE,
+    `encryption_algorithm` TEXT,
+    `requires_masking` BOOLEAN NOT NULL DEFAULT FALSE,
+    `masking_format` TEXT,
+    `requires_access_control` BOOLEAN NOT NULL DEFAULT FALSE,
+    `access_control_type` TEXT,
+    UNIQUE(`policy_id`, `data_element_id`),
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`),
+    FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`)
+);
+
+-- Create Policy Purpose Data Usage table
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_usage` (
+    `policy_purpose_data_element_id` INT NOT NULL,
+    `operation` VARCHAR(50) NOT NULL,
+    `allowed` BOOLEAN NOT NULL DEFAULT FALSE,
+    `restrictions` TEXT,
+    PRIMARY KEY (`policy_purpose_data_element_id`, `operation`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_retention` (
+    `policy_purpose_data_element_id` INT NOT NULL,
+    `retention_period` VARCHAR(100) NOT NULL,
+    `retention_trigger` VARCHAR(100) NOT NULL DEFAULT 'Collection',
+    `retention_basis` VARCHAR(255),
+    `exceptions` TEXT,
+    PRIMARY KEY (`policy_purpose_data_element_id`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
+);
 
 -- Insert policies
 INSERT INTO policy (name, description, policy_type, status, effective_date) VALUES
@@ -1817,19 +1748,96 @@ INSERT INTO policy_purpose_data_retention (policy_purpose_data_element_id, reten
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), '7 years', 'Employment End', 'Employment regulations', 'Retain longer if required by law'),
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Retention Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), 'Minimum required', 'Purpose Fulfillment', 'Data minimization principle', 'Retain longer only if required by law');
 
--- Insert sample obligations
-INSERT INTO `obligation` (`name`, `description`, `source`, `control_type`, `status`, `risk_accepted`)
-VALUES
-('Encrypt Data at Rest', 'All personal data must be encrypted when stored using industry-standard encryption algorithms.', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
-('Encrypt Data in Transit', 'All personal data must be encrypted during transmission using secure protocols (TLS 1.2+).', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
-('Implement Access Controls', 'Restrict access to personal data to authorized personnel only using role-based access controls.', 'HIPAA Security Rule', 'Access Control', 'Open', FALSE),
-('Maintain Access Logs', 'Maintain logs of all access to sensitive personal data for auditing purposes.', 'HIPAA Security Rule', 'Monitoring', 'In Progress', FALSE),
-('Implement Data Masking', 'Mask sensitive data in non-production environments and when displayed to users without need-to-know.', 'Internal Security Policy', 'Masking', 'In Progress', FALSE),
-('Implement Data Retention Controls', 'Define and enforce data retention periods for all personal data with automated deletion.', 'CCPA Section 1798.100', 'Retention', 'Implemented', FALSE),
-('Monitor Data Access', 'Implement monitoring systems to detect and alert on suspicious access patterns to sensitive data.', 'ISO 27001', 'Monitoring', 'Open', FALSE),
-('Implement Least Privilege', 'Ensure users have only the minimum privileges necessary to perform their job functions.', 'NIST SP 800-53', 'Access Control', 'Open', FALSE),
--- Removed 'Implement Data Classification' obligation
-('Conduct Regular Security Assessments', 'Perform regular security assessments to identify and mitigate vulnerabilities.', 'ISO 27001', 'General', 'In Progress', FALSE);
+-- =============================================
+-- REGULATORY INTELLIGENCE TABLES
+-- =============================================
+
+-- Create Obligation table
+CREATE TABLE IF NOT EXISTS `obligation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `source` VARCHAR(255),
+    `control_type` VARCHAR(100),
+    `status` VARCHAR(50) DEFAULT 'Open',
+    `policy_id` INT NULL,
+    `risk_accepted` BOOLEAN DEFAULT FALSE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE SET NULL
+);
+
+-- Create Sensitivity Obligation mapping table
+CREATE TABLE IF NOT EXISTS `sensitivity_obligation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `sensitivity_id` INT NOT NULL,
+    `obligation_id` INT NOT NULL,
+    `priority` VARCHAR(50) DEFAULT 'Medium',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_sensitivity_obligation` (`sensitivity_id`, `obligation_id`)
+);
+
+-- Create Obligation Policy mapping table
+CREATE TABLE IF NOT EXISTS `obligation_policy` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `obligation_id` INT NOT NULL,
+    `policy_id` INT NOT NULL,
+    `control_type` VARCHAR(100),
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_obligation_policy` (`obligation_id`, `policy_id`)
+);
+
+-- Create Obligation Risk mapping table
+CREATE TABLE IF NOT EXISTS `obligation_risk` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `obligation_id` INT NOT NULL,
+    `risk_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_obligation_risk` (`obligation_id`, `risk_id`)
+);
+
+-- Create Framework Control mapping table
+CREATE TABLE IF NOT EXISTS `framework_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `framework_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`framework_id`) REFERENCES `framework`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_framework_control` (`framework_id`, `control_id`)
+);
+
+-- Create Policy Control mapping table
+CREATE TABLE IF NOT EXISTS `policy_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `policy_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `relevance_score` FLOAT DEFAULT 1.0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_policy_control` (`policy_id`, `control_id`)
+);
+
+-- Create Risk Control mapping table
+CREATE TABLE IF NOT EXISTS `risk_control` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `risk_id` INT NOT NULL,
+    `control_id` INT NOT NULL,
+    `mitigation_level` VARCHAR(50) DEFAULT 'Medium',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`risk_id`) REFERENCES `risk`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`control_id`) REFERENCES `control`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_risk_control` (`risk_id`, `control_id`)
+);
+
 -- =============================================
 -- SEED SENSITIVITY OBLIGATIONS
 -- =============================================
@@ -1859,7 +1867,14 @@ VALUES
 ((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM obligation WHERE name = 'Maintain Access Logs'), 'Medium'),
 
 -- Internal (low sensitivity)
-((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'Low');
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM obligation WHERE name = 'Implement Access Controls'), 'Low'),
+
+-- Public (minimal sensitivity)
+-- No obligations required for public data
+
+-- =============================================
+-- SEED SAMPLE RISKS
+-- =============================================
 
 -- Insert sample risks
 INSERT INTO `risk` (`name`, `description`, `category`, `likelihood`, `impact`)
@@ -1874,6 +1889,28 @@ VALUES
 ('Inadequate Security Controls', 'Lack of appropriate technical and organizational measures to protect personal data', 'Security', 'Medium', 'High'),
 ('Vendor Non-Compliance', 'Third-party processors handling personal data without adequate contractual controls or compliance verification', 'Third Party', 'High', 'Medium'),
 ('Incomplete Data Inventory', 'Incomplete or inaccurate records of data processing activities and data assets', 'Governance', 'High', 'Medium');
+
+-- =============================================
+-- SEED SAMPLE OBLIGATIONS
+-- =============================================
+
+-- Insert sample obligations
+INSERT INTO `obligation` (`name`, `description`, `source`, `control_type`, `status`, `risk_accepted`)
+VALUES
+('Encrypt Data at Rest', 'All personal data must be encrypted when stored using industry-standard encryption algorithms.', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
+('Encrypt Data in Transit', 'All personal data must be encrypted during transmission using secure protocols (TLS 1.2+).', 'GDPR Article 32', 'Encryption', 'Open', FALSE),
+('Implement Access Controls', 'Restrict access to personal data to authorized personnel only using role-based access controls.', 'HIPAA Security Rule', 'Access Control', 'Open', FALSE),
+('Maintain Access Logs', 'Maintain logs of all access to sensitive personal data for auditing purposes.', 'HIPAA Security Rule', 'Monitoring', 'In Progress', FALSE),
+('Implement Data Masking', 'Mask sensitive data in non-production environments and when displayed to users without need-to-know.', 'Internal Security Policy', 'Masking', 'In Progress', FALSE),
+('Implement Data Retention Controls', 'Define and enforce data retention periods for all personal data with automated deletion.', 'CCPA Section 1798.100', 'Retention', 'Implemented', FALSE),
+('Monitor Data Access', 'Implement monitoring systems to detect and alert on suspicious access patterns to sensitive data.', 'ISO 27001', 'Monitoring', 'Open', FALSE),
+('Implement Least Privilege', 'Ensure users have only the minimum privileges necessary to perform their job functions.', 'NIST SP 800-53', 'Access Control', 'Open', FALSE),
+-- Removed 'Implement Data Classification' obligation
+('Conduct Regular Security Assessments', 'Perform regular security assessments to identify and mitigate vulnerabilities.', 'ISO 27001', 'General', 'In Progress', FALSE);
+
+-- =============================================
+-- SEED OBLIGATION-POLICY MAPPINGS
+-- =============================================
 
 -- Insert sample obligation-policy mappings
 INSERT INTO `obligation_policy` (`obligation_id`, `policy_id`, `control_type`, `relevance_score`)
@@ -1908,8 +1945,14 @@ VALUES
 -- Implement Least Privilege mappings
 ((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Access Control', 1.0),
 
+-- Removed 'Implement Data Classification' mappings
+
 -- Conduct Regular Security Assessments mappings
 ((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'General', 0.7);
+
+-- =============================================
+-- SEED OBLIGATION-RISK MAPPINGS
+-- =============================================
 
 -- Insert sample obligation-risk mappings
 INSERT INTO `obligation_risk` (`obligation_id`, `risk_id`)
@@ -1938,6 +1981,8 @@ VALUES
 
 -- Implement Least Privilege risk mappings
 ((SELECT id FROM obligation WHERE name = 'Implement Least Privilege'), (SELECT id FROM risk WHERE name = 'Unauthorized Data Access')),
+
+-- Removed 'Implement Data Classification' risk mappings
 
 -- Conduct Regular Security Assessments risk mappings
 ((SELECT id FROM obligation WHERE name = 'Conduct Regular Security Assessments'), (SELECT id FROM risk WHERE name = 'Inadequate Security Controls'));
@@ -1978,6 +2023,10 @@ VALUES
 ((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Audit Logging'), 1.0),
 ((SELECT id FROM framework WHERE name = 'PCI DSS'), (SELECT id FROM control WHERE name = 'Network Segmentation'), 1.0);
 
+-- =============================================
+-- SEED POLICY-CONTROL MAPPINGS
+-- =============================================
+
 -- Insert sample policy-control mappings
 INSERT INTO `policy_control` (`policy_id`, `control_id`, `relevance_score`)
 VALUES
@@ -2011,13 +2060,35 @@ VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Incident Response Plan'), 1.0),
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM control WHERE name = 'Disaster Recovery'), 0.9);
 
--- Insert default security settings
+-- =============================================
+-- DEFAULT SECURITY SETTINGS TABLE
+CREATE TABLE IF NOT EXISTS `default_security_settings` (
+    `id`                           INT PRIMARY KEY DEFAULT 1, -- Assuming a single row for global defaults
+    `default_encryption_algorithm` VARCHAR(100),
+    `created_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `pk_default_settings` CHECK (`id` = 1) -- Ensure only one row can exist
+);
+
 INSERT INTO default_security_settings (default_encryption_algorithm)
 VALUES ('AES-256-GCM')
 ON DUPLICATE KEY UPDATE
    default_encryption_algorithm = VALUES(default_encryption_algorithm);
 
+-- POLICY PURPOSE DATA SECURITY TABLE
+CREATE TABLE IF NOT EXISTS `policy_purpose_data_security` (
+    `policy_purpose_data_element_id` INT NOT NULL,
+    `encryption_required`  BOOLEAN     NOT NULL DEFAULT FALSE,
+    `encryption_algorithm` VARCHAR(100),
+    `masking_required`     BOOLEAN     NOT NULL DEFAULT FALSE,
+    `masking_format`       VARCHAR(100),
+    `access_logging`       BOOLEAN     NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (`policy_purpose_data_element_id`),
+    FOREIGN KEY (`policy_purpose_data_element_id`) REFERENCES `policy_purpose_data_element`(`id`) ON DELETE CASCADE
+);
+
 -- Insert policy-purpose relationships for Data Security Policy
+DELETE FROM policy_purpose WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy');
 INSERT INTO policy_purpose (policy_id, purpose_id) VALUES
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Customer Support')),
 ((SELECT id FROM policy WHERE name = 'Data Security Policy'), (SELECT id FROM purpose WHERE name = 'Fraud Detection')),
@@ -2104,6 +2175,7 @@ INSERT INTO policy_purpose_data_element (policy_id, purpose_id, data_element_id,
  (SELECT id FROM data_element WHERE name = 'Device ID'), TRUE);
 
 -- Seed Policy Purpose Data Security
+DELETE FROM policy_purpose_data_security;
 INSERT INTO policy_purpose_data_security
     (`policy_purpose_data_element_id`, `encryption_required`, `encryption_algorithm`, `masking_required`, `masking_format`, `access_logging`) 
 VALUES
@@ -2142,6 +2214,11 @@ VALUES
 -- User Authentication
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE);
+
+
+-- =============================================
+-- SEED RISK-CONTROL MAPPINGS
+-- =============================================
 
 -- Insert sample risk-control mappings
 INSERT INTO `risk_control` (`risk_id`, `control_id`, `mitigation_level`)

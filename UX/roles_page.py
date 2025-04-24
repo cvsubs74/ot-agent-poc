@@ -4,9 +4,10 @@ import random
 import time
 
 class RolesPage:
-    def __init__(self, glossary_repository, regulatory_metadata_repository):
+    def __init__(self, glossary_repository, regulatory_metadata_repository, policy_repository):
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
+        self.policy_repository = policy_repository
 
     def render(self):
         """Display the External Roles page with information about imported roles."""
@@ -50,63 +51,223 @@ class RolesPage:
         # Create tabs for the different sections
         tabs = st.tabs([
             "External Roles",
+            "Purpose Role",
             "Usage Policy Overrides",
             "Retention Policy Overrides",
             "Security Policy Overrides"
         ])
         
-        # Get external roles
-        roles = self.glossary_repository.get_external_roles()
-        
         # External Roles tab
         with tabs[0]:
-            # Import roles section
-            st.markdown("<h5>Import External Roles</h5>", unsafe_allow_html=True)
-            st.markdown("Import roles from external systems like Snowflake, Databricks, or other access management platforms.")
+            # Asset filter section
+            st.markdown("<h5>External Roles by Asset</h5>", unsafe_allow_html=True)
+            st.markdown("Filter external roles by the asset they belong to.")
             
-            col1, col2 = st.columns(2)
+            # Get all assets for the dropdown
+            assets = self.glossary_repository.get_assets()
+            
+            # Create a dictionary mapping asset names to IDs for the selectbox
+            asset_dict = {}
+            for asset in assets:
+                asset_id, asset_name, _ = asset
+                asset_dict[asset_name] = asset_id
+            
+            # Create the asset filter dropdown
+            asset_options = ["All Assets"] + [name for _, name, _ in assets]
+            selected_asset = st.selectbox(
+                "Filter by Asset:",
+                options=asset_options,
+                key="asset_filter"
+            )
+            
+            # Get the selected asset ID
+            selected_asset_id = None
+            if selected_asset != "All Assets":
+                selected_asset_id = asset_dict.get(selected_asset)
+            
+            # Display existing roles based on the selected asset
+            st.markdown("<h5>External Roles</h5>", unsafe_allow_html=True)
+            
+            # Get roles based on the selected asset
+            if selected_asset_id is None:
+                filtered_roles = self.glossary_repository.get_external_roles_by_asset()
+            else:
+                filtered_roles = self.glossary_repository.get_external_roles_by_asset(selected_asset_id)
+            
+            if filtered_roles and len(filtered_roles) > 0:
+                # Create a DataFrame for display
+                columns = ['ID', 'Name', 'Description', 'Source System', 'Source Role Name', 'Asset ID']
+                if len(filtered_roles[0]) > 6:  # Check if asset_name is included
+                    columns.append('Asset Name')
+                
+                df = pd.DataFrame(filtered_roles, columns=columns)
+                
+                # Drop the Asset ID column if we're already filtering by asset
+                if selected_asset_id and selected_asset_id != "all":
+                    if 'Asset ID' in df.columns:
+                        df = df.drop(columns=['Asset ID'])
+                
+                # Display the DataFrame
+                st.dataframe(df, use_container_width=True, hide_index=True)
+            else:
+                if selected_asset_id and selected_asset_id != "all":
+                    st.info(f"No external roles found for the selected asset.")
+                else:
+                    st.info("No external roles found in the system.")
+        
+        # Purpose-Role Mappings tab
+        with tabs[1]:
+            st.markdown("<h5>Purpose-Role Mappings</h5>", unsafe_allow_html=True)
+            st.markdown('''
+            <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
+                <b>About Purpose-Role Mappings:</b><br>
+                This construct allows you to associate purposes with external roles. This helps in determining which roles are allowed to perform specific purposes.
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Create two columns for the form and the existing mappings
+            col1, col2 = st.columns([1, 2])
+            
             with col1:
-                # Snowflake roles import
-                st.markdown("<h6>Snowflake Roles</h6>", unsafe_allow_html=True)
-                if st.button("Import Snowflake Roles", key="import_snowflake"):
-                    # Simulate importing Snowflake roles
-                    snowflake_roles = [
-                        ("MARKETING_ANALYST", "Marketing data analysis role", "Snowflake", "MARKETING_ANALYST"),
-                        ("MARKETING_ADMIN", "Marketing administration role", "Snowflake", "MARKETING_ADMIN"),
-                        ("CUSTOMER_SUPPORT_REP", "Customer support representative", "Snowflake", "CUSTOMER_SUPPORT_REP"),
-                        ("FINANCE_ANALYST", "Financial data analysis role", "Snowflake", "FINANCE_ANALYST")
-                    ]
+                st.markdown("<h6>Add Purpose-Role Mapping</h6>", unsafe_allow_html=True)
+                
+                # Get all purposes for the dropdown
+                purposes = self.glossary_repository.get_purposes()
+                purpose_options = {}
+                for purpose in purposes:
+                    purpose_options[purpose["name"]] = purpose["id"]
+                
+                # Get all assets for the dropdown
+                assets = self.glossary_repository.get_assets()
+                
+                # Create a dictionary mapping asset names to IDs for the selectbox
+                asset_dict = {}
+                for asset in assets:
+                    asset_id, asset_name, _ = asset
+                    asset_dict[asset_name] = asset_id
+                
+                # Add "All Assets" option
+                asset_options = ["All Assets"] + [name for _, name, _ in assets]
+                
+                # Add asset filter dropdown outside the form so it updates immediately
+                st.markdown("<h6>Filter Roles by Asset</h6>", unsafe_allow_html=True)
+                selected_asset = st.selectbox(
+                    "Select Asset:",
+                    options=asset_options,
+                    key="asset_filter_select"
+                )
+                
+                # Get the selected asset ID
+                selected_asset_id = None
+                if selected_asset != "All Assets":
+                    selected_asset_id = asset_dict.get(selected_asset)
+                
+                # Get roles based on the selected asset
+                if selected_asset_id is None:
+                    filtered_roles = self.glossary_repository.get_external_roles_by_asset()
+                else:
+                    filtered_roles = self.glossary_repository.get_external_roles_by_asset(selected_asset_id)
+                
+                # Create role options dictionary
+                role_options = {}
+                for role in filtered_roles:
+                    # Format: id, name, description, source_system, source_role_name, asset_id, asset_name
+                    role_id, role_name = role[0], role[1]
+                    role_options[role_name] = role_id
+                
+                # Create the form for adding a new purpose-role mapping
+                with st.form(key="add_purpose_role_form"):
+                    selected_purpose = st.selectbox(
+                        "Select Purpose:",
+                        options=list(purpose_options.keys()),
+                        key="purpose_select"
+                    )
                     
-                    for role in snowflake_roles:
-                        self.glossary_repository.add_external_role(*role)
+                    selected_roles = st.multiselect(
+                        "Select Roles:",
+                        options=list(role_options.keys()),
+                        key="roles_multiselect"
+                    )
                     
-                    st.success(f"Successfully imported {len(snowflake_roles)} Snowflake roles")
-                    time.sleep(2)
-                    st.rerun()
+                    submit_button = st.form_submit_button(label="Add Mapping")
+                    
+                    if submit_button and selected_purpose and selected_roles:
+                        purpose_id = purpose_options[selected_purpose]
+                        for role_name in selected_roles:
+                            role_id = role_options[role_name]
+                            success = self.policy_repository.add_purpose_role(purpose_id, role_id)
+                            if success:
+                                st.success(f"Added mapping between {selected_purpose} and {role_name}")
+                            else:
+                                st.warning(f"Mapping between {selected_purpose} and {role_name} already exists or could not be added")
+                        st.experimental_rerun()
             
             with col2:
-                # Databricks roles import
-                st.markdown("<h6>Databricks Roles</h6>", unsafe_allow_html=True)
-                if st.button("Import Databricks Roles", key="import_databricks"):
-                    # Simulate importing Databricks roles
-                    databricks_roles = [
-                        ("Product_Analytics_User", "Product usage analytics role", "Databricks", "PRODUCT_ANALYTICS"),
-                        ("Research_Scientist", "Research and development data science role", "Databricks", "RESEARCH_SCIENTIST"),
-                        ("Fraud_Detection_Analyst", "Fraud detection and prevention", "Databricks", "FRAUD_ANALYST"),
-                        ("Compliance_Officer", "Regulatory compliance monitoring", "Databricks", "COMPLIANCE_OFFICER")
-                    ]
+                st.markdown("<h6>Existing Purpose-Role Mappings</h6>", unsafe_allow_html=True)
+                
+                # Get all purpose-role mappings
+                purpose_roles = self.policy_repository.get_purpose_roles()
+                
+                if purpose_roles:
+                    # Create a DataFrame from the data
+                    df_data = []
+                    for pr in purpose_roles:
+                        pr_id, purpose_id, purpose_name, role_id, role_name, source_system, asset_name = pr
+                        df_data.append({
+                            "ID": pr_id,
+                            "Purpose": purpose_name,
+                            "Role": role_name,
+                            "Source System": source_system,
+                            "Asset": asset_name if asset_name else "N/A"
+                        })
                     
-                    for role in databricks_roles:
-                        self.glossary_repository.add_external_role(*role)
+                    df = pd.DataFrame(df_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
                     
-                    st.success(f"Successfully imported {len(databricks_roles)} Databricks roles")
-                    time.sleep(2)
-                    st.rerun()
+                    # Add a section to delete mappings
+                    st.markdown("<h6>Delete Purpose-Role Mapping</h6>", unsafe_allow_html=True)
+                    
+                    # Create a dictionary mapping display strings to mapping IDs
+                    mapping_options = {}
+                    for pr in purpose_roles:
+                        pr_id, _, purpose_name, _, role_name, _, _ = pr
+                        mapping_options[f"{purpose_name} - {role_name}"] = pr_id
+                    
+                    # Create the form for deleting a purpose-role mapping
+                    with st.form(key="delete_purpose_role_form"):
+                        selected_mapping = st.selectbox(
+                            "Select Mapping to Delete:",
+                            options=list(mapping_options.keys()),
+                            key="mapping_select"
+                        )
+                        
+                        delete_button = st.form_submit_button(label="Delete Mapping")
+                        
+                        if delete_button and selected_mapping:
+                            mapping_id = mapping_options[selected_mapping]
+                            success = self.policy_repository.delete_purpose_role(mapping_id)
+                            if success:
+                                st.success(f"Deleted mapping: {selected_mapping}")
+                            else:
+                                st.error(f"Failed to delete mapping: {selected_mapping}")
+                            st.experimental_rerun()
+                else:
+                    st.info("No purpose-role mappings defined yet.")
+        
+        # Usage Policy Overrides tab
+        with tabs[2]:
+            st.markdown("<h5>Usage Policy Overrides</h5>", unsafe_allow_html=True)
+            st.markdown('''Usage policy overrides define how data can be used for specific purposes.''')
             
-            # Display existing roles
-            st.markdown("<h5>External Roles</h5>", unsafe_allow_html=True)
-            if roles:
-                # Create a DataFrame for display
+            # Get purposes for dropdown
+            purposes = self.glossary_repository.get_purposes()
+            purpose_options = {p["id"]: p["name"] for p in purposes} if purposes else {}
+            
+            # Get external roles
+            roles = self.glossary_repository.get_external_roles()
+            
+            if roles and len(roles) > 0:
+                # Create role data dictionary for display
                 role_data = {
                     "ID": [],
                     "Name": [],
@@ -121,17 +282,10 @@ class RolesPage:
                     role_data["Description"].append(role[2] if role[2] else "")
                     role_data["Source System"].append(role[3] if role[3] else "")
                     role_data["Source Role Name"].append(role[4] if role[4] else "")
-                
+                    
+                # Display the roles in a dataframe
                 role_df = pd.DataFrame(role_data)
                 st.dataframe(role_df, use_container_width=True)
-                
-                # Create role overrides section
-                st.markdown("<h5>Create Role Policy Overrides</h5>", unsafe_allow_html=True)
-                st.markdown("Create policy overrides for specific roles based on their purpose and function.")
-                
-                # Get purposes for dropdown
-                purposes = self.glossary_repository.get_purposes()
-                purpose_options = {p["id"]: p["name"] for p in purposes} if purposes else {}
                 
                 # Select role and purpose
                 col1, col2 = st.columns(2)
@@ -149,7 +303,7 @@ class RolesPage:
                 
                 with col2:
                     selected_purpose = st.selectbox("Select Purpose for Policy", list(purpose_options.keys()), 
-                                                   format_func=lambda x: purpose_options.get(x, ""))
+                                                  format_func=lambda x: purpose_options.get(x, ""))
                 
                 # Create a session state to store editable policy values
                 if 'edited_policies' not in st.session_state:
@@ -160,7 +314,7 @@ class RolesPage:
                     }
                 
                 # Process based on role selection
-                if len(role_data["ID"]) > 0 and selected_purpose:
+                if selected_purpose:
                     # Set role ID and name based on selection
                     if is_all_roles:
                         selected_role_id = None
@@ -650,7 +804,7 @@ class RolesPage:
                 st.info("No role-purpose data usage overrides defined yet.")
         
         # Retention Policy Overrides tab
-        with tabs[2]:
+        with tabs[3]:
             st.markdown("<h5>Retention Policy Overrides</h5>", unsafe_allow_html=True)
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
@@ -694,7 +848,7 @@ class RolesPage:
                 st.info("No role-purpose data retention overrides defined yet.")
         
         # Security Policy Overrides tab
-        with tabs[3]:
+        with tabs[4]:
             st.markdown("<h5>Security Policy Overrides</h5>", unsafe_allow_html=True)
             st.markdown('''
             <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">

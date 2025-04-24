@@ -1309,20 +1309,81 @@ class GlossaryRepository:
         if self.connection is None:
             # Return sample data for testing
             return [
-                (1, "Marketing Manager", "Marketing department manager", "CRM", "marketing_mgr"),
-                (2, "Data Analyst", "Data analytics team member", "Analytics Platform", "analyst"),
-                (3, "Customer Support", "Customer support representative", "Support System", "support_rep"),
-                (4, "Sales Representative", "Sales team member", "Sales CRM", "sales_rep"),
-                (5, "Product Manager", "Product management team", "Product Management", "product_mgr")
+                (1, "Marketing Manager", "Marketing department manager", "CRM", "marketing_mgr", None),
+                (2, "Data Analyst", "Data analytics team member", "Analytics Platform", "analyst", None),
+                (3, "Customer Support", "Customer support representative", "Support System", "support_rep", None),
+                (4, "IT Administrator", "IT system administrator", "IT Systems", "admin", None),
+                (5, "Product Manager", "Product management team", "Product Management", "product_mgr", None)
             ]
             
         cursor = self.connection.cursor()
         try:
-            cursor.execute("SELECT id, name, description, source_system, source_role_name FROM external_roles;")
+            cursor.execute("SELECT id, name, description, source_system, source_role_name, asset_id FROM external_roles;")
             roles = cursor.fetchall()
             return roles
         except Exception as e:
             print(f"Error fetching external roles: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def get_external_roles_by_asset(self, asset_id=None):
+        """Get external roles filtered by asset_id. If asset_id is None, return all roles."""
+        # Handle test mode when connection is None
+        if self.connection is None:
+            # Return sample data for testing
+            sample_data = [
+                (1, "Marketing Manager", "Marketing department manager", "CRM", "marketing_mgr", 1),
+                (2, "Data Analyst", "Data analytics team member", "Analytics Platform", "analyst", 2),
+                (3, "Customer Support", "Customer support representative", "Support System", "support_rep", 3),
+                (4, "IT Administrator", "IT system administrator", "IT Systems", "admin", 4),
+                (5, "Product Manager", "Product management team", "Product Management", "product_mgr", 5),
+                (6, "Snowflake Admin", "Administrator role for Snowflake", "Snowflake", "ACCOUNTADMIN", 6)
+            ]
+            if asset_id is None:
+                return sample_data
+            return [role for role in sample_data if role[5] == asset_id]
+            
+        cursor = self.connection.cursor()
+        try:
+            if asset_id is None:
+                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name as asset_name "
+                               "FROM external_roles r "
+                               "LEFT JOIN asset a ON r.asset_id = a.id;")
+            else:
+                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name as asset_name "
+                               "FROM external_roles r "
+                               "LEFT JOIN asset a ON r.asset_id = a.id "
+                               "WHERE r.asset_id = %s;", (asset_id,))
+            roles = cursor.fetchall()
+            return roles
+        except Exception as e:
+            print(f"Error fetching external roles by asset: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def get_assets(self):
+        """Get all assets from the database."""
+        # Handle test mode when connection is None
+        if self.connection is None:
+            # Return sample data for testing
+            return [
+                (1, "CRM System", "Customer Relationship Management system"),
+                (2, "ERP System", "Enterprise Resource Planning system"),
+                (3, "HR Portal", "Human Resources portal"),
+                (4, "Marketing Database", "Marketing database"),
+                (5, "Financial System", "Financial system"),
+                (6, "Snowflake", "Snowflake data warehouse")
+            ]
+            
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description FROM asset;")
+            assets = cursor.fetchall()
+            return assets
+        except Exception as e:
+            print(f"Error fetching assets: {e}")
             return []
         finally:
             cursor.close()
