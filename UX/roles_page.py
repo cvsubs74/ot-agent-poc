@@ -8,6 +8,28 @@ class RolesPage:
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.policy_repository = policy_repository
+        
+    def format_boolean_as_checkbox(self, df, boolean_columns):
+        """Format boolean columns in a dataframe as checkboxes.
+        
+        Args:
+            df: The pandas DataFrame to format
+            boolean_columns: List of column names containing boolean values
+            
+        Returns:
+            A new DataFrame with formatted boolean columns
+        """
+        # Create a copy to avoid modifying the original
+        formatted_df = df.copy()
+        
+        # Format each boolean column
+        for col in boolean_columns:
+            if col in formatted_df.columns:
+                formatted_df[col] = formatted_df[col].apply(
+                    lambda val: "✅" if val is True else "❌" if val is False else val
+                )
+                
+        return formatted_df
 
     def render(self):
         """Display the External Roles page with information about imported roles."""
@@ -207,9 +229,6 @@ class RolesPage:
                         options=list(role_options.keys()),
                         key="roles_multiselect"
                     )
-                    
-
-                    
                     submit_button = st.form_submit_button(label="Add Mapping")
                     
                     if submit_button and selected_purpose and selected_roles:
@@ -598,12 +617,25 @@ class RolesPage:
                                                 value=sec_policy.get("encryption_required", True),
                                                 key=f"{policy_key}_encryption"
                                             )
+                                            
+                                            # Add encryption algorithm selection for Default Role Assignment purpose
+                                            encryption_algorithm_options = ["AES-128", "AES-256", "AES-256-GCM"]
+                                            encryption_algorithm = st.selectbox(
+                                                "Encryption Algorithm",
+                                                options=encryption_algorithm_options,
+                                                index=encryption_algorithm_options.index(sec_policy.get("encryption_algorithm", "AES-256")) if sec_policy.get("encryption_algorithm") in encryption_algorithm_options else 1,
+                                                key=f"{policy_key}_encryption_algorithm"
+                                            )
+                                            
                                             st.write("Encryption settings can only be modified for the Default Role Assignment purpose.")
                                         else:
                                             # Display encryption as read-only for other purposes
                                             st.write(f"Encryption Required: {sec_policy.get('encryption_required', True)} (controlled by Default Role Assignment purpose)")
+                                            if sec_policy.get("encryption_algorithm"):
+                                                st.write(f"Encryption Algorithm: {sec_policy.get('encryption_algorithm')} (controlled by Default Role Assignment purpose)")
                                             # Store the existing encryption value to maintain it
                                             encryption_required = sec_policy.get("encryption_required", True)
+                                            encryption_algorithm = None  # Will be fetched from Default Role Assignment purpose
                                         
                                         # Allow editing masking settings for all purposes
                                         masking_required = st.checkbox(
@@ -612,24 +644,62 @@ class RolesPage:
                                             key=f"{policy_key}_masking"
                                         )
                                         
+                                        # Add masking format input field for all purposes
+                                        masking_format = st.text_input(
+                                            "Masking Format",
+                                            value=sec_policy.get("masking_format", ""),
+                                            key=f"{policy_key}_masking_format",
+                                            help="Specify the format for masking (e.g., 'xxxx@####.com' for emails, '###-##-####' for SSNs)"
+                                        )
+                                        
                                         # Store the edited values
                                         if policy_key not in st.session_state.edited_policies['security']:
                                             st.session_state.edited_policies['security'][policy_key] = {
                                                 'ppde_id': None,  # Will be set when creating overrides
                                                 'data_element_name': sec_policy['data_element_name'],
                                                 'encryption_required': encryption_required,
+                                                'encryption_algorithm': encryption_algorithm if purpose_name == "Default Role Assignment" else None,
                                                 'masking_required': masking_required,
+                                                'masking_format': masking_format if masking_format else None,
                                                 'policy_id': policy['id']
                                             }
                                         else:
                                             st.session_state.edited_policies['security'][policy_key]['encryption_required'] = encryption_required
+                                            if purpose_name == "Default Role Assignment":
+                                                st.session_state.edited_policies['security'][policy_key]['encryption_algorithm'] = encryption_algorithm
                                             st.session_state.edited_policies['security'][policy_key]['masking_required'] = masking_required
+                                            st.session_state.edited_policies['security'][policy_key]['masking_format'] = masking_format if masking_format else None
                                         
                                         st.markdown("---")
                                 
                                 # Display the original policies in a table
                                 sec_df = pd.DataFrame(sec_policies)
-                                st.dataframe(sec_df[["data_element_name", "encryption_required", "masking_required"]], use_container_width=True)
+                                
+                                # Define columns to display, including the new ones
+                                display_columns = ["data_element_name", "encryption_required", "encryption_algorithm", "masking_required", "masking_format"]
+                                
+                                # Filter to only include columns that exist in the dataframe
+                                available_columns = [col for col in display_columns if col in sec_df.columns]
+                                
+                                # Create a copy of the dataframe with the selected columns
+                                display_df = sec_df[available_columns].copy()
+                                
+                                # Rename columns for better display
+                                column_mapping = {
+                                    "data_element_name": "Data Element",
+                                    "encryption_required": "Encryption Required",
+                                    "encryption_algorithm": "Encryption Algorithm",
+                                    "masking_required": "Masking Required",
+                                    "masking_format": "Masking Format"
+                                }
+                                display_df.columns = [column_mapping[col] for col in available_columns]
+                                
+                                # Format boolean columns as checkboxes
+                                boolean_columns = ["Encryption Required", "Masking Required"]
+                                formatted_df = self.format_boolean_as_checkbox(display_df, boolean_columns)
+                                
+                                # Display the dataframe with formatting
+                                st.dataframe(formatted_df, use_container_width=True)
                 
                 # Update the button text based on role selection
                 button_text = "Create Role Policy Overrides" if not is_all_roles else "Create Policy Overrides is disabled for 'All' selection"
@@ -821,10 +891,16 @@ class RolesPage:
                                                     # Fallback to default if Default Role Assignment purpose not found
                                                     encryption_required = True
                                             
+                                            # Use the edited encryption and masking settings
+                                            encryption_required = edited_policy['encryption_required']
+                                            masking_required = edited_policy['masking_required']
+                                            encryption_algorithm = edited_policy.get('encryption_algorithm')
+                                            masking_format = edited_policy.get('masking_format')
+                                            
                                             # Create the override with the edited settings
                                             try:
                                                 # Debug output
-                                                print(f"DEBUG - Creating security override with: ppde_id={ppde_id}, role_id={selected_role_id}, encryption={encryption_required}, masking={masking_required}")
+                                                print(f"DEBUG - Creating security override with: ppde_id={ppde_id}, role_id={selected_role_id}, encryption={encryption_required}, masking={masking_required}, algorithm={encryption_algorithm}, format={masking_format}")
                                                 
                                                 # Check if values are valid
                                                 if ppde_id is None or selected_role_id is None:
@@ -835,7 +911,7 @@ class RolesPage:
                                                     masking_required = bool(masking_required)
                                                     
                                                     self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
-                                                        ppde_id, selected_role_id, encryption_required, masking_required
+                                                        ppde_id, selected_role_id, encryption_required, masking_required, encryption_algorithm, masking_format
                                                     )
                                                     # Explicitly commit after each override
                                                     self.regulatory_metadata_repository.connection.commit()
@@ -905,8 +981,19 @@ class RolesPage:
                                                     encryption_required = bool(encryption_required)
                                                     masking_required = bool(masking_required)
                                                     
+                                                    # Get encryption algorithm and masking format from the security policy
+                                                    encryption_algorithm = None
+                                                    masking_format = None
+                                                    
+                                                    # Find matching policy to get algorithm and format
+                                                    for sec_policy in sec_policies:
+                                                        if sec_policy["data_element_name"] == data_element_name:
+                                                            encryption_algorithm = sec_policy.get("encryption_algorithm")
+                                                            masking_format = sec_policy.get("masking_format")
+                                                            break
+                                                    
                                                     self.regulatory_metadata_repository.add_policy_override_role_purpose_data_security(
-                                                        ppde_id, selected_role_id, encryption_required, masking_required
+                                                        ppde_id, selected_role_id, encryption_required, masking_required, encryption_algorithm, masking_format
                                                     )
                                                     # Explicitly commit after each override
                                                     self.regulatory_metadata_repository.connection.commit()
@@ -1028,8 +1115,23 @@ class RolesPage:
                         # Rename columns for better display
                         display_df.columns = [column_mapping[col] for col in columns_to_display]
                         
+                        # Format boolean columns as checkboxes
+                        boolean_columns = ["Encryption Required", "Masking Required"]
+                        formatted_df = self.format_boolean_as_checkbox(display_df, boolean_columns)
+                        
+                        # Add a note about encryption settings for non-Default Role Assignment purposes
+                        # First, check if we have the Purpose column and if there are non-Default Role Assignment purposes
+                        if "Purpose" in formatted_df.columns:
+                            # Add a note column to explain encryption settings
+                            formatted_df["Note"] = ""
+                            
+                            # For each row, add a note if it's not the Default Role Assignment purpose
+                            for idx, row in formatted_df.iterrows():
+                                if row["Purpose"] != "Default Role Assignment" and "Encryption Required" in formatted_df.columns:
+                                    formatted_df.at[idx, "Note"] = "Encryption settings controlled by Default Role Assignment purpose"
+                        
                         # Set the table style to left-align all columns
-                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                     else:
                         # If none of the expected columns exist, just display the raw data
                         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -1121,8 +1223,23 @@ class RolesPage:
                         # Rename columns for better display
                         display_df.columns = [column_mapping[col] for col in columns_to_display]
                         
+                        # Format boolean columns as checkboxes
+                        boolean_columns = ["Encryption Required", "Masking Required"]
+                        formatted_df = self.format_boolean_as_checkbox(display_df, boolean_columns)
+                        
+                        # Add a note about encryption settings for non-Default Role Assignment purposes
+                        # First, check if we have the Purpose column and if there are non-Default Role Assignment purposes
+                        if "Purpose" in formatted_df.columns:
+                            # Add a note column to explain encryption settings
+                            formatted_df["Note"] = ""
+                            
+                            # For each row, add a note if it's not the Default Role Assignment purpose
+                            for idx, row in formatted_df.iterrows():
+                                if row["Purpose"] != "Default Role Assignment" and "Encryption Required" in formatted_df.columns:
+                                    formatted_df.at[idx, "Note"] = "Encryption settings controlled by Default Role Assignment purpose"
+                        
                         # Set the table style to left-align all columns
-                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                     else:
                         # If none of the expected columns exist, just display the raw data
                         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -1219,7 +1336,9 @@ class RolesPage:
                         "role_name": "Role",
                         "data_element_name": "Data Element",
                         "encryption_required": "Encryption Required",
+                        "encryption_algorithm": "Encryption Algorithm",
                         "masking_required": "Masking Required",
+                        "masking_format": "Masking Format",
                         "purpose_name": "Purpose",
                         "policy_name": "Policy",
                         "external_role_id": "Role ID",
@@ -1237,8 +1356,23 @@ class RolesPage:
                         # Rename columns for better display
                         display_df.columns = [column_mapping[col] for col in columns_to_display]
                         
+                        # Format boolean columns as checkboxes
+                        boolean_columns = ["Encryption Required", "Masking Required"]
+                        formatted_df = self.format_boolean_as_checkbox(display_df, boolean_columns)
+                        
+                        # Add a note about encryption settings for non-Default Role Assignment purposes
+                        # First, check if we have the Purpose column and if there are non-Default Role Assignment purposes
+                        if "Purpose" in formatted_df.columns:
+                            # Add a note column to explain encryption settings
+                            formatted_df["Note"] = ""
+                            
+                            # For each row, add a note if it's not the Default Role Assignment purpose
+                            for idx, row in formatted_df.iterrows():
+                                if row["Purpose"] != "Default Role Assignment" and "Encryption Required" in formatted_df.columns:
+                                    formatted_df.at[idx, "Note"] = "Encryption settings controlled by Default Role Assignment purpose"
+                        
                         # Set the table style to left-align all columns
-                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                     else:
                         # If none of the expected columns exist, just display the raw data
                         st.dataframe(df, use_container_width=True, hide_index=True)

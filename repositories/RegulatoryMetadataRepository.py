@@ -328,21 +328,69 @@ class RegulatoryMetadataRepository:
         cursor.close()
 
     # --- CRUD for Data Security Override ---
-    def add_policy_override_role_purpose_data_security(self, policy_purpose_data_element_id, external_role_id, encryption_required=True, masking_required=True):
+    def add_policy_override_role_purpose_data_security(self, policy_purpose_data_element_id, external_role_id, encryption_required=True, masking_required=True, encryption_algorithm=None, masking_format=None):
         cursor = self.connection.cursor()
         try:
+            # First check if the table has the encryption_algorithm and masking_format columns
+            self.ensure_security_policy_override_columns_exist()
+            
             cursor.execute('''
                 INSERT INTO policy_override_role_purpose_data_security 
-                (policy_purpose_data_element_id, external_role_id, encryption_required, masking_required)
-                VALUES (%s, %s, %s, %s)
+                (policy_purpose_data_element_id, external_role_id, encryption_required, masking_required, encryption_algorithm, masking_format)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE 
                 encryption_required=VALUES(encryption_required),
-                masking_required=VALUES(masking_required)
-            ''', (policy_purpose_data_element_id, external_role_id, encryption_required, masking_required))
+                masking_required=VALUES(masking_required),
+                encryption_algorithm=VALUES(encryption_algorithm),
+                masking_format=VALUES(masking_format)
+            ''', (policy_purpose_data_element_id, external_role_id, encryption_required, masking_required, encryption_algorithm, masking_format))
             self.connection.commit()
             print(f"Successfully added security policy override for ppde_id={policy_purpose_data_element_id}, role_id={external_role_id}")
         except Exception as e:
             print(f"Error adding policy override role purpose data security: {e}")
+            self.connection.rollback()
+        finally:
+            cursor.close()
+            
+    def ensure_security_policy_override_columns_exist(self):
+        """Ensure that the policy_override_role_purpose_data_security table has the encryption_algorithm and masking_format columns."""
+        cursor = self.connection.cursor()
+        try:
+            # Check if encryption_algorithm column exists
+            cursor.execute('''
+                SELECT COUNT(*) 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'policy_override_role_purpose_data_security' 
+                AND COLUMN_NAME = 'encryption_algorithm'
+            ''')
+            if cursor.fetchone()[0] == 0:
+                # Add the encryption_algorithm column
+                cursor.execute('''
+                    ALTER TABLE policy_override_role_purpose_data_security 
+                    ADD COLUMN encryption_algorithm VARCHAR(100)
+                ''')
+                print("Added encryption_algorithm column to policy_override_role_purpose_data_security table")
+                
+            # Check if masking_format column exists
+            cursor.execute('''
+                SELECT COUNT(*) 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'policy_override_role_purpose_data_security' 
+                AND COLUMN_NAME = 'masking_format'
+            ''')
+            if cursor.fetchone()[0] == 0:
+                # Add the masking_format column
+                cursor.execute('''
+                    ALTER TABLE policy_override_role_purpose_data_security 
+                    ADD COLUMN masking_format VARCHAR(100)
+                ''')
+                print("Added masking_format column to policy_override_role_purpose_data_security table")
+                
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error ensuring security policy override columns exist: {e}")
             self.connection.rollback()
         finally:
             cursor.close()
@@ -386,8 +434,14 @@ class RegulatoryMetadataRepository:
         
         try:
             cursor = self.connection.cursor()
+            # First ensure the columns exist in the table
+            self.ensure_security_policy_override_columns_exist()
+            
             query = '''
-                SELECT o.*, p.policy_id, p.purpose_id, p.data_element_id, 
+                SELECT o.id, o.policy_purpose_data_element_id, o.external_role_id, 
+                       o.encryption_required, o.masking_required, 
+                       o.encryption_algorithm, o.masking_format,
+                       p.policy_id, p.purpose_id, p.data_element_id, 
                        pol.name as policy_name, pur.name as purpose_name, de.name as data_element_name,
                        er.name as role_name, er.source_system
                 FROM policy_override_role_purpose_data_security o
