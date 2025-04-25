@@ -577,20 +577,35 @@ class RolesPage:
                                 
                                 # Create an expander for each policy to allow editing
                                 with st.expander("Edit Security Policy Overrides"):
+                                    # Get the purpose name for the selected purpose ID
+                                    purpose_name = None
+                                    for purpose in self.glossary_repository.get_purposes():
+                                        if purpose['id'] == selected_purpose:
+                                            purpose_name = purpose['name']
+                                            break
+                                    
+                                    # For all purposes, show the data elements
                                     for idx, sec_policy in enumerate(sec_policies):
                                         st.write(f"**{sec_policy['data_element_name']}**")
                                         
                                         # Create a unique key for this policy
                                         policy_key = f"security_{policy['id']}_{sec_policy['data_element_name']}"
                                         
-                                        # Allow editing encryption settings
-                                        encryption_required = st.checkbox(
-                                            "Encryption Required", 
-                                            value=sec_policy.get("encryption_required", True),
-                                            key=f"{policy_key}_encryption"
-                                        )
+                                        # Allow editing encryption settings only for Default Role Assignment purpose
+                                        if purpose_name == "Default Role Assignment":
+                                            encryption_required = st.checkbox(
+                                                "Encryption Required", 
+                                                value=sec_policy.get("encryption_required", True),
+                                                key=f"{policy_key}_encryption"
+                                            )
+                                            st.write("Encryption settings can only be modified for the Default Role Assignment purpose.")
+                                        else:
+                                            # Display encryption as read-only for other purposes
+                                            st.write(f"Encryption Required: {sec_policy.get('encryption_required', True)} (controlled by Default Role Assignment purpose)")
+                                            # Store the existing encryption value to maintain it
+                                            encryption_required = sec_policy.get("encryption_required", True)
                                         
-                                        # Allow editing masking settings
+                                        # Allow editing masking settings for all purposes
                                         masking_required = st.checkbox(
                                             "Masking Required", 
                                             value=sec_policy.get("masking_required", True),
@@ -756,6 +771,13 @@ class RolesPage:
                                     
                                     # Create security override using edited values
                                     if policy["policy_type"] == "Security":
+                                        # Get the purpose name for the selected purpose ID
+                                        purpose_name = None
+                                        for purpose in self.glossary_repository.get_purposes():
+                                            if purpose['id'] == selected_purpose:
+                                                purpose_name = purpose['name']
+                                                break
+                                        
                                         # Create a key to look up edited values
                                         policy_key = f"security_{policy['id']}_{data_element_name}"
                                         
@@ -767,9 +789,37 @@ class RolesPage:
                                             # Update the ppde_id in the edited policy for future reference
                                             st.session_state.edited_policies['security'][policy_key]['ppde_id'] = ppde_id
                                             
-                                            # Use the edited encryption and masking settings
-                                            encryption_required = edited_policy['encryption_required']
+                                            # Get the masking setting from the edited policy
                                             masking_required = edited_policy['masking_required']
+                                            
+                                            # For encryption, only use edited value if it's the Default Role Assignment purpose
+                                            if purpose_name == "Default Role Assignment":
+                                                encryption_required = edited_policy['encryption_required']
+                                            else:
+                                                # For other purposes, get the encryption setting from the Default Role Assignment purpose
+                                                default_purpose_id = None
+                                                for purpose in self.glossary_repository.get_purposes():
+                                                    if purpose['name'] == "Default Role Assignment":
+                                                        default_purpose_id = purpose['id']
+                                                        break
+                                                
+                                                if default_purpose_id:
+                                                    # Get security policies from Default Role Assignment purpose
+                                                    default_sec_policies = self.regulatory_metadata_repository.get_policy_purpose_data_security(
+                                                        policy_id=policy['id'], purpose_id=default_purpose_id
+                                                    )
+                                                    
+                                                    # Find matching policy for this data element
+                                                    default_encryption = True  # Default if not found
+                                                    for sec_policy in default_sec_policies:
+                                                        if sec_policy["data_element_name"] == data_element_name:
+                                                            default_encryption = sec_policy.get("encryption_required", True)
+                                                            break
+                                                    
+                                                    encryption_required = default_encryption
+                                                else:
+                                                    # Fallback to default if Default Role Assignment purpose not found
+                                                    encryption_required = True
                                             
                                             # Create the override with the edited settings
                                             try:
@@ -794,7 +844,9 @@ class RolesPage:
                                                 print(f"Error creating security policy override: {e}")
                                                 import traceback
                                                 traceback.print_exc()
-                                        else:
+                                            
+                                        # Handle case where there are no edited values
+                                        if purpose_name == "Default Role Assignment" and policy_key not in st.session_state.edited_policies['security']:
                                             # If no edited values, use default encryption and masking settings
                                             encryption_required = True
                                             masking_required = True
@@ -804,14 +856,43 @@ class RolesPage:
                                                 policy_id=policy['id'], purpose_id=selected_purpose
                                             )
                                             
-                                            # Find matching policy
+                                            # Find matching policy for masking settings
+                                            masking_required = True  # Default value
                                             for sec_policy in sec_policies:
                                                 if sec_policy["data_element_name"] == data_element_name:
-                                                    encryption_required = sec_policy.get("encryption_required", True)
                                                     masking_required = sec_policy.get("masking_required", True)
                                                     break
                                             
-                                            # Create the override with default values
+                                            # For encryption, get settings from Default Role Assignment purpose
+                                            encryption_required = True  # Default value
+                                            
+                                            # Only use purpose-specific encryption settings for Default Role Assignment
+                                            if purpose_name == "Default Role Assignment":
+                                                for sec_policy in sec_policies:
+                                                    if sec_policy["data_element_name"] == data_element_name:
+                                                        encryption_required = sec_policy.get("encryption_required", True)
+                                                        break
+                                            else:
+                                                # For other purposes, get encryption from Default Role Assignment
+                                                default_purpose_id = None
+                                                for purpose in self.glossary_repository.get_purposes():
+                                                    if purpose['name'] == "Default Role Assignment":
+                                                        default_purpose_id = purpose['id']
+                                                        break
+                                                
+                                                if default_purpose_id:
+                                                    # Get security policies from Default Role Assignment purpose
+                                                    default_sec_policies = self.regulatory_metadata_repository.get_policy_purpose_data_security(
+                                                        policy_id=policy['id'], purpose_id=default_purpose_id
+                                                    )
+                                                    
+                                                    # Find matching policy for this data element
+                                                    for sec_policy in default_sec_policies:
+                                                        if sec_policy["data_element_name"] == data_element_name:
+                                                            encryption_required = sec_policy.get("encryption_required", True)
+                                                            break
+                                            
+                                            # Create the override with the determined values
                                             try:
                                                 # Debug output
                                                 print(f"DEBUG - Creating default security override with: ppde_id={ppde_id}, role_id={selected_role_id}, encryption={encryption_required}, masking={masking_required}")

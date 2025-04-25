@@ -2422,40 +2422,40 @@ VALUES
 
 -- Customer Support
 -- Customer Support
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), FALSE, NULL, FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Customer Support') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), FALSE, NULL, TRUE, 'xxxx@####.com', TRUE),
 
 -- Fraud Detection
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), FALSE, NULL, FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Fraud Detection') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), FALSE, NULL, TRUE, '###.###.###.###', TRUE),
 
 -- Marketing Campaigns
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), FALSE, NULL, TRUE, 'xxxx@####.com', FALSE),
 ((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Marketing Campaigns') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Customer ID')), FALSE, NULL, TRUE, '######', FALSE),
 
 -- Product Analytics
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), FALSE, NULL, FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Product Analytics') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), FALSE, NULL, TRUE, '###.###.###.###', TRUE),
 
 -- Payment Processing
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), TRUE, 'AES-256', TRUE, '####-XXXX-XXXX-####', TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Credit Card Number')), FALSE, NULL, TRUE, '####-XXXX-XXXX-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Payment Processing') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), FALSE, NULL, FALSE, NULL, TRUE),
 
 -- Service Delivery
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-128', FALSE, NULL, TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-128', TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), FALSE, NULL, FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Service Delivery') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), FALSE, NULL, TRUE, 'xxxx@####.com', TRUE),
 
 -- Research and Development
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), TRUE, 'AES-256', FALSE, NULL, TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), TRUE, 'AES-128', TRUE, '###.###.###.###', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Purchase History')), FALSE, NULL, FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Research and Development') AND data_element_id = (SELECT id FROM data_element WHERE name = 'IP Address')), FALSE, NULL, TRUE, '###.###.###.###', TRUE),
 
 -- Employee Management
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), TRUE, 'AES-256', TRUE, 'XXX-XX-####', TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), TRUE, 'AES-256', FALSE, NULL, TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Social Security Number')), FALSE, NULL, TRUE, 'XXX-XX-####', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'Employee Management') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Full Name')), FALSE, NULL, FALSE, NULL, TRUE),
 
 -- User Authentication
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), TRUE, 'AES-256', TRUE, 'xxxx@####.com', TRUE),
-((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), TRUE, 'AES-128', FALSE, NULL, TRUE);
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Email Address')), FALSE, NULL, TRUE, 'xxxx@####.com', TRUE),
+((SELECT id FROM policy_purpose_data_element WHERE policy_id = (SELECT id FROM policy WHERE name = 'Data Security Policy') AND purpose_id = (SELECT id FROM purpose WHERE name = 'User Authentication') AND data_element_id = (SELECT id FROM data_element WHERE name = 'Device ID')), FALSE, NULL, FALSE, NULL, TRUE);
 
 
 -- =============================================
