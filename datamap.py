@@ -71,6 +71,7 @@ from repositories.DatabaseManager import DatabaseManager
 from repositories.PolicyRepository import PolicyRepository
 from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
+from core.asset_policy_inference import AssetPolicyInference
 
 class DataMap:
     def __init__(self):
@@ -82,6 +83,11 @@ class DataMap:
         self.obligation_repository = ObligationRepository(self.database_manager.connection)
         self.catalog_repository = CatalogRepository(self.database_manager.connection)
         self.policy_repository = PolicyRepository(self.database_manager.connection)
+        self.asset_policy_inference = AssetPolicyInference(
+            self.catalog_repository,
+            self.regulatory_metadata_repository,
+            self.glossary_repository
+        )
         
         # Initialize inference classes
         self.sensitivity_inference = SensitivityInference(  
@@ -374,7 +380,8 @@ class DataMap:
             self.obligation_repository,
             self.sensitivity_inference,
             self.catalog_repository,
-            self.regulatory_metadata_repository
+            self.regulatory_metadata_repository,
+            self.asset_policy_inference
         ).render()
     
     def processing_activities_section(self):
@@ -396,11 +403,19 @@ class DataMap:
         """Display the Policy Compliance page with the policy compliance analysis tool."""        
         self.policy_compliance_page.render()
         
+    def policy_applied_page(self):
+        """Display the Policy Applied page showing how policies are applied at the table column level."""
+        PolicyAppliedPage(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.catalog_repository,
+            self.policy_applied_repository
+        ).render()
+        
     def roles_page(self):
         """Display the External Roles page with information about imported roles."""
         from UX.roles_page import RolesPage
         RolesPage(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
-
     def run(self):
         """Main function to run the Streamlit app."""
         self.configure_page()
@@ -520,6 +535,7 @@ class DataMap:
             'Policies': self.policies_page,
             'Roles': self.roles_page,
             'Policy Compliance': self.policy_compliance,
+            'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
         }
         handler = section_handlers.get(st.session_state['current_section'])

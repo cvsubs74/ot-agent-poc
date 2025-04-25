@@ -2,13 +2,14 @@ import streamlit as st
 import pandas as pd
 
 class AssetsPage:
-    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository):
+    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository, asset_policy_inference=None):
         self.inventory_repository = inventory_repository
         self.glossary_repository = glossary_repository
         self.obligation_repository = obligation_repository
         self.sensitivity_inference = sensitivity_inference
         self.catalog_repository = catalog_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
+        self.asset_policy_inference = asset_policy_inference
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -248,7 +249,78 @@ class AssetsPage:
                 else:
                     st.info(f"No catalog data available for {selected_asset['name']}. Click 'Scan Database' to discover database structure.")
                 
-                run_analysis = st.button("Run Asset Analysis", key=f"run_analysis_{selected_asset['id']}")
+                # Add purpose selection for policy analysis
+                st.markdown("### Analysis Options")
+                
+                # Get purposes for dropdown
+                purposes = self.glossary_repository.get_purposes()
+                purpose_options = {}
+                for purpose in purposes:
+                    purpose_id = purpose["id"]
+                    purpose_name = purpose["name"]
+                    purpose_options[purpose_id] = purpose_name
+                    
+                # Add 'All Purposes' option
+                purpose_options['all'] = "All Purposes"
+                    
+                # Create three columns for the dropdowns
+                col_purpose, col_policy_type, col_role = st.columns(3)
+                
+                with col_purpose:
+                    # Purpose selection dropdown
+                    selected_purpose = st.selectbox(
+                        "Select Purpose:",
+                        options=list(purpose_options.keys()),
+                        format_func=lambda x: purpose_options.get(x, ""),
+                        key=f"purpose_select_{selected_asset['id']}"
+                    )
+                
+                with col_policy_type:
+                    # Policy type selection dropdown
+                    policy_type_options = {
+                        "all": "All Policy Types",
+                        "security": "Data Security Policies",
+                        "usage": "Data Usage Policies",
+                        "retention": "Data Retention Policies"
+                    }
+                    
+                    selected_policy_type = st.selectbox(
+                        "Select Policy Type:",
+                        options=list(policy_type_options.keys()),
+                        format_func=lambda x: policy_type_options.get(x, ""),
+                        key=f"policy_type_select_{selected_asset['id']}"
+                    )
+                
+                with col_role:
+                    # Get external roles for this asset
+                    external_roles = self.glossary_repository.get_external_roles_by_asset(asset_id=selected_asset['id'])
+                    
+                    # Create a dictionary of role options with an 'All Roles' option
+                    role_options = {}
+                    for role in external_roles:
+                        # External roles are returned as tuples: (id, name, description, source_system, source_role_name, asset_id)
+                        role_options[role[0]] = role[1]  # role[0] is id, role[1] is name
+                    role_options['all'] = "All Roles"
+                    
+                    # External role selection dropdown
+                    selected_role = st.selectbox(
+                        "Select External Role:",
+                        options=list(role_options.keys()),
+                        format_func=lambda x: role_options.get(x, ""),
+                        key=f"role_select_{selected_asset['id']}"
+                    )
+                
+                # Create three columns for the buttons
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    # Run analysis button
+                    run_analysis = st.button("Run Asset Analysis", key=f"run_analysis_{selected_asset['id']}")
+                with col2:
+                    # Run policy analysis button
+                    run_policy_analysis = st.button("Run Policy Analysis", key=f"run_policy_analysis_{selected_asset['id']}")
+                with col3:
+                    # Generate JSON policy specification button
+                    generate_json = st.button("Generate JSON Policy Spec", key=f"generate_json_{selected_asset['id']}")
                 # Show info box about analysis workflow
                 st.markdown('''
                 <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
@@ -265,6 +337,158 @@ class AssetsPage:
                 </div>
                 ''', unsafe_allow_html=True)                    
                 
+                # Handle the Generate JSON Policy Spec button click
+                if generate_json and self.asset_policy_inference:
+                    purpose_display = "All Purposes" if selected_purpose == "all" else purpose_options.get(selected_purpose, "")
+                    policy_type_display = policy_type_options.get(selected_policy_type, "")
+                    role_display = "All Roles" if selected_role == "all" else role_options.get(selected_role, "")
+                    with st.spinner(f"Generating JSON policy specification for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
+                        # Generate the JSON policy specification
+                        policy_json = self.asset_policy_inference.generate_policy_json_by_table_column(
+                            asset_id=selected_asset['id'],
+                            purpose_id=selected_purpose,
+                            policy_type=selected_policy_type,
+                            role_id=selected_role
+                        )
+                        
+                        if policy_json and policy_json.get('tables'):
+                            # Display the JSON policy specification
+                            st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                            
+                            # Add a download button for the JSON
+                            import json
+                            json_str = json.dumps(policy_json, indent=2)
+                            st.download_button(
+                                label="Download JSON",
+                                data=json_str,
+                                file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_policy_spec.json",
+                                mime="application/json"
+                            )
+                            
+                            # Display the JSON in an expandable section
+                            with st.expander("View JSON Policy Specification", expanded=True):
+                                st.json(policy_json)
+                                
+                            # Add an explanation of the JSON structure
+                            with st.expander("JSON Structure Explanation"):
+                                st.markdown("""
+                                ### JSON Policy Specification Structure
+                                
+                                The JSON policy specification is organized as follows:
+                                
+                                ```json
+                                {
+                                  "asset_id": "123",
+                                  "asset_name": "Asset Name",
+                                  "tables": {
+                                    "schema.table_name": {
+                                      "columns": {
+                                        "column_name": {
+                                          "data_element_id": 456,
+                                          "data_element_name": "Data Element Name",
+                                          "data_type": "varchar",
+                                          "purposes": {
+                                            "Purpose Name": {
+                                              "security": {
+                                                "policy_name": "Policy Name",
+                                                "encryption_required": true,
+                                                "encryption_algorithm": "AES-256",
+                                                "masking_required": true,
+                                                "masking_format": "XXX-XX-1234"
+                                              },
+                                              "usage": [
+                                                {
+                                                  "policy_name": "Policy Name",
+                                                  "operation": "READ",
+                                                  "allowed": true,
+                                                  "restrictions": "Only authorized users"
+                                                }
+                                              ],
+                                              "retention": [
+                                                {
+                                                  "policy_name": "Policy Name",
+                                                  "retention_period": "7 years",
+                                                  "retention_basis": "Legal requirement"
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                                ```
+                                
+                                This structure allows you to easily see all policies that apply to each column in each table, organized by purpose.
+                                """)
+                        else:
+                            st.warning(f"No policy specifications found for {selected_asset['name']}. This could be because there are no data elements mapped to this asset, or no policies defined for any purpose.")
+                
+                # Handle the Run Policy Analysis button click
+                if run_policy_analysis and self.asset_policy_inference:
+                    purpose_display = purpose_options.get(selected_purpose, "")
+                    policy_type_display = policy_type_options.get(selected_policy_type, "")
+                    role_display = "All Roles" if selected_role == "all" else role_options.get(selected_role, "")
+                    with st.spinner(f"Analyzing policy application for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
+                        # Get applied policies for the selected asset, purpose, policy type, and role
+                        df = self.asset_policy_inference.get_applied_policies_for_asset_purpose(
+                            asset_id=selected_asset['id'],
+                            purpose_id=selected_purpose,
+                            policy_type=selected_policy_type,
+                            role_id=selected_role
+                        )
+                        
+                        if not df.empty:
+                            # Format boolean columns as checkboxes
+                            formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
+                            
+                            # Rename columns for better display
+                            column_mapping = {
+                                "schema_name": "Schema",
+                                "table_name": "Table",
+                                "column_name": "Column",
+                                "data_type": "Data Type",
+                                "data_element_name": "Data Element",
+                                "purpose_name": "Purpose",
+                                "role_name": "Role",
+                                "policy_name": "Policy",
+                                "encryption_required": "Encryption Required",
+                                "encryption_algorithm": "Encryption Algorithm",
+                                "masking_required": "Masking Required",
+                                "masking_format": "Masking Format",
+                                "is_override": "Is Override"
+                            }
+                            formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
+                            
+                            # Add a note about encryption settings for non-Default Role Assignment purposes
+                            if purpose_options.get(selected_purpose) != "Default Role Assignment":
+                                st.info("Note: Encryption settings are controlled by the Default Role Assignment purpose for all other purposes.")
+                            
+                            # Display the results
+                            st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose: {purpose_options.get(selected_purpose)}</h4>", unsafe_allow_html=True)
+                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                            
+                            # Add an expander with additional information
+                            with st.expander("About Applied Policies"):
+                                st.markdown("""
+                                ### Understanding Applied Policies
+                                
+                                - **Encryption Required**: Indicates whether the column data must be encrypted
+                                - **Encryption Algorithm**: The algorithm used for encryption (only configurable for Default Role Assignment purpose)
+                                - **Masking Required**: Indicates whether the column data must be masked
+                                - **Masking Format**: The format used for masking (configurable for all purposes)
+                                - **Is Override**: Indicates whether this policy is a role-specific override
+                                
+                                ### Default Role Assignment Purpose
+                                
+                                The Default Role Assignment purpose controls encryption settings for all purposes. 
+                                Other purposes inherit these settings but can have their own masking settings.
+                                """)
+                        else:
+                            st.warning(f"No policies found for {selected_asset['name']} with purpose {purpose_options.get(selected_purpose)}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose.")
+                
+                # Handle the Run Asset Analysis button click
                 if run_analysis:
                         # 1. Infer sensitivities
                         data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
