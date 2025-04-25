@@ -345,15 +345,30 @@ class AssetsPage:
                 # Show info box about analysis workflow
                 st.markdown('''
                 <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
-                    <h4 style="margin-top: 0; color: #229954;">How Policy Recommendation and Risk Analysis Work</h4>
+                    <h4 style="margin-top: 0; color: #229954;">Policy Analysis, JSON Generation, and DDL Creation Process</h4>
                     <ul style="margin-bottom: 0;">
-                        <li><strong>Input:</strong> The analysis starts with the data elements associated with each asset.</li>
-                        <li><strong>Sensitivity Inference:</strong> Sensitivity levels for each data element are inferred using regulatory mappings and business logic.</li>
-                        <li><strong>Obligation Mapping:</strong> Based on sensitivities, relevant security and privacy obligations are determined for each data element.</li>
-                        <li><strong>Policy Recommendation:</strong> For each obligation, recommended policies and controls are identified to help ensure compliance.</li>
-                        <li><strong>Risk Analysis:</strong> Potential risks are derived for each obligation if not properly implemented, including likelihood and impact assessment.</li>
-                        <li><strong>Risk Rating:</strong> Risks are categorized as Critical, High, Medium, or Low based on a matrix of likelihood and impact.</li>
-                        <li><strong>Summary:</strong> The workflow provides a prioritized list of obligations, recommended policies, and potential risks to guide remediation and compliance actions.</li>
+                        <li><strong>Policy Analysis:</strong> When you click "Run Policy Analysis", the system analyzes policies applied to the selected asset based on:</li>
+                        <ul>
+                            <li>The selected business purposes (e.g., Customer Support, Marketing)</li>
+                            <li>The selected policy types (Security, Usage, Retention)</li>
+                            <li>The selected roles (e.g., Data Analyst, Data Engineer)</li>
+                        </ul>
+                        <li><strong>JSON Policy Specification:</strong> When you click "Generate JSON Policy Spec", the system:</li>
+                        <ul>
+                            <li>Uses the same data source as the policy analysis to ensure consistency</li>
+                            <li>Creates a hierarchical JSON structure organizing policies by table, column, and purpose</li>
+                            <li>Includes role information for each purpose to enable proper security policy implementation</li>
+                            <li>Specifies security requirements including masking and encryption details</li>
+                        </ul>
+                        <li><strong>Security Policy DDL Generation:</strong> When you click "Generate Security Policy DDL", the system:</li>
+                        <ul>
+                            <li>Processes the JSON policy specification through a GenAI model (Gemini)</li>
+                            <li>Creates Snowflake DDL statements that implement the specified policies</li>
+                            <li>Generates purpose-based roles (e.g., PURPOSE_CUSTOMER_SUPPORT)</li>
+                            <li>Creates GRANT statements to associate purpose-based roles with original Snowflake roles</li>
+                            <li>Implements column-level masking policies based on the masking formats in the JSON</li>
+                        </ul>
+                        <li><strong>End Result:</strong> You get executable Snowflake DDL that implements your security policies with proper role-based access controls and data protection measures.</li>
                     </ul>
                 </div>
                 ''', unsafe_allow_html=True)                    
