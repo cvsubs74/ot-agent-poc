@@ -432,7 +432,172 @@ class PoliciesPage:
                 if selected_element != "All":
                     filtered_df = filtered_df[filtered_df["data_element_name"] == selected_element]
 
+                # Display the security rules in a dataframe
                 st.dataframe(filtered_df, use_container_width=True)
+                
+                # Get policies, purposes, and data elements for the update form
+                policies_list = self.glossary_repository.get_policies()
+                policy_options = {p["id"]: p["name"] for p in policies_list}
+                
+                purposes_list = self.glossary_repository.get_purposes()
+                purpose_options = {p["id"]: p["name"] for p in purposes_list}
+                
+                data_elements_list = self.glossary_repository.get_data_elements()
+                data_element_options = {de["id"]: de["name"] for de in data_elements_list}
+                
+                # Find the Data Security Policy ID
+                data_security_policy_id = None
+                for policy in policies_list:
+                    if policy["name"] == "Data Security Policy" or policy["policy_type"] == "Security":
+                        data_security_policy_id = policy["id"]
+                        break
+                
+                if not data_security_policy_id:
+                    st.error("Data Security Policy not found in the system. Please create it first.")
+                else:
+                    # First, let the user select a data element and purpose outside the form
+                    st.markdown(f"**Policy:** Data Security Policy")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        selected_purpose_id = st.selectbox(
+                            "Select Purpose",
+                            options=list(purpose_options.keys()),
+                            format_func=lambda x: purpose_options.get(x, ""),
+                            key="select_purpose_id"
+                        )
+                    
+                    with col2:
+                        selected_data_element_id = st.selectbox(
+                            "Select Data Element",
+                            options=list(data_element_options.keys()),
+                            format_func=lambda x: data_element_options.get(x, ""),
+                            key="select_data_element_id"
+                        )
+                    
+                    # Define masking options based on data element type
+                    if selected_data_element_id:
+                        # Get the data element details to determine appropriate masking options
+                        data_element_name = data_element_options.get(selected_data_element_id, "")
+                        
+                        # Set masking options based on data element type
+                        if "Email" in data_element_name:
+                            masking_options = ["Email Format (user***@domain.com)", "Domain Only (****@domain.com)", "Hash", "None"]
+                            masking_help = "Email addresses can be masked to hide the username portion or the entire address except the domain."
+                        elif "Phone" in data_element_name:
+                            masking_options = ["Last 4 Digits (XXX-XXX-1234)", "First 6 Digits (123-456-XXXX)", "Hash", "None"]
+                            masking_help = "Phone numbers can be masked to show only the last 4 digits or area code and prefix."
+                        elif "Credit Card" in data_element_name or "Card" in data_element_name:
+                            masking_options = ["Last 4 Digits (XXXX-XXXX-XXXX-1234)", "First 6 & Last 4 (123456-XXXX-XXXX-1234)", "Tokenization", "None"]
+                            masking_help = "Credit card numbers should typically show only the last 4 digits, or first 6 and last 4 for payment processing."
+                        elif "SSN" in data_element_name or "Social Security" in data_element_name:
+                            masking_options = ["Last 4 Digits (XXX-XX-1234)", "Hash", "Tokenization", "None"]
+                            masking_help = "Social Security Numbers should be heavily protected, typically showing only the last 4 digits if needed."
+                        elif "Name" in data_element_name:
+                            masking_options = ["First Initial (J. Doe)", "Last Initial (John D.)", "Initials Only (J.D.)", "None"]
+                            masking_help = "Names can be masked to show only initials or partial information."
+                        elif "Address" in data_element_name:
+                            masking_options = ["Street Number Only (123 **** St)", "No Street Number (**** Main St)", "City/State Only", "None"]
+                            masking_help = "Addresses can be partially masked to hide specific identifying information."
+                        elif "Date" in data_element_name or "Birth" in data_element_name:
+                            masking_options = ["Year Only (XXXX-XX-1980)", "Month/Year Only (XXXX-01-1980)", "Age Range", "None"]
+                            masking_help = "Dates can be masked to show only partial information like year or month/year."
+                        else:
+                            # Default options for other data types
+                            masking_options = ["Full", "Partial", "Hash", "Tokenization", "None"]
+                            masking_help = "Select an appropriate masking format for this data element."
+                    else:
+                        # Default options when no data element is selected
+                        masking_options = ["Full", "Partial", "Hash", "Tokenization", "None"]
+                        masking_help = "Please select a data element first to see specific masking options."
+                    
+                    # Now create the form for security settings
+                    update_form = st.form("update_security_form")
+                    with update_form:
+                        # Show the selected data element and purpose (read-only)
+                        if selected_data_element_id and selected_purpose_id:
+                            st.info(f"Updating security settings for **{data_element_options.get(selected_data_element_id, '')}** with purpose **{purpose_options.get(selected_purpose_id, '')}**")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            encryption_required = st.checkbox("Encryption Required", key="encryption_required")
+                            encryption_algorithm = st.selectbox(
+                                "Encryption Algorithm",
+                                options=["AES-256", "RSA-2048", "ChaCha20-Poly1305", "None"],
+                                key="encryption_algorithm",
+                                help="Select the encryption algorithm to use if encryption is required."
+                            )
+                        
+                        with col2:
+                            masking_required = st.checkbox("Masking Required", key="masking_required")
+                            masking_format = st.selectbox(
+                                "Masking Format",
+                                options=masking_options,
+                                key="masking_format",
+                                help=masking_help
+                            )
+                        
+                        # Submit button
+                        submitted = st.form_submit_button("Update Security Settings")
+                    
+                    # Handle form submission - this is outside the form but we can still access the form values
+                    if submitted:
+                        if not selected_purpose_id or not selected_data_element_id:
+                            st.error("Please select a purpose and data element.")
+                        else:
+                            # Get the policy_purpose_data_element_id
+                            ppde_id = self.regulatory_metadata_repository.get_policy_purpose_data_element_id(
+                                policy_id=data_security_policy_id,
+                                purpose_id=selected_purpose_id,
+                                data_element_id=selected_data_element_id
+                            )
+                            
+                            # If the policy-purpose-data element combination doesn't exist, create it
+                            if not ppde_id:
+                                st.info("Creating new Policy-Purpose-Data Element relationship...")
+                                ppde_id = self.regulatory_metadata_repository.add_policy_purpose_data_element(
+                                    policy_id=data_security_policy_id,
+                                    purpose_id=selected_purpose_id,
+                                    data_element_id=selected_data_element_id,
+                                    access_allowed=True  # Default to allowing access
+                                )
+                                
+                                if not ppde_id:
+                                    st.error("Failed to create Policy-Purpose-Data Element relationship.")
+                                    return
+                                
+                                # Create initial security settings
+                                success = self.regulatory_metadata_repository.add_policy_purpose_data_security(
+                                    policy_purpose_data_element_id=ppde_id,
+                                    encryption_required=encryption_required,
+                                    encryption_algorithm=encryption_algorithm if encryption_required else None,
+                                    masking_required=masking_required,
+                                    masking_format=masking_format if masking_required else None,
+                                    access_logging=False  # Default access logging to False
+                                )
+                                
+                                if success:
+                                    st.success(f"Successfully created security settings for Data Security Policy - {purpose_options[selected_purpose_id]} - {data_element_options[selected_data_element_id]}")
+                                    # Refresh the page to show updated data
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to create security settings. Please try again.")
+                            else:
+                                # Update existing security settings
+                                success = self.regulatory_metadata_repository.update_policy_purpose_data_security(
+                                    policy_purpose_data_element_id=ppde_id,
+                                    encryption_required=encryption_required,
+                                    encryption_algorithm=encryption_algorithm if encryption_required else None,
+                                    masking_required=masking_required,
+                                    masking_format=masking_format if masking_required else None
+                                )
+                                
+                                if success:
+                                    st.success(f"Successfully updated security settings for Data Security Policy - {purpose_options[selected_purpose_id]} - {data_element_options[selected_data_element_id]}")
+                                    # Refresh the page to show updated data
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to update security settings. Please try again.")
             else:
                 st.warning("No policy purpose data security rules available.")
 

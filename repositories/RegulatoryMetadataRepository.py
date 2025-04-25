@@ -883,6 +883,92 @@ class RegulatoryMetadataRepository:
         finally:
             cursor.close()
             
+    def update_policy_purpose_data_security(self, policy_purpose_data_element_id, encryption_required=None, encryption_algorithm=None, masking_required=None, masking_format=None, access_logging=None):
+        """Update an existing policy-purpose-data element security rule.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy_purpose_data_element
+            encryption_required (bool, optional): Whether encryption is required
+            encryption_algorithm (str, optional): The encryption algorithm to use
+            masking_required (bool, optional): Whether masking is required
+            masking_format (str, optional): The masking format to use
+            access_logging (bool, optional): Whether access logging is required
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            # Build update query dynamically based on provided parameters
+            update_parts = []
+            params = []
+            
+            if encryption_required is not None:
+                update_parts.append("encryption_required = %s")
+                params.append(encryption_required)
+                
+            if encryption_algorithm is not None:
+                update_parts.append("encryption_algorithm = %s")
+                params.append(encryption_algorithm)
+                
+            if masking_required is not None:
+                update_parts.append("masking_required = %s")
+                params.append(masking_required)
+                
+            if masking_format is not None:
+                update_parts.append("masking_format = %s")
+                params.append(masking_format)
+                
+            if access_logging is not None:
+                update_parts.append("access_logging = %s")
+                params.append(access_logging)
+                
+            if not update_parts:
+                return False  # Nothing to update
+                
+            # Add the policy_purpose_data_element_id to params
+            params.append(policy_purpose_data_element_id)
+            
+            query = f"""UPDATE policy_purpose_data_security 
+                      SET {', '.join(update_parts)} 
+                      WHERE policy_purpose_data_element_id = %s;"""
+                      
+            cursor.execute(query, params)
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating policy-purpose-data security rule: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+            
+    def get_policy_purpose_data_element_id(self, policy_id, purpose_id, data_element_id):
+        """Get the policy_purpose_data_element_id for a given policy, purpose, and data element.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            purpose_id (int): The ID of the purpose
+            data_element_id (int): The ID of the data element
+            
+        Returns:
+            int: The ID of the policy_purpose_data_element, or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+            SELECT id FROM policy_purpose_data_element
+            WHERE policy_id = %s AND purpose_id = %s AND data_element_id = %s
+            """
+            cursor.execute(query, (policy_id, purpose_id, data_element_id))
+            result = cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error getting policy_purpose_data_element_id: {e}")
+            return None
+        finally:
+            cursor.close()
+            
     def get_policy_purpose_data_retentions(self, policy_purpose_data_element_id=None):
         """Get policy purpose data retention information."""
         cursor = self.connection.cursor()

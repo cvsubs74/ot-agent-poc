@@ -25,9 +25,9 @@ class AssetPolicyInference:
         
         Args:
             asset_id: ID of the asset
-            purpose_id: ID of the purpose or 'all' for all purposes
-            policy_type: Type of policy to filter by ('security', 'usage', 'retention', or 'all')
-            role_id: ID of the external role to filter by or 'all' for all roles
+            purpose_id: ID of the purpose, 'all' for all purposes, or a list of purpose IDs
+            policy_type: Type of policy to filter by ('security', 'usage', 'retention', or 'all'), or a list of policy types
+            role_id: ID of the external role to filter by, 'all' for all roles, or a list of role IDs
             
         Returns:
             DataFrame containing filtered policies applied to the asset's columns
@@ -55,7 +55,31 @@ class AssetPolicyInference:
         # Initialize results list
         results = []
         
-        # Handle 'all' purposes case
+        # Handle purpose_id parameter (could be 'all', a single ID, or a list of IDs)
+        if isinstance(purpose_id, list):
+            if 'all' in purpose_id:
+                logger.info("Processing ALL purposes (from list containing 'all')")
+                purpose_id = 'all'
+            else:
+                logger.info(f"Processing multiple purposes: {purpose_id}")
+        
+        # Handle policy_type parameter (could be 'all', a single type, or a list of types)
+        if isinstance(policy_type, list):
+            if 'all' in policy_type:
+                logger.info("Processing ALL policy types (from list containing 'all')")
+                policy_type = 'all'
+            else:
+                logger.info(f"Processing multiple policy types: {policy_type}")
+        
+        # Handle role_id parameter (could be 'all', a single ID, or a list of IDs)
+        if isinstance(role_id, list):
+            if 'all' in role_id:
+                logger.info("Processing ALL roles (from list containing 'all')")
+                role_id = 'all'
+            else:
+                logger.info(f"Processing multiple roles: {role_id}")
+        
+        # Handle purposes (either 'all', a single ID, or a list of IDs)
         if purpose_id == 'all':
             logger.info("Processing ALL purposes")
             # Get all purposes
@@ -69,53 +93,72 @@ class AssetPolicyInference:
                 logger.info(f"Processing purpose: {current_purpose_name} (ID: {current_purpose_id})")
                 
                 # Process each catalog entry for this purpose
-                entries_processed = 0
-                for entry in catalog_entries:
-                    # Skip entries without a data element
-                    if not entry.get('data_element_id'):
-                        continue
-                    
-                    logger.debug(f"Processing entry: {entry.get('schema_name')}.{entry.get('table_name')}.{entry.get('column_name')}")
-                    entries_processed += 1
-                    
-                    # Process policies for this entry and purpose based on policy type
-                    if policy_type == 'all' or policy_type == 'security':
-                        logger.debug(f"Processing security policies for {entry.get('column_name')}")
-                        self._process_security_policies(entry, current_purpose_id, current_purpose_name, results, role_id)
-                    if policy_type == 'all' or policy_type == 'usage':
-                        logger.debug(f"Processing usage policies for {entry.get('column_name')}")
-                        self._process_usage_policies(entry, current_purpose_id, current_purpose_name, results, role_id)
-                    if policy_type == 'all' or policy_type == 'retention':
-                        logger.debug(f"Processing retention policies for {entry.get('column_name')}")
-                        self._process_retention_policies(entry, current_purpose_id, current_purpose_name, results, role_id)
-                
-                logger.info(f"Processed {entries_processed} entries for purpose {current_purpose_name}")
-        else:
-            logger.info(f"Processing specific purpose with ID: {purpose_id}")
-            purpose_name = None
+                self._process_catalog_entries_for_purpose(catalog_entries, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+        elif isinstance(purpose_id, list):
+            # Process multiple specific purposes
+            logger.info(f"Processing {len(purpose_id)} specific purposes")
             purposes = self.glossary_repository.get_purposes()
-            for purpose in purposes:
-                if purpose["id"] == purpose_id:
-                    purpose_name = purpose["name"]
-                    break
+            filtered_purposes = [p for p in purposes if p["id"] in purpose_id]
+            logger.info(f"Found {len(filtered_purposes)} matching purposes")
             
-            if not purpose_name:
-                logger.warning(f"Purpose with ID {purpose_id} not found. Returning empty DataFrame.")
-                return pd.DataFrame()
+            # Process each purpose in the list
+            for purpose in filtered_purposes:
+                current_purpose_id = purpose["id"]
+                current_purpose_name = purpose["name"]
+                logger.info(f"Processing purpose: {current_purpose_name} (ID: {current_purpose_id})")
                 
-            logger.info(f"Processing purpose: {purpose_name} (ID: {purpose_id})")
+                # Process each catalog entry for this purpose
+                self._process_catalog_entries_for_purpose(catalog_entries, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+        else:
+            # Process a single specific purpose
+            current_purpose_id = purpose_id
+            purpose_obj = next((p for p in self.glossary_repository.get_purposes() if p["id"] == current_purpose_id), None)
+            if purpose_obj:
+                current_purpose_name = purpose_obj["name"]
+                logger.info(f"Processing single purpose: {current_purpose_name} (ID: {current_purpose_id})")
                 
-            # Process each catalog entry for the specific purpose
-            entries_processed = 0
-            for entry in catalog_entries:
-                # Skip entries without a data element
-                if not entry.get('data_element_id'):
-                    continue
+                # Process each catalog entry for this purpose
+                self._process_catalog_entries_for_purpose(catalog_entries, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+            else:
+                logger.warning(f"Purpose with ID {current_purpose_id} not found")
+        
+        # Create a DataFrame from the results
+        import pandas as pd
+        if results:
+            df = pd.DataFrame(results)
+            logger.info(f"Created DataFrame with {len(df)} rows")
+            logger.info(f"===== POLICY ANALYSIS COMPLETED =====")
+            return df
+        else:
+            logger.info("No policy results found")
+            logger.info(f"===== POLICY ANALYSIS COMPLETED =====")
+            return pd.DataFrame()
+    
+    def _process_catalog_entries_for_purpose(self, catalog_entries, purpose_id, purpose_name, policy_type, role_id, results, logger):
+        """Helper method to process catalog entries for a specific purpose."""
+        entries_processed = 0
+        for entry in catalog_entries:
+            # Skip entries without a data element
+            if not entry.get('data_element_id'):
+                continue
                 
-                logger.debug(f"Processing entry: {entry.get('schema_name')}.{entry.get('table_name')}.{entry.get('column_name')}")
-                entries_processed += 1
-                
-                # Get policy types for this data element and purpose based on selected policy type
+            logger.debug(f"Processing entry: {entry.get('schema_name')}.{entry.get('table_name')}.{entry.get('column_name')}")
+            entries_processed += 1
+            
+            # Handle multiple policy types
+            if isinstance(policy_type, list):
+                for pt in policy_type:
+                    if pt == 'security':
+                        logger.debug(f"Processing security policies for {entry.get('column_name')}")
+                        self._process_security_policies(entry, purpose_id, purpose_name, results, role_id)
+                    elif pt == 'usage':
+                        logger.debug(f"Processing usage policies for {entry.get('column_name')}")
+                        self._process_usage_policies(entry, purpose_id, purpose_name, results, role_id)
+                    elif pt == 'retention':
+                        logger.debug(f"Processing retention policies for {entry.get('column_name')}")
+                        self._process_retention_policies(entry, purpose_id, purpose_name, results, role_id)
+            else:
+                # Process policies for this entry and purpose based on policy type
                 if policy_type == 'all' or policy_type == 'security':
                     logger.debug(f"Processing security policies for {entry.get('column_name')}")
                     self._process_security_policies(entry, purpose_id, purpose_name, results, role_id)
@@ -125,8 +168,62 @@ class AssetPolicyInference:
                 if policy_type == 'all' or policy_type == 'retention':
                     logger.debug(f"Processing retention policies for {entry.get('column_name')}")
                     self._process_retention_policies(entry, purpose_id, purpose_name, results, role_id)
+        
+        logger.info(f"Processed {entries_processed} entries for purpose {purpose_name}")
+    
+    def _process_security_policies(self, entry, purpose_id, purpose_name, results, role_id):
+        """Process security policies for a catalog entry and purpose."""
+        # Get the data element ID from the entry
+        data_element_id = entry.get('data_element_id')
+        if not data_element_id:
+            return
             
-            logger.info(f"Processed {entries_processed} entries for purpose {purpose_name}")
+        # Get security policies for this data element and purpose
+        security_policies = self.regulatory_metadata_repository.get_policy_purpose_data_security(
+            purpose_id=purpose_id,
+            data_element_id=data_element_id
+        )
+        
+        # Handle role filtering if needed
+        if isinstance(role_id, list) and 'all' not in role_id:
+            # Filter security policies by role
+            filtered_policies = []
+            for policy in security_policies:
+                policy_id = policy.get('policy_id')
+                # Check if this policy applies to any of the selected roles
+                for r_id in role_id:
+                    if self.regulatory_metadata_repository.check_policy_applies_to_role(policy_id, r_id):
+                        filtered_policies.append(policy)
+                        break
+            security_policies = filtered_policies
+        elif role_id != 'all':
+            # Filter security policies by a single role
+            filtered_policies = []
+            for policy in security_policies:
+                policy_id = policy.get('policy_id')
+                if self.regulatory_metadata_repository.check_policy_applies_to_role(policy_id, role_id):
+                    filtered_policies.append(policy)
+            security_policies = filtered_policies
+            
+        # Add security policies to results
+        for policy in security_policies:
+            results.append({
+                'schema_name': entry.get('schema_name'),
+                'table_name': entry.get('table_name'),
+                'column_name': entry.get('column_name'),
+                'data_element_id': data_element_id,
+                'data_element_name': entry.get('data_element_name'),
+                'data_type': entry.get('data_type'),
+                'purpose_id': purpose_id,
+                'purpose_name': purpose_name,
+                'policy_id': policy.get('policy_id'),
+                'policy_name': policy.get('policy_name'),
+                'policy_type': 'Security',
+                'encryption_required': policy.get('encryption_required'),
+                'encryption_algorithm': policy.get('encryption_algorithm'),
+                'masking_required': policy.get('masking_required'),
+                'masking_format': policy.get('masking_format')
+            })
         
         # Convert results to DataFrame
         logger.info(f"Total policy results collected: {len(results)}")
@@ -189,9 +286,6 @@ class AssetPolicyInference:
             
         logger.info(f"[SECURITY] Found {len(policy_purpose_data_securities)} security policies for data element {data_element_name}")
             
-        # We can't filter by role directly since role_id isn't in the security policies table
-        # Instead, we'll check for role-specific overrides later
-        
         # If no security policies found at all, return early
         if not policy_purpose_data_securities:
             return
@@ -641,6 +735,46 @@ class AssetPolicyInference:
                 )
         
         return formatted_df
+        
+    def analyze_policies_for_asset(self, asset_id, purpose_id=None, policy_type='all', role_id='all'):
+        """
+        Analyze policies for an asset and return a structured JSON representation.
+        This is an alias for generate_policy_json_by_table_column to maintain backward compatibility.
+        
+        Args:
+            asset_id: ID of the asset to analyze policies for
+            purpose_id: ID of the purpose to filter by, or 'all' for all purposes, or a list of purpose IDs
+            policy_type: Type of policy to filter by ('security', 'usage', 'retention', or 'all'), or a list of policy types
+            role_id: ID of the external role to filter by, or 'all' for all roles, or a list of role IDs
+            
+        Returns:
+            JSON structure containing policies organized by table, column, and purpose
+        """
+        # Handle lists for purpose_id, policy_type, and role_id
+        # For backward compatibility, we'll convert single values to lists
+        if isinstance(purpose_id, list):
+            # If 'all' is in the list, we'll use 'all'
+            if 'all' in purpose_id:
+                purpose_id = 'all'
+        
+        if isinstance(policy_type, list):
+            if 'all' in policy_type:
+                policy_type = 'all'
+            # If there's only one policy type, use that
+            elif len(policy_type) == 1:
+                policy_type = policy_type[0]
+            # Otherwise, we'll need to handle multiple policy types in the generate_policy_json_by_table_column method
+        
+        if isinstance(role_id, list):
+            if 'all' in role_id:
+                role_id = 'all'
+            # If there's only one role, use that
+            elif len(role_id) == 1:
+                role_id = role_id[0]
+            # Otherwise, we'll need to handle multiple roles in the generate_policy_json_by_table_column method
+        
+        # Call the existing method to generate the JSON
+        return self.generate_policy_json_by_table_column(asset_id, purpose_id, policy_type, role_id)
         
     def generate_policy_json_by_table_column(self, asset_id, purpose_id=None, policy_type='all', role_id='all'):
         """
