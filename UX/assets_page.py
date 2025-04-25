@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from components.DDLGenerator import DDLGenerator
 
 class AssetsPage:
     def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository, asset_policy_inference=None):
@@ -10,6 +11,7 @@ class AssetsPage:
         self.catalog_repository = catalog_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.asset_policy_inference = asset_policy_inference
+        self.ddl_generator = DDLGenerator()
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -333,9 +335,13 @@ class AssetsPage:
                 with col2:
                     # Run policy analysis button
                     run_policy_analysis = st.button("Run Policy Analysis", key=f"run_policy_analysis_{selected_asset['id']}")
-                with col3:
+                col3_1, col3_2 = st.columns(2)
+                with col3_1:
                     # Generate JSON policy specification button
                     generate_json = st.button("Generate JSON Policy Spec", key=f"generate_json_{selected_asset['id']}")
+                with col3_2:
+                    # Generate Security Policy DDL button
+                    generate_ddl = st.button("Generate Security Policy DDL", key=f"generate_ddl_{selected_asset['id']}")
                 # Show info box about analysis workflow
                 st.markdown('''
                 <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
@@ -352,8 +358,14 @@ class AssetsPage:
                 </div>
                 ''', unsafe_allow_html=True)                    
                 
-                # Handle the Generate JSON Policy Spec button click
-                if generate_json and self.asset_policy_inference:
+                # Variables to store policy analysis results
+                policy_analysis = None
+                purpose_display = ""
+                policy_type_display = ""
+                role_display = ""
+                
+                # Handle the Generate JSON Policy Spec button click or DDL generation
+                if (generate_json or generate_ddl) and self.asset_policy_inference:
                     # Format display strings for selected options
                     if "all" in selected_purposes:
                         purpose_display = "All Purposes"
@@ -382,78 +394,60 @@ class AssetsPage:
                         )
                         
                     if policy_analysis and policy_analysis.get('tables'):
-                        # Display the JSON policy specification
-                        st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                        # Process JSON Policy Spec if that button was clicked
+                        if generate_json:
+                            # Display the JSON policy specification
+                            st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                            
+                            # Add a download button for the JSON
+                            import json
+                            json_str = json.dumps(policy_analysis, indent=2)
+                            st.download_button(
+                                label="Download JSON",
+                                data=json_str,
+                                file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_policy_spec.json",
+                                mime="application/json"
+                            )
+                            
+                            # Display the JSON in an expandable section
+                            with st.expander("View JSON Policy Specification", expanded=True):
+                                st.json(policy_analysis)
                         
-                        # Add a download button for the JSON
-                        import json
-                        json_str = json.dumps(policy_analysis, indent=2)
-                        st.download_button(
-                            label="Download JSON",
-                            data=json_str,
-                            file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_policy_spec.json",
-                            mime="application/json"
-                        )
-                        
-                        # Display the JSON in an expandable section
-                        with st.expander("View JSON Policy Specification", expanded=True):
-                            st.json(policy_analysis)
+                        # Process DDL generation if that button was clicked
+                        if generate_ddl:
+                            # Generate DDL using the policy analysis results
+                            ddl_content = self.ddl_generator.generate_snowflake_ddl(policy_analysis)
+                            
+                            if ddl_content:
+                                # Display the DDL
+                                st.markdown(f"<h4>Snowflake Security Policy DDL for {selected_asset['name']}</h4>", unsafe_allow_html=True)
                                 
-                        # Add an explanation of the JSON structure
-                        with st.expander("JSON Structure Explanation"):
-                            st.markdown("""
-                            ### JSON Policy Specification Structure
-                            
-                            The JSON policy specification is organized as follows:
-                            
-                            ```json
-                            {
-                              "asset_id": "123",
-                              "asset_name": "Asset Name",
-                              "tables": {
-                                "schema.table_name": {
-                                  "columns": {
-                                    "column_name": {
-                                      "data_element_id": 456,
-                                      "data_element_name": "Data Element Name",
-                                      "data_type": "varchar",
-                                      "purposes": {
-                                        "Purpose Name": {
-                                          "security": {
-                                            "policy_name": "Policy Name",
-                                            "encryption_required": true,
-                                            "encryption_algorithm": "AES-256",
-                                            "masking_required": true,
-                                            "masking_format": "XXX-XX-1234"
-                                          },
-                                          "usage": [
-                                            {
-                                              "policy_name": "Policy Name",
-                                              "operation": "READ",
-                                              "allowed": true,
-                                              "restrictions": "Only authorized users"
-                                            }
-                                          ],
-                                          "retention": [
-                                            {
-                                              "policy_name": "Policy Name",
-                                              "retention_period": "7 years",
-                                              "retention_basis": "Legal requirement"
-                                            }
-                                          ]
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                            ```
-                            
-                            This structure allows you to easily see all policies that apply to each column in each table, organized by purpose.
-                            """)
-                    else:
-                        st.warning(f"No policy specifications found for {selected_asset['name']}. This could be because there are no data elements mapped to this asset, or no policies defined for any purpose.")
+                                # Add a download button for the DDL
+                                st.download_button(
+                                    label="Download Security Policy DDL",
+                                    data=ddl_content,
+                                    file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_security_policies.sql",
+                                    mime="text/plain"
+                                )
+                                
+                                # Display the DDL in an expandable section
+                                with st.expander("View Snowflake Security Policy DDL", expanded=True):
+                                    st.code(ddl_content, language="sql")
+                
+                # Create a unique key for this asset's policy analysis results in session state
+                policy_results_key = f"policy_analysis_results_{selected_asset['id']}"
+                policy_params_key = f"policy_analysis_params_{selected_asset['id']}"
+                
+                # Initialize unique_data_elements as an empty set
+                unique_data_elements = set()
+                
+                # Extract unique data elements from the policy analysis for filtering
+                if policy_analysis and policy_analysis.get('tables'):
+                    for table_key, table_data in policy_analysis['tables'].items():
+                        for column_name, column_data in table_data.get('columns', {}).items():
+                            if 'data_element_name' in column_data:
+                                unique_data_elements.add(column_data['data_element_name'])
+                unique_data_elements = sorted(list(unique_data_elements))
                 
                 # Handle the Run Policy Analysis button click
                 if run_policy_analysis and self.asset_policy_inference:
@@ -489,6 +483,14 @@ class AssetsPage:
                             # Format boolean columns as checkboxes
                             formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
                             
+                            # Store the formatted DataFrame and display parameters in session state
+                            st.session_state[policy_results_key] = formatted_df
+                            st.session_state[policy_params_key] = {
+                                'purpose_display': purpose_display,
+                                'policy_type_display': policy_type_display,
+                                'role_display': role_display
+                            }
+                            
                             # Rename columns for better display
                             column_mapping = {
                                 "schema_name": "Schema",
@@ -512,7 +514,31 @@ class AssetsPage:
                                 st.markdown(f"<h4>Applied Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
                             else:
                                 st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
-                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                            
+                            # Add a filter by data element
+                            if 'Data Element' in formatted_df.columns:
+                                unique_data_elements = sorted(formatted_df['Data Element'].unique())
+                                if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
+                                    # Create a filter key for this asset
+                                    filter_key = f"data_element_filter_{selected_asset['id']}"
+                                    
+                                    # Use selectbox for filtering
+                                    selected_data_element_filter = st.selectbox(
+                                        "Filter by Data Element:",
+                                        options=["All Data Elements"] + list(unique_data_elements),
+                                        key=filter_key
+                                    )
+                                    
+                                    # Apply the filter if a specific data element is selected
+                                    if selected_data_element_filter != "All Data Elements":
+                                        filtered_df = formatted_df[formatted_df['Data Element'] == selected_data_element_filter]
+                                        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+                                    else:
+                                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                                else:
+                                    st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                            else:
+                                st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                             
                             # Add an expander with additional information
                             with st.expander("About Applied Policies"):
@@ -524,201 +550,251 @@ class AssetsPage:
                                 - **Masking Required**: Indicates whether the column data must be masked
                                 - **Masking Format**: The format used for masking (configurable for all purposes)
                                 - **Is Override**: Indicates whether this policy is a role-specific override
-                                
-                                ### Default Role Assignment Purpose
-                                
-                                The Default Role Assignment purpose controls encryption settings for all purposes. 
-                                Other purposes inherit these settings but can have their own masking settings.
                                 """)
                         else:
+                            # If no results were found
                             st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")
+                
+                # Check if we have policy analysis results in session state but no analysis was just run
+                elif policy_results_key in st.session_state and not run_policy_analysis:
+                    formatted_df = st.session_state[policy_results_key]
+                    params = st.session_state[policy_params_key]
+                    purpose_display = params['purpose_display']
+                    
+                    # Add a note about encryption settings for non-Default Role Assignment purposes
+                    if "all" in selected_purposes or any(purpose_options.get(p) != "Default Role Assignment" for p in selected_purposes):
+                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
+                    
+                    # Add a filter by data element
+                    if 'Data Element' in formatted_df.columns:
+                        unique_data_elements = sorted(formatted_df['Data Element'].unique())
+                        if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
+                            # Create a filter key for this asset
+                            filter_key = f"data_element_filter_{selected_asset['id']}"
+                            
+                            # Use selectbox for filtering
+                            selected_data_element_filter = st.selectbox(
+                                label="Filter by Data Element:",
+                                options=["All Data Elements"] + list(unique_data_elements),
+                                key=filter_key
+                            )
+                            
+                            # Apply the filter if a specific data element is selected
+                            if selected_data_element_filter != "All Data Elements":
+                                filtered_df = formatted_df[formatted_df['Data Element'] == selected_data_element_filter]
+                                st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+                            else:
+                                st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                        else:
+                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                    else:
+                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                    
+                    # Add an expander with additional information
+                    with st.expander("About Applied Policies"):
+                        st.markdown("""
+                        ### Understanding Applied Policies
+                        
+                        - **Encryption Required**: Indicates whether the column data must be encrypted
+                        - **Encryption Algorithm**: The algorithm used for encryption (only configurable for Default Role Assignment purpose)
+                        - **Masking Required**: Indicates whether the column data must be masked
+                        - **Masking Format**: The format used for masking (configurable for all purposes)
+                        - **Is Override**: Indicates whether this policy is a role-specific override
+                        
+                        ### Default Role Assignment Purpose
+                        
+                        The Default Role Assignment purpose controls encryption settings for all purposes. 
+                        Other purposes inherit these settings but can have their own masking settings.
+                        """)
                 
                 # Handle the Run Asset Analysis button click
                 if run_analysis:
-                        # 1. Infer sensitivities
-                        data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
-                        if not data_element_sensitivities:
-                            st.warning("Could not determine sensitivities for the data elements.")
-                            return
-                        st.markdown("<h5>Data Element Sensitivity Analysis</h5>", unsafe_allow_html=True)
-                        sens_data = {
-                            "Data Element": [],
-                            "Sensitivity": [],
-                            "Source": []
-                        }
-                        for de_name, sensitivity_info in data_element_sensitivities.items():
-                            sens_data["Data Element"].append(de_name)
-                            sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
-                            sens_data["Source"].append(sensitivity_info['source'])
-                        st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
+                    # 1. Infer sensitivities
+                    data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
+                    if not data_element_sensitivities:
+                        st.warning("Could not determine sensitivities for the data elements.")
+                        return
+                    st.markdown("<h5>Data Element Sensitivity Analysis</h5>", unsafe_allow_html=True)
+                    sens_data = {
+                        "Data Element": [],
+                        "Sensitivity": [],
+                        "Source": []
+                    }
+                    for de_name, sensitivity_info in data_element_sensitivities.items():
+                        sens_data["Data Element"].append(de_name)
+                        sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
+                        sens_data["Source"].append(sensitivity_info['source'])
+                    st.dataframe(pd.DataFrame(sens_data), use_container_width=True)
 
-                        # 2. Derive obligations
-                        st.markdown("<h5>Recommended Obligations</h5>", unsafe_allow_html=True)
-                        all_sensitivities = self.glossary_repository.get_sensitivities()
-                        all_obligations = []
-                        obligations_by_de = {}
-                        for de_name, sensitivity_info in data_element_sensitivities.items():
-                            sensitivity = sensitivity_info['sensitivity']
-                            sensitivity_id = next((s['id'] for s in all_sensitivities if s['name'] == sensitivity), None)
-                            if sensitivity_id:
-                                sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
-                                for so in sensitivity_obligations:
-                                    obligation_row = {
-                                        "id": so["obligation_id"],
-                                        "name": so["obligation_name"],
-                                        "control_type": so["control_type"],
-                                        "priority": so["priority"],
-                                        "data_element_name": de_name
-                                    }
-                                    all_obligations.append(obligation_row)
-                                    # For policies/risks
-                                    obligations_by_de.setdefault(de_name, []).append(obligation_row)
-                        if all_obligations:
-                            df = pd.DataFrame([{
-                                "Data Element": o["data_element_name"],
-                                "Obligation": o["name"],
-                                "Control Type": o["control_type"],
-                                "Priority": o["priority"]
-                            } for o in all_obligations])
-                            st.dataframe(df, use_container_width=True)
-                        else:
-                            st.info("No obligations defined for these data elements.")
+                    # 2. Derive obligations
+                    st.markdown("<h5>Recommended Obligations</h5>", unsafe_allow_html=True)
+                    all_sensitivities = self.glossary_repository.get_sensitivities()
+                    all_obligations = []
+                    obligations_by_de = {}
+                    for de_name, sensitivity_info in data_element_sensitivities.items():
+                        sensitivity = sensitivity_info['sensitivity']
+                        sensitivity_id = next((s['id'] for s in all_sensitivities if s['name'] == sensitivity), None)
+                        if sensitivity_id:
+                            sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+                            for so in sensitivity_obligations:
+                                obligation_row = {
+                                    "id": so["obligation_id"],
+                                    "name": so["obligation_name"],
+                                    "control_type": so["control_type"],
+                                    "priority": so["priority"],
+                                    "data_element_name": de_name
+                                }
+                                all_obligations.append(obligation_row)
+                                # For policies/risks
+                                obligations_by_de.setdefault(de_name, []).append(obligation_row)
+                    if all_obligations:
+                        df = pd.DataFrame([{
+                            "Data Element": o["data_element_name"],
+                            "Obligation": o["name"],
+                            "Control Type": o["control_type"],
+                            "Priority": o["priority"]
+                        } for o in all_obligations])
+                        st.dataframe(df, use_container_width=True)
+                    else:
+                        st.info("No obligations defined for these data elements.")
 
-                        # Get detailed policy recommendations for each data element with significant sensitivities
-                        st.markdown("<h5>Detailed Policy Recommendations</h5>", unsafe_allow_html=True)
+                    # Get detailed policy recommendations for each data element with significant sensitivities
+                    st.markdown("<h5>Detailed Policy Recommendations</h5>", unsafe_allow_html=True)
+                    
+                    # Define which sensitivities require policies
+                    # Using the actual sensitivity values from the database
+                    sensitivities_requiring_policies = ["Internal", "Confidential", "Restricted", "Special Category"]
+                    
+                    # Filter data elements based on their sensitivity
+                    policy_required_elements = {}
+                    
+                    for de_name, sensitivity_info in data_element_sensitivities.items():
+                        sensitivity = sensitivity_info['sensitivity']
+                        if sensitivity in sensitivities_requiring_policies:
+                            policy_required_elements[de_name] = sensitivity
+                    
+                    if not policy_required_elements:
+                        st.info("No data elements with sensitivities that require specific policies were found.")
+                    else:
+                        st.write(f"Found {len(policy_required_elements)} data elements that require specific policies based on their sensitivity.")
                         
-                        # Define which sensitivities require policies
-                        # Using the actual sensitivity values from the database
-                        sensitivities_requiring_policies = ["Internal", "Confidential", "Restricted", "Special Category"]
-                        
-                        # Filter data elements based on their sensitivity
-                        policy_required_elements = {}
-                        
-                        for de_name, sensitivity_info in data_element_sensitivities.items():
-                            sensitivity = sensitivity_info['sensitivity']
-                            if sensitivity in sensitivities_requiring_policies:
-                                policy_required_elements[de_name] = sensitivity
-                        
-                        if not policy_required_elements:
-                            st.info("No data elements with sensitivities that require specific policies were found.")
-                        else:
-                            st.write(f"Found {len(policy_required_elements)} data elements that require specific policies based on their sensitivity.")
-                            
-                            # For each data element with significant sensitivity, get the policy details
-                            for de_name, sensitivity in policy_required_elements.items():
-                                # Get the data element ID
-                                data_element = next((de for de in self.glossary_repository.get_data_elements() if de['name'] == de_name), None)
-                                if data_element:
-                                    data_element_id = data_element['id']
-                                    
-                                    # Get policy details for this data element
-                                    policy_details = self.regulatory_metadata_repository.get_data_element_policies(data_element_id)
-                                    
-                                    if any(policy_details.values()):
-                                        with st.expander(f"Policy Details for {de_name}"):
-                                            # Show usage policies
-                                            if policy_details['usage']:
-                                                    st.markdown("<h5>Usage Policies</h5>", unsafe_allow_html=True)
-                                                    usage_data = {
-                                                        "Policy": [],
-                                                        "Operation": [],
-                                                        "Allowed": [],
-                                                        "Restrictions": []
-                                                    }
-                                                    for usage in policy_details['usage']:
-                                                        usage_data["Policy"].append(usage['policy_name'])
-                                                        usage_data["Operation"].append(usage['operation'])
-                                                        usage_data["Allowed"].append("Yes" if usage['allowed'] else "No")
-                                                        usage_data["Restrictions"].append(usage['restrictions'] or "")
-                                                        
-                                                    st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
-                                            
-                                            # Show retention policies
-                                            if policy_details['retention']:
-                                                    st.markdown("<h5>Retention Policies</h5>", unsafe_allow_html=True)
-                                                    retention_data = {
-                                                        "Policy": [],
-                                                        "Retention Period": [],
-                                                        "Retention Basis": [],
-                                                        "Exceptions": []
-                                                    }
-                                                    for retention in policy_details['retention']:
-                                                        retention_data["Policy"].append(retention['policy_name'])
-                                                        retention_data["Retention Period"].append(retention['retention_period'])
-                                                        retention_data["Retention Basis"].append(retention['retention_basis'] or "")
-                                                        retention_data["Exceptions"].append(retention['exceptions'] or "")
-                                                        
-                                                    st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
-                                            
-                                            # Show security policies
-                                            if policy_details['security']:
-                                                st.markdown("<h5>Security Policies</h5>", unsafe_allow_html=True)
-                                                security_data = {
+                        # For each data element with significant sensitivity, get the policy details
+                        for de_name, sensitivity in policy_required_elements.items():
+                            # Get the data element ID
+                            data_element = next((de for de in self.glossary_repository.get_data_elements() if de['name'] == de_name), None)
+                            if data_element:
+                                data_element_id = data_element['id']
+                                
+                                # Get policy details for this data element
+                                policy_details = self.regulatory_metadata_repository.get_data_element_policies(data_element_id)
+                                
+                                if any(policy_details.values()):
+                                    with st.expander(f"Policy Details for {de_name}"):
+                                        # Show usage policies
+                                        if policy_details['usage']:
+                                                st.markdown("<h5>Usage Policies</h5>", unsafe_allow_html=True)
+                                                usage_data = {
                                                     "Policy": [],
-                                                    "Encryption": [],
-                                                    "Masking": [],
-                                                    "Access Control": []
+                                                    "Operation": [],
+                                                    "Allowed": [],
+                                                    "Restrictions": []
                                                 }
-                                                for security in policy_details['security']:
-                                                    security_data["Policy"].append(security['policy_name'])
+                                                for usage in policy_details['usage']:
+                                                    usage_data["Policy"].append(usage['policy_name'])
+                                                    usage_data["Operation"].append(usage['operation'])
+                                                    usage_data["Allowed"].append("Yes" if usage['allowed'] else "No")
+                                                    usage_data["Restrictions"].append(usage['restrictions'] or "")
                                                     
-                                                    # Encryption info
-                                                    encryption_info = "No"
-                                                    if security['requires_encryption']:
-                                                        encryption_info = f"Yes - {security['encryption_algorithm']}" if security['encryption_algorithm'] else "Yes"
-                                                    security_data["Encryption"].append(encryption_info)
+                                                st.dataframe(pd.DataFrame(usage_data), use_container_width=True)
+                                        
+                                        # Show retention policies
+                                        if policy_details['retention']:
+                                                st.markdown("<h5>Retention Policies</h5>", unsafe_allow_html=True)
+                                                retention_data = {
+                                                    "Policy": [],
+                                                    "Retention Period": [],
+                                                    "Retention Basis": [],
+                                                    "Exceptions": []
+                                                }
+                                                for retention in policy_details['retention']:
+                                                    retention_data["Policy"].append(retention['policy_name'])
+                                                    retention_data["Retention Period"].append(retention['retention_period'])
+                                                    retention_data["Retention Basis"].append(retention['retention_basis'] or "")
+                                                    retention_data["Exceptions"].append(retention['exceptions'] or "")
                                                     
-                                                    # Masking info
-                                                    masking_info = "No"
-                                                    if security['requires_masking']:
-                                                        masking_info = f"Yes - {security['masking_format']}" if security['masking_format'] else "Yes"
-                                                    security_data["Masking"].append(masking_info)
-                                                    
-                                                    # Access control info
-                                                    access_control_info = "No"
-                                                    if security['requires_access_control']:
-                                                        access_control_info = f"Yes - {security['access_control_type']}" if security['access_control_type'] else "Yes"
-                                                    security_data["Access Control"].append(access_control_info)
+                                                st.dataframe(pd.DataFrame(retention_data), use_container_width=True)
+                                        
+                                        # Show security policies
+                                        if policy_details['security']:
+                                            st.markdown("<h5>Security Policies</h5>", unsafe_allow_html=True)
+                                            security_data = {
+                                                "Policy": [],
+                                                "Encryption": [],
+                                                "Masking": [],
+                                                "Access Control": []
+                                            }
+                                            for security in policy_details['security']:
+                                                security_data["Policy"].append(security['policy_name'])
                                                 
-                                                st.dataframe(pd.DataFrame(security_data), use_container_width=True)
+                                                # Encryption info
+                                                encryption_info = "No"
+                                                if security['requires_encryption']:
+                                                    encryption_info = f"Yes - {security['encryption_algorithm']}" if security['encryption_algorithm'] else "Yes"
+                                                security_data["Encryption"].append(encryption_info)
+                                                
+                                                # Masking info
+                                                masking_info = "No"
+                                                if security['requires_masking']:
+                                                    masking_info = f"Yes - {security['masking_format']}" if security['masking_format'] else "Yes"
+                                                security_data["Masking"].append(masking_info)
+                                                
+                                                # Access control info
+                                                access_control_info = "No"
+                                                if security['requires_access_control']:
+                                                    access_control_info = f"Yes - {security['access_control_type']}" if security['access_control_type'] else "Yes"
+                                                security_data["Access Control"].append(access_control_info)
+                                            
+                                            st.dataframe(pd.DataFrame(security_data), use_container_width=True)
 
-                        # 4. Derive risks
-                        st.markdown("<h5>Potential Risks (by Data Element)</h5>", unsafe_allow_html=True)
-                        all_risks = []
-                        for de_name, de_obligations in obligations_by_de.items():
-                            for obligation in de_obligations:
-                                obligation_id = obligation["id"]
-                                obligation_name = obligation["name"]
-                                risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
-                                for risk in risks:
-                                    all_risks.append({
-                                        "Data Element": de_name,
-                                        "Obligation": obligation_name,
-                                        "Risk": risk["name"],
-                                        "Risk Category": risk["category"],
-                                        "Likelihood": risk["likelihood"],
-                                        "Impact": risk["impact"]
-                                    })
-                        if all_risks:
-                            df = pd.DataFrame(all_risks)
-                            # Add risk rating
-                            def get_risk_rating(row):
-                                if row["Likelihood"] == "High" and row["Impact"] == "High":
-                                    return "Critical"
-                                elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
-                                     (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
-                                    return "High"
-                                elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
-                                     (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
-                                     (row["Likelihood"] == "Low" and row["Impact"] == "High"):
-                                    return "Medium"
-                                else:
-                                    return "Low"
-                            df["Risk Rating"] = df.apply(get_risk_rating, axis=1)
-                            display_columns = ["Data Element", "Obligation", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
-                            st.dataframe(df[display_columns], use_container_width=True)
-                        else:
-                            st.info("No risks identified for the obligations.")
+                    # 4. Derive risks
+                    st.markdown("<h5>Potential Risks (by Data Element)</h5>", unsafe_allow_html=True)
+                    all_risks = []
+                    for de_name, de_obligations in obligations_by_de.items():
+                        for obligation in de_obligations:
+                            obligation_id = obligation["id"]
+                            obligation_name = obligation["name"]
+                            risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
+                            for risk in risks:
+                                all_risks.append({
+                                    "Data Element": de_name,
+                                    "Obligation": obligation_name,
+                                    "Risk": risk["name"],
+                                    "Risk Category": risk["category"],
+                                    "Likelihood": risk["likelihood"],
+                                    "Impact": risk["impact"]
+                                })
+                    if all_risks:
+                        df = pd.DataFrame(all_risks)
+                        # Add risk rating
+                        def get_risk_rating(row):
+                            if row["Likelihood"] == "High" and row["Impact"] == "High":
+                                return "Critical"
+                            elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
+                                    (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
+                                return "High"
+                            elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
+                                    (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
+                                    (row["Likelihood"] == "Low" and row["Impact"] == "High"):
+                                return "Medium"
+                            else:
+                                return "Low"
+                        df["Risk Rating"] = df.apply(get_risk_rating, axis=1)
+                        display_columns = ["Data Element", "Obligation", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
+                        st.dataframe(df[display_columns], use_container_width=True)
+                    else:
+                        st.info("No risks identified for the obligations.")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     def show_sensitivity_based_obligations(self, data_element_sensitivities):
