@@ -104,9 +104,7 @@ class DDLGenerator:
         """
         
         try:
-            # Call the AI model to generate the DDL
-            with st.spinner("Generating Snowflake Security Policy DDL..."):
-                response = self.model.generate_content(prompt)
+            response = self.model.generate_content(prompt)
             
             if response and hasattr(response, 'text'):
                 # Extract the SQL content from the response
