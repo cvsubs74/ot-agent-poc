@@ -328,50 +328,20 @@ class AssetsPage:
                         selected_roles = ["all"]
                 
                 # Create three columns for the buttons
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     # Run analysis button
                     run_analysis = st.button("Run Asset Analysis", key=f"run_analysis_{selected_asset['id']}")
                 with col2:
                     # Run policy analysis button
                     run_policy_analysis = st.button("Run Policy Analysis", key=f"run_policy_analysis_{selected_asset['id']}")
-                col3_1, col3_2 = st.columns(2)
-                with col3_1:
+                with col3:
                     # Generate JSON policy specification button
-                    generate_json = st.button("Generate JSON Policy Spec", key=f"generate_json_{selected_asset['id']}")
-                with col3_2:
+                    generate_json = st.button("Generate Target Policy JSON", key=f"generate_json_{selected_asset['id']}")
+                with col4:
                     # Generate Security Policy DDL button
-                    generate_ddl = st.button("Generate Security Policy DDL", key=f"generate_ddl_{selected_asset['id']}")
-                # Show info box about analysis workflow
-                st.markdown('''
-                <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
-                    <h4 style="margin-top: 0; color: #229954;">Policy Analysis, JSON Generation, and DDL Creation Process</h4>
-                    <ul style="margin-bottom: 0;">
-                        <li><strong>Policy Analysis:</strong> When you click "Run Policy Analysis", the system analyzes policies applied to the selected asset based on:</li>
-                        <ul>
-                            <li>The selected business purposes (e.g., Customer Support, Marketing)</li>
-                            <li>The selected policy types (Security, Usage, Retention)</li>
-                            <li>The selected roles (e.g., Data Analyst, Data Engineer)</li>
-                        </ul>
-                        <li><strong>JSON Policy Specification:</strong> When you click "Generate JSON Policy Spec", the system:</li>
-                        <ul>
-                            <li>Uses the same data source as the policy analysis to ensure consistency</li>
-                            <li>Creates a hierarchical JSON structure organizing policies by table, column, and purpose</li>
-                            <li>Includes role information for each purpose to enable proper security policy implementation</li>
-                            <li>Specifies security requirements including masking and encryption details</li>
-                        </ul>
-                        <li><strong>Security Policy DDL Generation:</strong> When you click "Generate Security Policy DDL", the system:</li>
-                        <ul>
-                            <li>Processes the JSON policy specification through a GenAI model (Gemini)</li>
-                            <li>Creates Snowflake DDL statements that implement the specified policies</li>
-                            <li>Generates purpose-based roles (e.g., PURPOSE_CUSTOMER_SUPPORT)</li>
-                            <li>Creates GRANT statements to associate purpose-based roles with original Snowflake roles</li>
-                            <li>Implements column-level masking policies based on the masking formats in the JSON</li>
-                        </ul>
-                        <li><strong>End Result:</strong> You get executable Snowflake DDL that implements your security policies with proper role-based access controls and data protection measures.</li>
-                    </ul>
-                </div>
-                ''', unsafe_allow_html=True)                    
+                    generate_ddl = st.button("Generate Target Policy DDL", key=f"generate_ddl_{selected_asset['id']}")
+                # Removed the explanation section from here - it will be shown after the results                    
                 
                 # Variables to store policy analysis results
                 policy_analysis = None
@@ -431,8 +401,10 @@ class AssetsPage:
                         # Process DDL generation if that button was clicked
                         if generate_ddl:
                             # Generate DDL using the policy analysis results
-                            ddl_content = self.ddl_generator.generate_snowflake_ddl(policy_analysis)
-                            
+                            ddl_content = None
+                            with st.spinner(f"Generating DDL for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
+                                ddl_content = self.ddl_generator.generate_snowflake_ddl(policy_analysis)
+
                             if ddl_content:
                                 # Display the DDL
                                 st.markdown(f"<h4>Snowflake Security Policy DDL for {selected_asset['name']}</h4>", unsafe_allow_html=True)
@@ -449,6 +421,38 @@ class AssetsPage:
                                 with st.expander("View Snowflake Security Policy DDL", expanded=True):
                                     st.code(ddl_content, language="sql")
                 
+                        # Show info box about analysis workflow after the results
+                        st.markdown('''
+                        <div style="background-color: #eaf7ea; padding: 18px 20px; border-radius: 10px; margin-bottom: 18px; border-left: 5px solid #27ae60;">
+                        <h4 style="margin-top: 0; color: #229954;">Policy Analysis, JSON Generation, and DDL Creation Process</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li><strong>Policy Analysis:</strong> When you click "Run Policy Analysis", the system analyzes policies applied to the selected asset based on:</li>
+                            <ul>
+                                <li>The selected business purposes (e.g., Customer Support, Marketing)</li>
+                                <li>The selected policy types (Security, Usage, Retention)</li>
+                                <li>The selected roles (e.g., Data Analyst, Data Engineer)</li>
+                            </ul>
+                            <li><strong>JSON Policy Specification:</strong> When you click "Generate JSON Policy Spec", the system:</li>
+                            <ul>
+                                <li>Uses the same data source as the policy analysis to ensure consistency</li>
+                                <li>Creates a hierarchical JSON structure organizing policies by table, column, and purpose</li>
+                                <li>Includes role information for each purpose to enable proper security policy implementation</li>
+                                <li>Specifies security requirements including masking and encryption details</li>
+                            </ul>
+                            <li><strong>Security Policy DDL Generation:</strong> When you click "Generate Security Policy DDL", the system:</li>
+                            <ul>
+                                <li>Processes the JSON policy specification through a GenAI model (Gemini)</li>
+                                <li>Creates Snowflake DDL statements that implement the specified policies</li>
+                                <li>Generates purpose-based roles (e.g., PURPOSE_CUSTOMER_SUPPORT)</li>
+                                <li>Creates GRANT statements to associate purpose-based roles with original Snowflake roles</li>
+                                <li>Implements column-level masking policies based on the masking formats in the JSON</li>
+                            </ul>
+                            <li><strong>End Result:</strong> You get executable Snowflake DDL that implements your security policies with proper role-based access controls and data protection measures.</li>
+                        </ul>
+                        </div>
+                        ''', unsafe_allow_html=True) 
+
+                # Show info box about analysis workflow after the results   
                 # Create a unique key for this asset's policy analysis results in session state
                 policy_results_key = f"policy_analysis_results_{selected_asset['id']}"
                 policy_params_key = f"policy_analysis_params_{selected_asset['id']}"
@@ -554,22 +558,10 @@ class AssetsPage:
                                     st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                             else:
                                 st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                            
-                            # Add an expander with additional information
-                            with st.expander("About Applied Policies"):
-                                st.markdown("""
-                                ### Understanding Applied Policies
-                                
-                                - **Encryption Required**: Indicates whether the column data must be encrypted
-                                - **Encryption Algorithm**: The algorithm used for encryption (only configurable for Default Role Assignment purpose)
-                                - **Masking Required**: Indicates whether the column data must be masked
-                                - **Masking Format**: The format used for masking (configurable for all purposes)
-                                - **Is Override**: Indicates whether this policy is a role-specific override
-                                """)
                         else:
                             # If no results were found
-                            st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")
-                
+                            st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")                
+                        
                 # Check if we have policy analysis results in session state but no analysis was just run
                 elif policy_results_key in st.session_state and not run_policy_analysis:
                     formatted_df = st.session_state[policy_results_key]
@@ -606,24 +598,7 @@ class AssetsPage:
                             st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                     else:
                         st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                    
-                    # Add an expander with additional information
-                    with st.expander("About Applied Policies"):
-                        st.markdown("""
-                        ### Understanding Applied Policies
-                        
-                        - **Encryption Required**: Indicates whether the column data must be encrypted
-                        - **Encryption Algorithm**: The algorithm used for encryption (only configurable for Default Role Assignment purpose)
-                        - **Masking Required**: Indicates whether the column data must be masked
-                        - **Masking Format**: The format used for masking (configurable for all purposes)
-                        - **Is Override**: Indicates whether this policy is a role-specific override
-                        
-                        ### Default Role Assignment Purpose
-                        
-                        The Default Role Assignment purpose controls encryption settings for all purposes. 
-                        Other purposes inherit these settings but can have their own masking settings.
-                        """)
-                
+
                 # Handle the Run Asset Analysis button click
                 if run_analysis:
                     # 1. Infer sensitivities

@@ -40,40 +40,64 @@ class DDLGenerator:
         
         {json_str}
         
-        Focus on creating the following types of statements:
+        Focus on creating the following types of statements in this exact order:
         
-        1. CREATE ROLE statements for each purpose found in the JSON (e.g., PURPOSE_DEFAULT_ROLE_ASSIGNMENT, PURPOSE_CUSTOMER_SUPPORT, etc.)
+        1. CREATE ROLE statements for each purpose found in the JSON (e.g., PURPOSE_CUSTOMER_SUPPORT, PURPOSE_FRAUD_DETECTION, etc.)
            - The role name should be prefixed with 'PURPOSE_' followed by the purpose name in uppercase with spaces replaced by underscores
            - For example, for the purpose 'Customer Support', create a role named 'PURPOSE_CUSTOMER_SUPPORT'
+           - Add a comment: "-- 1) Create Purpose Roles" before this section
         
         2. GRANT purpose-based roles to the original Snowflake roles:
-           - For each purpose in the JSON, look for the "role" object within that purpose
-           - The "role" object contains "id" and "name" fields that identify the external Snowflake role
+           - For each purpose in the JSON, look for the "role" field within that purpose
+           - The "role" field contains the name of the external Snowflake role (e.g., "Customer Data Analyst")
            - Create a GRANT statement that grants the purpose-based role to this external role
-           - For example, if a purpose 'Customer Support' has a role with name "Data Analyst", include a statement like:
-             GRANT ROLE PURPOSE_CUSTOMER_SUPPORT TO ROLE DATA_ANALYST;
-           - Make sure to convert the external role name to uppercase with spaces replaced by underscores
+           - For example, if a purpose 'Customer Support' has a role "Customer Data Analyst", include a statement like:
+             GRANT ROLE PURPOSE_CUSTOMER_SUPPORT TO ROLE "Customer Data Analyst";
+           - Add a comment: "-- 2) Grant Purpose Roles to Imported Roles" before this section
+           - Add a comment before each grant to explain the mapping, like: "--    (Customer Data Analyst → Customer Support)"
         
-        3. CREATE OR REPLACE MASKING POLICY statements for each column and purpose combination where masking is required:
-           - The masking policy name should be "<Purpose>_<column_name>" with spaces replaced by underscores
-           - If masking_required is 0 or not specified, the policy should return the original value
-           - If masking_required is 1, implement the masking based on the masking_format:
-             * For emails: implement appropriate email masking based on formats like "xxxx@####.com", "user****@domain.com", etc.
-             * For numbers: implement appropriate number masking based on formats like "######"
-             * For addresses: implement appropriate address masking based on formats like "#### ***** St, City, ST #####"
-             * For phone numbers: implement appropriate phone masking based on formats like "###-###-####"
-           - The masking policy should be applied only to users with the specific purpose-based role
-           - For other roles, the policy should return the original value
+        3. CREATE OR REPLACE MASKING POLICY statements based on data types and masking formats:
+           - Instead of creating a policy for each column and purpose, create consolidated masking policies by data type
+           - For example, create a single "mask_email" policy for all email columns and a "mask_customer_id" policy for all customer ID columns
+           - In each policy, use CASE statements with IS_ROLE_IN_SESSION checks to apply different masking based on the role
+           - Add a comment: "-- 3) Define Masking Policies" before this section
+           - Add numbered comments for each policy like "-- 3.1 Email Masking Policy"
         
         4. Apply the masking policies to the appropriate tables and columns:
-           - For each masking policy created, include an ALTER TABLE statement to apply the policy
+           - For each table and column combination, include an ALTER TABLE statement to apply the policy
            - The format should be: ALTER TABLE <schema>.<table> MODIFY COLUMN <column> SET MASKING POLICY <policy_name>;
+           - Group these by table with a comment before each table's section
+           - Add a comment: "-- 4) Attach Masking Policies to Columns" before this section
         
-        5. Group the statements logically and add comments to make the DDL easy to understand:
-           - First, create all purpose-based roles
-           - Then, grant these roles to the external Snowflake roles
-           - Next, create all masking policies grouped by table and column
-           - Finally, apply the masking policies to the appropriate tables and columns
+        Follow this exact format for the output:
+        -- 1) Create Purpose Roles
+        CREATE ROLE IF NOT EXISTS PURPOSE_CUSTOMER_SUPPORT;
+        CREATE ROLE IF NOT EXISTS PURPOSE_FRAUD_DETECTION;
+        CREATE ROLE IF NOT EXISTS PURPOSE_MARKETING_CAMPAIGNS;
+        
+        -- 2) Grant Purpose Roles to Imported Roles
+        --    (Customer Data Analyst → Customer Support)
+        GRANT ROLE PURPOSE_CUSTOMER_SUPPORT    TO ROLE "Customer Data Analyst";
+        --    (Financial Analyst → Fraud Detection)
+        GRANT ROLE PURPOSE_FRAUD_DETECTION     TO ROLE "Financial Analyst";
+        --    (Marketing Analyst → Marketing Campaigns)
+        GRANT ROLE PURPOSE_MARKETING_CAMPAIGNS TO ROLE "Marketing Analyst";
+        
+        -- 3) Define Masking Policies
+        -- 3.1 Email Masking Policy
+        CREATE OR REPLACE MASKING POLICY mask_email AS (val STRING)
+          RETURNS STRING ->
+            CASE
+              WHEN IS_ROLE_IN_SESSION('Financial Analyst')      THEN val
+              WHEN IS_ROLE_IN_SESSION('Customer Data Analyst')  THEN CONCAT(LEFT(val,4),'****@domain.com')
+              WHEN IS_ROLE_IN_SESSION('Marketing Analyst')      THEN CONCAT('xxxx@', SPLIT_PART(val,'@',2))
+              ELSE NULL
+            END;
+        
+        -- 4) Attach Masking Policies to Columns
+        -- Customer.profiles
+        ALTER TABLE Customer.profiles         
+          MODIFY COLUMN email       SET MASKING POLICY mask_email;
         
         Do not include CREATE TABLE statements or other DDL not related to security policies and roles.
         Format the DDL with proper indentation and SQL best practices.
