@@ -173,57 +173,120 @@ class AssetPolicyInference:
     
     def _process_security_policies(self, entry, purpose_id, purpose_name, results, role_id):
         """Process security policies for a catalog entry and purpose."""
+        import logging
+        logger = logging.getLogger('AssetPolicyInference')
+        
         # Get the data element ID from the entry
         data_element_id = entry.get('data_element_id')
         if not data_element_id:
             return
-            
+        
+        data_element_name = entry.get('data_element_name')
+        logger.info(f"[SECURITY] Processing security policies for data element {data_element_name}")
+        
         # Get security policies for this data element and purpose
         security_policies = self.regulatory_metadata_repository.get_policy_purpose_data_security(
             purpose_id=purpose_id,
             data_element_id=data_element_id
         )
         
-        # Handle role filtering if needed
-        if isinstance(role_id, list) and 'all' not in role_id:
-            # Filter security policies by role
-            filtered_policies = []
-            for policy in security_policies:
-                policy_id = policy.get('policy_id')
-                # Check if this policy applies to any of the selected roles
-                for r_id in role_id:
-                    if self.regulatory_metadata_repository.check_policy_applies_to_role(policy_id, r_id):
-                        filtered_policies.append(policy)
-                        break
-            security_policies = filtered_policies
+        if not security_policies:
+            logger.info(f"[SECURITY] No security policies found for data element {data_element_name} and purpose {purpose_name}")
+            return
+        
+        logger.info(f"[SECURITY] Found {len(security_policies)} security policies for data element {data_element_name}")
+        
+        # Get all roles
+        roles = self.glossary_repository.get_external_roles()
+        
+        # Filter roles if needed
+        if isinstance(role_id, list):
+            if 'all' not in role_id:
+                # Filter roles by the list of role IDs
+                filtered_roles = [role for role in roles if role[0] in role_id]
+                if not filtered_roles:
+                    logger.warning(f"[SECURITY] No roles found matching IDs {role_id}, no security policies will be processed")
+                    return
+                roles = filtered_roles
+                role_names = [role[1] for role in roles]
+                logger.info(f"[SECURITY] Filtering for roles: {role_names} (IDs: {role_id})")
         elif role_id != 'all':
-            # Filter security policies by a single role
-            filtered_policies = []
-            for policy in security_policies:
-                policy_id = policy.get('policy_id')
-                if self.regulatory_metadata_repository.check_policy_applies_to_role(policy_id, role_id):
-                    filtered_policies.append(policy)
-            security_policies = filtered_policies
-            
-        # Add security policies to results
+            # Filter by a single role ID
+            filtered_roles = [role for role in roles if role[0] == role_id]
+            if not filtered_roles:
+                logger.warning(f"[SECURITY] Role ID {role_id} not found, no security policies will be processed")
+                return
+            roles = filtered_roles
+            logger.info(f"[SECURITY] Filtering for role: {roles[0][1]} (ID: {role_id})")
+        
+        # Add security policies to results for each role
         for policy in security_policies:
-            results.append({
-                'schema_name': entry.get('schema_name'),
-                'table_name': entry.get('table_name'),
-                'column_name': entry.get('column_name'),
-                'data_element_id': data_element_id,
-                'data_element_name': entry.get('data_element_name'),
-                'data_type': entry.get('data_type'),
-                'purpose_id': purpose_id,
-                'purpose_name': purpose_name,
-                'policy_id': policy.get('policy_id'),
-                'policy_name': policy.get('policy_name'),
-                'policy_type': 'Security',
-                'encryption_required': policy.get('encryption_required'),
-                'encryption_algorithm': policy.get('encryption_algorithm'),
-                'masking_required': policy.get('masking_required'),
-                'masking_format': policy.get('masking_format')
-            })
+            policy_id = policy.get('policy_id')
+            
+            # For each role, add a policy entry
+            for role in roles:
+                role_id_val = role[0]
+                role_name_val = role[1]
+                
+                # Check for overrides for this role
+                policy_purpose_data_element_id = self._get_policy_purpose_data_element_id(
+                    policy.get('policy_name'),
+                    purpose_id,
+                    data_element_id
+                )
+                
+                if policy_purpose_data_element_id:
+                    overrides = self.regulatory_metadata_repository.get_policy_override_role_purpose_data_security(
+                        policy_purpose_data_element_id=policy_purpose_data_element_id,
+                        external_role_id=role_id_val
+                    )
+                    
+                    # If we have overrides, use those values
+                    if overrides:
+                        override = overrides[0]
+                        results.append({
+                            'schema_name': entry.get('schema_name'),
+                            'table_name': entry.get('table_name'),
+                            'column_name': entry.get('column_name'),
+                            'data_element_id': data_element_id,
+                            'data_element_name': entry.get('data_element_name'),
+                            'data_type': entry.get('data_type'),
+                            'purpose_id': purpose_id,
+                            'purpose_name': purpose_name,
+                            'role_id': role_id_val,
+                            'role_name': role_name_val,
+                            'policy_id': policy_id,
+                            'policy_name': policy.get('policy_name'),
+                            'policy_type': 'Security',
+                            'encryption_required': override.get('encryption_required'),
+                            'encryption_algorithm': override.get('encryption_algorithm'),
+                            'masking_required': override.get('masking_required'),
+                            'masking_format': override.get('masking_format'),
+                            'is_override': True
+                        })
+                        continue
+                
+                # No overrides, use the default policy
+                results.append({
+                    'schema_name': entry.get('schema_name'),
+                    'table_name': entry.get('table_name'),
+                    'column_name': entry.get('column_name'),
+                    'data_element_id': data_element_id,
+                    'data_element_name': entry.get('data_element_name'),
+                    'data_type': entry.get('data_type'),
+                    'purpose_id': purpose_id,
+                    'purpose_name': purpose_name,
+                    'role_id': role_id_val,
+                    'role_name': role_name_val,
+                    'policy_id': policy_id,
+                    'policy_name': policy.get('policy_name'),
+                    'policy_type': 'Security',
+                    'encryption_required': policy.get('encryption_required'),
+                    'encryption_algorithm': policy.get('encryption_algorithm'),
+                    'masking_required': policy.get('masking_required'),
+                    'masking_format': policy.get('masking_format'),
+                    'is_override': False
+                })
         
         # Convert results to DataFrame
         logger.info(f"Total policy results collected: {len(results)}")

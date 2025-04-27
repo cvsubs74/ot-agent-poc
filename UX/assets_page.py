@@ -368,8 +368,8 @@ class AssetsPage:
                 # Add 'All Purposes' option
                 purpose_options['all'] = "All Purposes"
                     
-                # Create three columns for the dropdowns
-                col_purpose, col_policy_type, col_role = st.columns(3)
+                # Create two columns for the dropdowns
+                col_purpose, col_policy_type = st.columns(2)
                 
                 with col_purpose:
                     # Purpose selection multi-select
@@ -406,29 +406,18 @@ class AssetsPage:
                     if not selected_policy_types:
                         selected_policy_types = ["all"]
                 
-                with col_role:
-                    # Get external roles for this asset
-                    external_roles = self.glossary_repository.get_external_roles_by_asset(asset_id=selected_asset['id'])
-                    
-                    # Create a dictionary of role options with an 'All Roles' option
-                    role_options = {}
-                    for role in external_roles:
-                        # External roles are returned as tuples: (id, name, description, source_system, source_role_name, asset_id)
-                        role_options[role[0]] = role[1]  # role[0] is id, role[1] is name
-                    role_options['all'] = "All Roles"
-                    
-                    # External role selection multi-select
-                    selected_roles = st.multiselect(
-                        "Select External Role(s):",
-                        options=list(role_options.keys()),
-                        default=["all"],
-                        format_func=lambda x: role_options.get(x, ""),
-                        key=f"role_select_{selected_asset['id']}"
-                    )
-                    
-                    # Default to 'all' if nothing is selected
-                    if not selected_roles:
-                        selected_roles = ["all"]
+                # Get external roles for this asset
+                external_roles = self.glossary_repository.get_external_roles_by_asset(asset_id=selected_asset['id'])
+                
+                # Create a dictionary of role options with an 'All Roles' option
+                role_options = {}
+                for role in external_roles:
+                    # External roles are returned as tuples: (id, name, description, source_system, source_role_name, asset_id)
+                    role_options[role[0]] = role[1]  # role[0] is id, role[1] is name
+                role_options['all'] = "All Roles"
+                
+                # Default to 'all' if nothing is selected
+                selected_roles = ["all"]
                 
                 # Create three columns for the buttons
                 col1, col2, col3, col4 = st.columns(4)
@@ -474,7 +463,7 @@ class AssetsPage:
                         role_display = ", ".join(role_names)
                     
                     # Get the policy analysis results
-                    if generate_json:
+                    if generate_json or generate_ddl:
                         # First get the policy analysis DataFrame for display
                         df = self.asset_policy_inference.get_applied_policies_for_asset_purpose(
                             asset_id=selected_asset['id'],
@@ -485,75 +474,77 @@ class AssetsPage:
                         
                         # Check if we have data to display
                         if not df.empty:
-                            # First show the policy analysis table
-                            st.markdown(f"<h4>Policy Analysis for {selected_asset['name']}</h4>", unsafe_allow_html=True)
-                            
-                            # Format boolean columns as checkboxes
-                            formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
-                            
-                            # Rename columns for better display
-                            column_mapping = {
-                                "schema_name": "Schema",
-                                "table_name": "Table",
-                                "column_name": "Column",
-                                "data_type": "Data Type",
-                                "data_element_name": "Data Element",
-                                "purpose_name": "Purpose",
-                                "role_name": "Role",
-                                "policy_name": "Policy",
-                                "encryption_required": "Encryption Required",
-                                "encryption_algorithm": "Encryption Algorithm",
-                                "masking_required": "Masking Required",
-                                "masking_format": "Masking Format",
-                                "is_override": "Is Override"
-                            }
-                            formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
-                            
-                            # Display the DataFrame
-                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                            
-                            # Now build the JSON from the DataFrame
+                            # Build the JSON from the DataFrame (needed for both JSON display and DDL generation)
                             policy_analysis = self._build_column_based_json_from_df(df, selected_asset['id'])
                             
-                            # Then display the JSON policy specification
-                            st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
-                            
-                            # Add a download button for the JSON
-                            import json
-                            json_str = json.dumps(policy_analysis, indent=2)
-                            st.download_button(
-                                label="Download JSON",
-                                data=json_str,
-                                file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_policy_spec.json",
-                                mime="application/json"
-                            )
-                            
-                            # Display the JSON in an expandable section
-                            with st.expander("View JSON Policy Specification", expanded=True):
-                                st.json(policy_analysis)
-                        
-                        # Process DDL generation if that button was clicked
-                        if generate_ddl:
-                            # Generate DDL using the policy analysis results
-                            ddl_content = None
-                            with st.spinner(f"Generating DDL for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
-                                ddl_content = self.ddl_generator.generate_snowflake_ddl(policy_analysis)
-
-                            if ddl_content:
-                                # Display the DDL
-                                st.markdown(f"<h4>Snowflake Security Policy DDL for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                            # If Generate JSON button was clicked, show the JSON
+                            if generate_json:
+                                # First show the policy analysis table
+                                st.markdown(f"<h4>Policy Analysis for {selected_asset['name']}</h4>", unsafe_allow_html=True)
                                 
-                                # Add a download button for the DDL
+                                # Format boolean columns as checkboxes
+                                formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
+                                
+                                # Rename columns for better display
+                                column_mapping = {
+                                    "schema_name": "Schema",
+                                    "table_name": "Table",
+                                    "column_name": "Column",
+                                    "data_type": "Data Type",
+                                    "data_element_name": "Data Element",
+                                    "purpose_name": "Purpose",
+                                    "role_name": "Role",
+                                    "policy_name": "Policy",
+                                    "encryption_required": "Encryption Required",
+                                    "encryption_algorithm": "Encryption Algorithm",
+                                    "masking_required": "Masking Required",
+                                    "masking_format": "Masking Format",
+                                    "is_override": "Is Override"
+                                }
+                                formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
+                                
+                                # Display the DataFrame
+                                st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                                
+                                # Then display the JSON policy specification
+                                st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                                
+                                # Add a download button for the JSON
+                                import json
+                                json_str = json.dumps(policy_analysis, indent=2)
                                 st.download_button(
-                                    label="Download Security Policy DDL",
-                                    data=ddl_content,
-                                    file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_security_policies.sql",
-                                    mime="text/plain"
+                                    label="Download JSON",
+                                    data=json_str,
+                                    file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_policy_spec.json",
+                                    mime="application/json"
                                 )
                                 
-                                # Display the DDL in an expandable section
-                                with st.expander("View Snowflake Security Policy DDL", expanded=True):
-                                    st.code(ddl_content, language="sql")
+                                # Display the JSON in an expandable section
+                                with st.expander("View JSON Policy Specification", expanded=True):
+                                    st.json(policy_analysis)
+                            
+                            # Process DDL generation if that button was clicked
+                            if generate_ddl:
+                                # Generate DDL using the policy analysis results
+                                ddl_content = None
+                                with st.spinner(f"Generating DDL for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
+                                    ddl_content = self.ddl_generator.generate_snowflake_ddl(policy_analysis)
+                                
+                                if ddl_content:
+                                    # Display the DDL
+                                    st.markdown(f"<h4>Snowflake Security Policy DDL for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                                    
+                                    # Add a download button for the DDL
+                                    st.download_button(
+                                        label="Download Security Policy DDL",
+                                        data=ddl_content,
+                                        file_name=f"{selected_asset['name'].lower().replace(' ', '_')}_security_policies.sql",
+                                        mime="text/plain"
+                                    )
+                                    
+                                    # Display the DDL in an expandable section
+                                    with st.expander("View Snowflake Security Policy DDL", expanded=True):
+                                        st.code(ddl_content, language="sql")
                 
                         # Show info box about analysis workflow after the results
                         st.markdown('''
