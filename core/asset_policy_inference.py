@@ -367,6 +367,7 @@ class AssetPolicyInference:
                         'data_element_name': entry.get('data_element_name'),
                         'purpose_name': purpose_name,
                         'role_name': role_name,
+                        'role_id': current_role_id,
                         'policy_name': security.get('policy_name'),
                         'policy_type': 'Security',
                         'encryption_required': encryption_required,
@@ -396,23 +397,70 @@ class AssetPolicyInference:
                             encryption_required = default_securities[0].get('encryption_required')
                             encryption_algorithm = default_securities[0].get('encryption_algorithm')
                 
-                # Add to results
-                results.append({
-                    'schema_name': entry.get('schema_name'),
-                    'table_name': entry.get('table_name'),
-                    'column_name': entry.get('column_name'),
-                    'data_type': entry.get('data_type'),
-                    'data_element_name': entry.get('data_element_name'),
-                    'purpose_name': purpose_name,
-                    'role_name': 'Default Role',
-                    'policy_name': security.get('policy_name'),
-                    'policy_type': 'Security',
-                    'encryption_required': encryption_required,
-                    'encryption_algorithm': encryption_algorithm,
-                    'masking_required': security.get('masking_required'),
-                    'masking_format': security.get('masking_format'),
-                    'is_override': False
-                })
+                # Get all external roles from the glossary repository
+                external_roles = self.glossary_repository.get_external_roles()
+                
+                # Filter roles if role_id is specified
+                if role_id != 'all':
+                    # Convert role_id to a list if it's not already
+                    role_id_list = role_id if isinstance(role_id, list) else [role_id]
+                    
+                    # Filter out 'all' from the list if present
+                    if 'all' in role_id_list:
+                        logger.info(f"[SECURITY] 'all' found in role_id list, using all roles")
+                    else:
+                        # Filter roles by ID
+                        logger.info(f"[SECURITY] Filtering roles by ID: {role_id_list}")
+                        external_roles = [role for role in external_roles if role[0] in role_id_list]
+                        logger.info(f"[SECURITY] Found {len(external_roles)} matching roles")
+                
+                if external_roles:
+                    # Add an entry for each role
+                    for role in external_roles:
+                        role_id_val = role[0]  # external_role_id
+                        role_name_val = role[1]  # role_name
+                        
+                        logger.info(f"[SECURITY] Adding policy for purpose {purpose_name} with role {role_name_val}")
+                        
+                        # Add to results
+                        results.append({
+                            'schema_name': entry.get('schema_name'),
+                            'table_name': entry.get('table_name'),
+                            'column_name': entry.get('column_name'),
+                            'data_type': entry.get('data_type'),
+                            'data_element_name': entry.get('data_element_name'),
+                            'purpose_name': purpose_name,
+                            'role_name': role_name_val,
+                            'role_id': role_id_val,  # Add role_id to the results for easier filtering
+                            'policy_name': security.get('policy_name'),
+                            'policy_type': 'Security',
+                            'encryption_required': encryption_required,
+                            'encryption_algorithm': encryption_algorithm,
+                            'masking_required': security.get('masking_required'),
+                            'masking_format': security.get('masking_format'),
+                            'is_override': False
+                        })
+                else:
+                    # If no roles are found, use a placeholder
+                    logger.warning(f"[SECURITY] No roles found in the system. Using placeholder.")
+                    
+                    # Add to results with a placeholder role
+                    results.append({
+                        'schema_name': entry.get('schema_name'),
+                        'table_name': entry.get('table_name'),
+                        'column_name': entry.get('column_name'),
+                        'data_type': entry.get('data_type'),
+                        'data_element_name': entry.get('data_element_name'),
+                        'purpose_name': purpose_name,
+                        'role_name': f"Unassigned ({purpose_name})",
+                        'policy_name': security.get('policy_name'),
+                        'policy_type': 'Security',
+                        'encryption_required': encryption_required,
+                        'encryption_algorithm': encryption_algorithm,
+                        'masking_required': security.get('masking_required'),
+                        'masking_format': security.get('masking_format'),
+                        'is_override': False
+                    })
     
     def _process_usage_policies(self, entry, purpose_id, purpose_name, results, role_id='all'):
         """
@@ -448,28 +496,32 @@ class AssetPolicyInference:
         
         logger.info(f"[USAGE] Found {len(policy_purpose_data_usages)} usage policies for data element {data_element_name}")
             
-        # We can't filter by role directly since role_id isn't in the usage policies table
-        # Instead, we'll check for role-specific overrides later
+        # We'll filter by role after processing the policies
         
         # If no usage policies found at all, return early
         if not policy_purpose_data_usages:
             return
             
-        # Get policy overrides for this data element and purpose
-        # We'll check for role-specific overrides if a role_id is specified
+        # Get all external roles from the glossary repository
+        roles = self.glossary_repository.get_external_roles()
+        
+        # Filter roles if role_id is specified
         if role_id != 'all':
-            # Get the specific role
-            roles = self.glossary_repository.get_external_roles()
-            filtered_roles = [role for role in roles if role[0] == role_id]
-            if not filtered_roles:
-                logger.warning(f"[USAGE] Role ID {role_id} not found, no usage policies will be processed")
-                return
-            roles = filtered_roles
-            logger.info(f"[USAGE] Filtering for role: {roles[0][1]} (ID: {role_id})")
-        else:
-            # Get all roles
-            roles = self.glossary_repository.get_external_roles()
-            logger.info(f"[USAGE] Processing all roles ({len(roles)} roles)")
+            # Convert role_id to a list if it's not already
+            role_id_list = role_id if isinstance(role_id, list) else [role_id]
+            
+            # Filter out 'all' from the list if present
+            if 'all' in role_id_list:
+                logger.info(f"[USAGE] 'all' found in role_id list, using all roles")
+            else:
+                # Filter roles by ID
+                logger.info(f"[USAGE] Filtering roles by ID: {role_id_list}")
+                roles = [role for role in roles if role[0] in role_id_list]
+                logger.info(f"[USAGE] Found {len(roles)} matching roles")
+                
+                if not roles:
+                    logger.warning(f"[USAGE] No roles found matching {role_id_list}, no usage policies will be processed")
+                    return
         
         # Track if we have any overrides for this data element
         has_overrides = {}  # Track by operation
@@ -523,6 +575,7 @@ class AssetPolicyInference:
                         'data_element_name': entry.get('data_element_name'),
                         'purpose_name': purpose_name,
                         'role_name': role_name,
+                        'role_id': current_role_id,
                         'policy_name': usage.get('policy_name'),
                         'policy_type': 'Usage',
                         'operation': operation,
@@ -544,6 +597,7 @@ class AssetPolicyInference:
                     'data_element_name': entry.get('data_element_name'),
                     'purpose_name': purpose_name,
                     'role_name': 'Default Role',
+                    'role_id': 'default',
                     'policy_name': usage.get('policy_name'),
                     'policy_type': 'Usage',
                     'operation': operation,
@@ -582,17 +636,26 @@ class AssetPolicyInference:
             logger.info(f"[RETENTION] No retention policies found for data element {entry.get('data_element_name')}")
             return
         
-        # Get all roles for filtering
+        # Get all external roles from the glossary repository
         roles = self.glossary_repository.get_external_roles()
         
-        # Filter by role_id if specified
+        # Filter roles if role_id is specified
         if role_id != 'all':
-            logger.info(f"[RETENTION] Filtering by role ID: {role_id}")
-            filtered_roles = [role for role in roles if role[0] == role_id]
-            if not filtered_roles:
-                logger.warning(f"[RETENTION] Role ID {role_id} not found, no retention policies will be processed")
-                return
-            roles = filtered_roles
+            # Convert role_id to a list if it's not already
+            role_id_list = role_id if isinstance(role_id, list) else [role_id]
+            
+            # Filter out 'all' from the list if present
+            if 'all' in role_id_list:
+                logger.info(f"[RETENTION] 'all' found in role_id list, using all roles")
+            else:
+                # Filter roles by ID
+                logger.info(f"[RETENTION] Filtering roles by ID: {role_id_list}")
+                roles = [role for role in roles if role[0] in role_id_list]
+                logger.info(f"[RETENTION] Found {len(roles)} matching roles")
+                
+                if not roles:
+                    logger.warning(f"[RETENTION] No roles found matching {role_id_list}, no retention policies will be processed")
+                    return
         
         # Track if we have any overrides for this data element
         has_overrides = False
@@ -639,6 +702,7 @@ class AssetPolicyInference:
                         'data_element_name': entry.get('data_element_name'),
                         'purpose_name': purpose_name,
                         'role_name': role_name,
+                        'role_id': current_role_id,
                         'policy_name': retention.get('policy_name'),
                         'policy_type': 'Retention',
                         'retention_period': override.get('retention_period'),
@@ -660,6 +724,7 @@ class AssetPolicyInference:
                     'data_element_name': entry.get('data_element_name'),
                     'purpose_name': purpose_name,
                     'role_name': 'Default Role',
+                    'role_id': 'default',
                     'policy_name': retention.get('policy_name'),
                     'policy_type': 'Retention',
                     'retention_period': retention.get('retention_period'),
@@ -750,6 +815,24 @@ class AssetPolicyInference:
         Returns:
             Dictionary containing policies grouped by table/column and purpose
         """
+        # Call the column-based JSON generation method
+        return self.generate_column_based_policy_json(asset_id, purpose_id, policy_type, role_id)
+
+    def generate_column_based_policy_json(self, asset_id, purpose_id=None, policy_type='all', role_id='all'):
+        """
+        Generate a column-based JSON structure for policy analysis.
+        Policies are organized by table/column first, with roles and purposes nested under each column.
+        
+        Args:
+            asset_id: ID of the asset to analyze policies for
+            purpose_id: ID of the purpose to filter by, or 'all' for all purposes, or a list of purpose IDs
+            policy_type: Type of policy to filter by ('security', 'usage', 'retention', or 'all'), or a list of policy types
+            role_id: ID of the external role to filter by, or 'all' for all roles, or a list of role IDs
+            
+        Returns:
+            Dictionary containing policies organized by table/column, role, and purpose
+        """
+        # This method is a complete rewrite to ensure all columns are processed correctly
         import logging
         logger = logging.getLogger('AssetPolicyInference')
         
@@ -784,14 +867,19 @@ class AssetPolicyInference:
             logger.info(f"===== POLICY JSON GENERATION COMPLETED =====")
             return result
         
-        # Convert the DataFrame to a dictionary structure
-        for _, row in df.iterrows():
-            schema_name = row.get('schema_name')
-            table_name = row.get('table_name')
-            column_name = row.get('column_name')
-            purpose_name = row.get('purpose_name')
-            role_name = row.get('role_name')
-            policy_type_name = row.get('policy_type').lower()
+        # Get all catalog entries for the asset to ensure we include all columns
+        catalog_entries = self.catalog_repository.get_catalog_entries_by_asset(asset_id)
+        logger.info(f"Retrieved {len(catalog_entries)} catalog entries for asset")
+        
+        # First, create a complete structure with all columns from catalog entries
+        # This ensures we include all columns, even if they don't have policies
+        for entry in catalog_entries:
+            schema_name = entry.get('schema_name')
+            table_name = entry.get('table_name')
+            column_name = entry.get('column_name')
+            data_element_id = entry.get('data_element_id')
+            data_element_name = entry.get('data_element_name')
+            data_type = entry.get('data_type')
             
             # Create table key (schema.table)
             table_key = f"{schema_name}.{table_name}"
@@ -799,59 +887,77 @@ class AssetPolicyInference:
             # Initialize table if not exists
             if table_key not in result["tables"]:
                 result["tables"][table_key] = {
+                    "schema": schema_name,
+                    "table": table_name,
                     "columns": {}
                 }
             
-            # Initialize column if not exists
+            # Initialize column if not exists for this table
             if column_name not in result["tables"][table_key]["columns"]:
                 result["tables"][table_key]["columns"][column_name] = {
-                    "data_element_id": row.get('data_element_id'),
-                    "data_element_name": row.get('data_element_name'),
-                    "data_type": row.get('data_type'),
+                    "data_element_id": data_element_id,
+                    "data_element_name": data_element_name,
+                    "data_type": data_type,
+                    "roles": {}
+                }
+        
+        # Now process the DataFrame to add policy information
+        for _, row in df.iterrows():
+            schema_name = row.get('schema_name')
+            table_name = row.get('table_name')
+            column_name = row.get('column_name')
+            purpose_name = row.get('purpose_name')
+            role_name = row.get('role_name')
+            role_id_val = row.get('role_id', 'default')
+            policy_type_name = row.get('policy_type').lower()
+            
+            # Create table key (schema.table)
+            table_key = f"{schema_name}.{table_name}"
+            
+            # Initialize role if not exists for this column
+            if role_name not in result["tables"][table_key]["columns"][column_name]["roles"]:
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name] = {
+                    "role_id": role_id_val,
                     "purposes": {}
                 }
             
-            # Initialize purpose if not exists
-            if purpose_name not in result["tables"][table_key]["columns"][column_name]["purposes"]:
-                result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name] = {}
-                
-                # Add role information to the purpose
-                # Use the role_name directly from the DataFrame to ensure consistency
-                result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["role"] = role_name
+            # Initialize purpose if not exists for this role and column
+            if purpose_name not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"]:
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name] = {}
             
             # Add policy based on its type
             if policy_type_name == 'security':
-                if "security" not in result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]:
-                    result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["security"] = {
+                if "security" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["security"] = {
                         "policy_name": row.get('policy_name'),
                         "encryption_required": row.get('encryption_required'),
                         "encryption_algorithm": row.get('encryption_algorithm'),
                         "masking_required": row.get('masking_required'),
                         "masking_format": row.get('masking_format'),
-                        "is_override": row.get('is_override')
+                        "is_override": row.get('is_override', False)
                     }
             elif policy_type_name == 'usage':
-                if "usage" not in result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]:
-                    result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["usage"] = []
+                if "usage" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["usage"] = []
                 
-                result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["usage"].append({
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["usage"].append({
                     "policy_name": row.get('policy_name'),
                     "operation": row.get('operation'),
                     "allowed": row.get('allowed'),
                     "restrictions": row.get('restrictions')
                 })
             elif policy_type_name == 'retention':
-                if "retention" not in result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]:
-                    result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["retention"] = []
+                if "retention" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["retention"] = []
                 
-                result["tables"][table_key]["columns"][column_name]["purposes"][purpose_name]["retention"].append({
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["retention"].append({
                     "policy_name": row.get('policy_name'),
                     "retention_period": row.get('retention_period'),
                     "retention_basis": row.get('retention_basis')
                 })
-        
-        logger.info(f"===== POLICY JSON GENERATION COMPLETED =====")
-        return result
+            
+            logger.info(f"===== POLICY JSON GENERATION COMPLETED =====")
+            return result
         
     def generate_policy_json_by_table_column(self, asset_id, purpose_id=None, policy_type='all', role_id='all'):
         """
@@ -994,5 +1100,12 @@ class AssetPolicyInference:
                 })
         
         logger.info(f"Generated JSON with {len(result['tables'])} tables")
+        # Debug: Log the final structure
+        logger.info(f"Generated JSON with {len(result['tables'])} tables")
+        for table_key, table_data in result['tables'].items():
+            logger.info(f"Table {table_key} has {len(table_data['columns'])} columns")
+            for column_name, column_data in table_data['columns'].items():
+                logger.info(f"Column {column_name} has {len(column_data['roles'])} roles")
+        
         logger.info(f"===== POLICY JSON GENERATION COMPLETED =====")
         return result

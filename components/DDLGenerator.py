@@ -30,15 +30,24 @@ class DDLGenerator:
         """
         # Convert the policy JSON to a string if it's a dictionary
         if isinstance(policy_json, dict):
-            json_str = json.dumps(policy_json, indent=2)
+            # Check if this is the new column-based structure
+            if 'tables' in policy_json:
+                # We have the new column-based structure
+                json_str = json.dumps(policy_json, indent=2)
+            else:
+                # Handle legacy format - convert to new format for backward compatibility
+                st.warning("Using legacy JSON format. Consider updating to the new column-based format.")
+                json_str = json.dumps(policy_json, indent=2)
         else:
             json_str = policy_json
         
         # Create a prompt for the VertexAI model to generate security policies
         prompt = f"""
-        Generate Snowflake security policy DDL statements based on the following JSON policy specification:
+        Generate Snowflake security policy DDL statements based on the following JSON policy specification, which is organized by table/column:
         
         {json_str}
+        
+        Note that the JSON is structured with tables at the top level, where each table contains columns. Each column contains roles, and each role contains purposes with their associated policies.
         
         Focus on creating the following types of statements in this exact order:
         
@@ -48,10 +57,10 @@ class DDLGenerator:
            - Add a comment: "-- 1) Create Purpose Roles" before this section
         
         2. GRANT purpose-based roles to the original Snowflake roles:
-           - For each purpose in the JSON, look for the "role" field within that purpose
-           - The "role" field contains the name of the external Snowflake role (e.g., "Customer Data Analyst")
-           - Create a GRANT statement that grants the purpose-based role to this external role
-           - For example, if a purpose 'Customer Support' has a role "Customer Data Analyst", include a statement like:
+           - The JSON is now organized by table/column at the top level
+           - Each column contains roles, and each role contains purposes with their associated policies
+           - Create a GRANT statement that grants each purpose-based role to the appropriate external role
+           - For example, if a column has a role 'Customer Data Analyst' with a purpose 'Customer Support', include a statement like:
              GRANT ROLE PURPOSE_CUSTOMER_SUPPORT TO ROLE "Customer Data Analyst";
            - Add a comment: "-- 2) Grant Purpose Roles to Imported Roles" before this section
            - Add a comment before each grant to explain the mapping, like: "--    (Customer Data Analyst → Customer Support)"

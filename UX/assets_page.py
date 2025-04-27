@@ -12,6 +12,109 @@ class AssetsPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.asset_policy_inference = asset_policy_inference
         self.ddl_generator = DDLGenerator()
+        
+    def _build_column_based_json_from_df(self, df, asset_id):
+        """
+        Build a column-based JSON structure from the policy analysis DataFrame.
+        The structure is organized by table/column first, with roles and purposes nested under each column.
+        
+        Args:
+            df: DataFrame containing policy analysis results
+            asset_id: ID of the asset
+            
+        Returns:
+            Dictionary containing policies organized by table/column, role, and purpose
+        """
+        # Initialize the result dictionary
+        result = {
+            "asset_id": asset_id,
+            "tables": {}
+        }
+        
+        # Get asset name
+        assets = self.glossary_repository.get_assets()
+        for asset in assets:
+            if asset[0] == asset_id:
+                result["asset_name"] = asset[1]
+                break
+        
+        # If no policies found, return the basic structure
+        if df.empty:
+            return result
+        
+        # Process each row in the DataFrame
+        for _, row in df.iterrows():
+            schema_name = row.get('schema_name')
+            table_name = row.get('table_name')
+            column_name = row.get('column_name')
+            purpose_name = row.get('purpose_name')
+            role_name = row.get('role_name')
+            role_id_val = row.get('role_id', 'default')
+            policy_type_name = row.get('policy_type').lower()
+            
+            # Create table key (schema.table)
+            table_key = f"{schema_name}.{table_name}"
+            
+            # Initialize table if not exists
+            if table_key not in result["tables"]:
+                result["tables"][table_key] = {
+                    "schema": schema_name,
+                    "table": table_name,
+                    "columns": {}
+                }
+            
+            # Initialize column if not exists for this table
+            if column_name not in result["tables"][table_key]["columns"]:
+                result["tables"][table_key]["columns"][column_name] = {
+                    "data_element_id": row.get('data_element_id'),
+                    "data_element_name": row.get('data_element_name'),
+                    "data_type": row.get('data_type'),
+                    "roles": {}
+                }
+            
+            # Initialize role if not exists for this column
+            if role_name not in result["tables"][table_key]["columns"][column_name]["roles"]:
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name] = {
+                    "role_id": role_id_val,
+                    "purposes": {}
+                }
+            
+            # Initialize purpose if not exists for this role and column
+            if purpose_name not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"]:
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name] = {}
+            
+            # Add policy based on its type
+            if policy_type_name == 'security':
+                if "security" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["security"] = {
+                        "policy_name": row.get('policy_name'),
+                        "encryption_required": row.get('encryption_required'),
+                        "encryption_algorithm": row.get('encryption_algorithm'),
+                        "masking_required": row.get('masking_required'),
+                        "masking_format": row.get('masking_format'),
+                        "is_override": row.get('is_override', False)
+                    }
+            elif policy_type_name == 'usage':
+                if "usage" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["usage"] = []
+                
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["usage"].append({
+                    "policy_name": row.get('policy_name'),
+                    "operation": row.get('operation'),
+                    "allowed": row.get('allowed'),
+                    "restrictions": row.get('restrictions')
+                })
+            elif policy_type_name == 'retention':
+                if "retention" not in result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]:
+                    result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["retention"] = []
+                
+                result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["retention"].append({
+                    "policy_name": row.get('policy_name'),
+                    "retention_period": row.get('retention_period'),
+                    "retention_basis": row.get('retention_basis')
+                })
+        
+        return result
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -371,17 +474,48 @@ class AssetsPage:
                         role_display = ", ".join(role_names)
                     
                     # Get the policy analysis results
-                    policy_analysis = self.asset_policy_inference.analyze_policies_for_asset(
+                    if generate_json:
+                        # First get the policy analysis DataFrame for display
+                        df = self.asset_policy_inference.get_applied_policies_for_asset_purpose(
                             asset_id=selected_asset['id'],
                             purpose_id=selected_purposes,
                             policy_type=selected_policy_types,
                             role_id=selected_roles
                         )
                         
-                    if policy_analysis and policy_analysis.get('tables'):
-                        # Process JSON Policy Spec if that button was clicked
-                        if generate_json:
-                            # Display the JSON policy specification
+                        # Check if we have data to display
+                        if not df.empty:
+                            # First show the policy analysis table
+                            st.markdown(f"<h4>Policy Analysis for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                            
+                            # Format boolean columns as checkboxes
+                            formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
+                            
+                            # Rename columns for better display
+                            column_mapping = {
+                                "schema_name": "Schema",
+                                "table_name": "Table",
+                                "column_name": "Column",
+                                "data_type": "Data Type",
+                                "data_element_name": "Data Element",
+                                "purpose_name": "Purpose",
+                                "role_name": "Role",
+                                "policy_name": "Policy",
+                                "encryption_required": "Encryption Required",
+                                "encryption_algorithm": "Encryption Algorithm",
+                                "masking_required": "Masking Required",
+                                "masking_format": "Masking Format",
+                                "is_override": "Is Override"
+                            }
+                            formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
+                            
+                            # Display the DataFrame
+                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                            
+                            # Now build the JSON from the DataFrame
+                            policy_analysis = self._build_column_based_json_from_df(df, selected_asset['id'])
+                            
+                            # Then display the JSON policy specification
                             st.markdown(f"<h4>JSON Policy Specification for {selected_asset['name']}</h4>", unsafe_allow_html=True)
                             
                             # Add a download button for the JSON
@@ -435,8 +569,8 @@ class AssetsPage:
                             <li><strong>JSON Policy Specification:</strong> When you click "Generate JSON Policy Spec", the system:</li>
                             <ul>
                                 <li>Uses the same data source as the policy analysis to ensure consistency</li>
-                                <li>Creates a hierarchical JSON structure organizing policies by table, column, and purpose</li>
-                                <li>Includes role information for each purpose to enable proper security policy implementation</li>
+                                <li>Creates a hierarchical JSON structure organizing policies by role, table, column, and purpose</li>
+                                <li>Groups all policies under their respective roles for clearer organization</li>
                                 <li>Specifies security requirements including masking and encryption details</li>
                             </ul>
                             <li><strong>Security Policy DDL Generation:</strong> When you click "Generate Security Policy DDL", the system:</li>
@@ -534,30 +668,71 @@ class AssetsPage:
                             else:
                                 st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
                             
-                            # Add a filter by data element
-                            if 'Data Element' in formatted_df.columns:
-                                unique_data_elements = sorted(formatted_df['Data Element'].unique())
-                                if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
-                                    # Create a filter key for this asset
-                                    filter_key = f"data_element_filter_{selected_asset['id']}"
-                                    
-                                    # Use selectbox for filtering
-                                    selected_data_element_filter = st.selectbox(
-                                        "Filter by Data Element:",
-                                        options=["All Data Elements"] + list(unique_data_elements),
-                                        key=filter_key
-                                    )
-                                    
-                                    # Apply the filter if a specific data element is selected
-                                    if selected_data_element_filter != "All Data Elements":
-                                        filtered_df = formatted_df[formatted_df['Data Element'] == selected_data_element_filter]
-                                        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-                                    else:
-                                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                                else:
-                                    st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                            else:
-                                st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                            # Create session state keys for filters
+                            data_element_filter_key = f"data_element_filter_{selected_asset['id']}"
+                            role_filter_key = f"role_filter_{selected_asset['id']}"
+                            
+                            # Initialize session state for filters if not already set
+                            if data_element_filter_key not in st.session_state:
+                                st.session_state[data_element_filter_key] = "All Data Elements"
+                            if role_filter_key not in st.session_state:
+                                st.session_state[role_filter_key] = "All Roles"
+                            
+                            # Create a container for filters
+                            filter_container = st.container()
+                            with filter_container:
+                                # Create two columns for filters
+                                filter_col1, filter_col2 = st.columns(2)
+                                
+                                # Initialize filtered_df with the full DataFrame
+                                filtered_df = formatted_df.copy()
+                                
+                                # Add a filter by data element in the first column
+                                with filter_col1:
+                                    if 'Data Element' in formatted_df.columns:
+                                        unique_data_elements = sorted(formatted_df['Data Element'].unique())
+                                        if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
+                                            # Create callback for data element filter
+                                            def on_data_element_change():
+                                                st.session_state[data_element_filter_key] = st.session_state[f"{data_element_filter_key}_widget"]
+                                            
+                                            # Use selectbox for filtering with the callback
+                                            selected_data_element_filter = st.selectbox(
+                                                "Filter by Data Element:",
+                                                options=["All Data Elements"] + list(unique_data_elements),
+                                                key=f"{data_element_filter_key}_widget",
+                                                on_change=on_data_element_change,
+                                                index=0 if st.session_state[data_element_filter_key] not in unique_data_elements else list(["All Data Elements"] + list(unique_data_elements)).index(st.session_state[data_element_filter_key])
+                                            )
+                                            
+                                            # Apply the filter if a specific data element is selected
+                                            if st.session_state[data_element_filter_key] != "All Data Elements" and st.session_state[data_element_filter_key] in unique_data_elements:
+                                                filtered_df = filtered_df[filtered_df['Data Element'] == st.session_state[data_element_filter_key]]
+                                
+                                # Add a filter by role in the second column
+                                with filter_col2:
+                                    if 'Role' in formatted_df.columns:
+                                        unique_roles = sorted(formatted_df['Role'].unique())
+                                        if len(unique_roles) > 1:  # Only show filter if there's more than one role
+                                            # Create callback for role filter
+                                            def on_role_change():
+                                                st.session_state[role_filter_key] = st.session_state[f"{role_filter_key}_widget"]
+                                            
+                                            # Use selectbox for filtering with the callback
+                                            selected_role_filter = st.selectbox(
+                                                "Filter by Role:",
+                                                options=["All Roles"] + list(unique_roles),
+                                                key=f"{role_filter_key}_widget",
+                                                on_change=on_role_change,
+                                                index=0 if st.session_state[role_filter_key] not in unique_roles else list(["All Roles"] + list(unique_roles)).index(st.session_state[role_filter_key])
+                                            )
+                                            
+                                            # Apply the filter if a specific role is selected
+                                            if st.session_state[role_filter_key] != "All Roles" and st.session_state[role_filter_key] in unique_roles:
+                                                filtered_df = filtered_df[filtered_df['Role'] == st.session_state[role_filter_key]]
+                            
+                            # Display the filtered DataFrame
+                            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
                         else:
                             # If no results were found
                             st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")                
@@ -574,30 +749,71 @@ class AssetsPage:
                     else:
                         st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
                     
-                    # Add a filter by data element
-                    if 'Data Element' in formatted_df.columns:
-                        unique_data_elements = sorted(formatted_df['Data Element'].unique())
-                        if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
-                            # Create a filter key for this asset
-                            filter_key = f"data_element_filter_{selected_asset['id']}"
-                            
-                            # Use selectbox for filtering
-                            selected_data_element_filter = st.selectbox(
-                                label="Filter by Data Element:",
-                                options=["All Data Elements"] + list(unique_data_elements),
-                                key=filter_key
-                            )
-                            
-                            # Apply the filter if a specific data element is selected
-                            if selected_data_element_filter != "All Data Elements":
-                                filtered_df = formatted_df[formatted_df['Data Element'] == selected_data_element_filter]
-                                st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-                            else:
-                                st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                        else:
-                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                    else:
-                        st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                    # Create session state keys for filters
+                    data_element_filter_key = f"data_element_filter_{selected_asset['id']}_saved"
+                    role_filter_key = f"role_filter_{selected_asset['id']}_saved"
+                    
+                    # Initialize session state for filters if not already set
+                    if data_element_filter_key not in st.session_state:
+                        st.session_state[data_element_filter_key] = "All Data Elements"
+                    if role_filter_key not in st.session_state:
+                        st.session_state[role_filter_key] = "All Roles"
+                    
+                    # Create a container for filters
+                    filter_container = st.container()
+                    with filter_container:
+                        # Create two columns for filters
+                        filter_col1, filter_col2 = st.columns(2)
+                        
+                        # Initialize filtered_df with the full DataFrame
+                        filtered_df = formatted_df.copy()
+                        
+                        # Add a filter by data element in the first column
+                        with filter_col1:
+                            if 'Data Element' in formatted_df.columns:
+                                unique_data_elements = sorted(formatted_df['Data Element'].unique())
+                                if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
+                                    # Create callback for data element filter
+                                    def on_data_element_change_saved():
+                                        st.session_state[data_element_filter_key] = st.session_state[f"{data_element_filter_key}_widget"]
+                                    
+                                    # Use selectbox for filtering with the callback
+                                    selected_data_element_filter = st.selectbox(
+                                        "Filter by Data Element:",
+                                        options=["All Data Elements"] + list(unique_data_elements),
+                                        key=f"{data_element_filter_key}_widget",
+                                        on_change=on_data_element_change_saved,
+                                        index=0 if st.session_state[data_element_filter_key] not in unique_data_elements else list(["All Data Elements"] + list(unique_data_elements)).index(st.session_state[data_element_filter_key])
+                                    )
+                                    
+                                    # Apply the filter if a specific data element is selected
+                                    if st.session_state[data_element_filter_key] != "All Data Elements" and st.session_state[data_element_filter_key] in unique_data_elements:
+                                        filtered_df = filtered_df[filtered_df['Data Element'] == st.session_state[data_element_filter_key]]
+                        
+                        # Add a filter by role in the second column
+                        with filter_col2:
+                            if 'Role' in formatted_df.columns:
+                                unique_roles = sorted(formatted_df['Role'].unique())
+                                if len(unique_roles) > 1:  # Only show filter if there's more than one role
+                                    # Create callback for role filter
+                                    def on_role_change_saved():
+                                        st.session_state[role_filter_key] = st.session_state[f"{role_filter_key}_widget"]
+                                    
+                                    # Use selectbox for filtering with the callback
+                                    selected_role_filter = st.selectbox(
+                                        "Filter by Role:",
+                                        options=["All Roles"] + list(unique_roles),
+                                        key=f"{role_filter_key}_widget",
+                                        on_change=on_role_change_saved,
+                                        index=0 if st.session_state[role_filter_key] not in unique_roles else list(["All Roles"] + list(unique_roles)).index(st.session_state[role_filter_key])
+                                    )
+                                    
+                                    # Apply the filter if a specific role is selected
+                                    if st.session_state[role_filter_key] != "All Roles" and st.session_state[role_filter_key] in unique_roles:
+                                        filtered_df = filtered_df[filtered_df['Role'] == st.session_state[role_filter_key]]
+                    
+                    # Display the filtered DataFrame
+                    st.dataframe(filtered_df, use_container_width=True, hide_index=True)
 
                 # Handle the Run Asset Analysis button click
                 if run_analysis:
@@ -769,17 +985,18 @@ class AssetsPage:
                         df = pd.DataFrame(all_risks)
                         # Add risk rating
                         def get_risk_rating(row):
-                            if row["Likelihood"] == "High" and row["Impact"] == "High":
-                                return "Critical"
-                            elif (row["Likelihood"] == "High" and row["Impact"] == "Medium") or \
-                                    (row["Likelihood"] == "Medium" and row["Impact"] == "High"):
-                                return "High"
-                            elif (row["Likelihood"] == "Medium" and row["Impact"] == "Medium") or \
-                                    (row["Likelihood"] == "High" and row["Impact"] == "Low") or \
-                                    (row["Likelihood"] == "Low" and row["Impact"] == "High"):
-                                return "Medium"
+                            likelihood = row['Likelihood']
+                            impact = row['Impact']
+        
+                            if likelihood == 'High' and impact == 'High':
+                                return 'Critical'
+                            elif (likelihood == 'High' and impact == 'Medium') or (likelihood == 'Medium' and impact == 'High'):
+                                return 'High'
+                            elif (likelihood == 'Medium' and impact == 'Medium') or (likelihood == 'High' and impact == 'Low') or (likelihood == 'Low' and impact == 'High'):
+                                return 'Medium'
                             else:
-                                return "Low"
+                                return 'Low'
+            
                         df["Risk Rating"] = df.apply(get_risk_rating, axis=1)
                         display_columns = ["Data Element", "Obligation", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
                         st.dataframe(df[display_columns], use_container_width=True)
