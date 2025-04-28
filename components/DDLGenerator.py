@@ -71,89 +71,57 @@ class DDLGenerator:
         ```
         Create a purpose-based role for each unique purpose found in the JSON. Use the format PURPOSE_[PURPOSE_NAME] for all purpose roles.
         
-        3. CREATE DATA ACCESS ROLES section:
+        3. GRANT PURPOSE ROLES TO IMPORTED ROLES section:
         ```
         -- ---------------------------------------------------------------------
-        -- 2. CREATE DATA ACCESS ROLES
+        -- 2. GRANT PURPOSE ROLES TO IMPORTED ROLES
         -- ---------------------------------------------------------------------
-        -- These roles will be used to control access to specific data elements
-        CREATE ROLE IF NOT EXISTS DATA_PII_FULL_ACCESS;      -- Full access to PII
-        CREATE ROLE IF NOT EXISTS DATA_PII_PARTIAL_ACCESS;   -- Partial/masked access to PII
-        CREATE ROLE IF NOT EXISTS DATA_FINANCIAL_ACCESS;     -- Access to financial data
-        CREATE ROLE IF NOT EXISTS DATA_CUSTOMER_ACCESS;      -- Access to customer data
+        -- Grant purpose-based roles to imported Snowflake roles
+        GRANT ROLE PURPOSE_MARKETING_CAMPAIGNS TO ROLE "Marketing Analyst";
         ```
-        Create data access roles based on the types of data in the JSON. Create only roles that will be used in the role hierarchy and masking policies.
+        Establish the role hierarchy by granting purpose-based roles to imported Snowflake roles as appropriate based on the JSON.
         
-        4. GRANT HIERARCHY FOR PURPOSE-BASED ROLES section:
+        4. DEFINE MASKING POLICIES section:
         ```
         -- ---------------------------------------------------------------------
-        -- 3. GRANT HIERARCHY FOR PURPOSE-BASED ROLES
+        -- 3. DEFINE MASKING POLICIES
         -- ---------------------------------------------------------------------
-        -- Grant appropriate data access roles to purpose-based roles
-        GRANT ROLE DATA_[DATA_TYPE]_[ACCESS_LEVEL] TO ROLE PURPOSE_[PURPOSE_NAME];
-        ```
-        Establish the role hierarchy by granting data access roles to purpose-based roles as appropriate based on the JSON.
+        -- Define masking policies for sensitive data elements
         
-        5. GRANT PURPOSE ROLES TO IMPORTED ROLES section:
-        ```
-        -- ---------------------------------------------------------------------
-        -- 4. GRANT PURPOSE ROLES TO IMPORTED ROLES
-        -- ---------------------------------------------------------------------
-        -- Grant purpose roles to each role from the JSON
-        GRANT ROLE PURPOSE_[PURPOSE_NAME] TO ROLE "[ROLE_NAME]";
-        ```
-        For each role in the JSON, grant the appropriate purpose-based roles based on the purposes associated with that role.
-        Include a comment with the role name before each set of grants for that role.
-        
-        5. DEFINE MASKING POLICIES section:
-        ```
-        -- ---------------------------------------------------------------------
-        -- 5. DEFINE MASKING POLICIES
-        -- ---------------------------------------------------------------------
-        
-        -- 5.1 Email Masking Policy
+        -- Email Masking Policy
         CREATE OR REPLACE MASKING POLICY mask_email AS (val STRING)
           RETURNS STRING ->
             CASE
               -- Roles with masking_required=0 get full access (original value)
-              WHEN IS_ROLE_IN_SESSION('[ROLE_WITH_FULL_ACCESS]') THEN val
+              WHEN IS_ROLE_IN_SESSION('[ROLE_WITH_MASKING_NOT_REQUIRED]') THEN val
               
-              -- Customer Data Analyst with Customer Support purpose gets partial visibility
-              WHEN IS_ROLE_IN_SESSION('Customer Data Analyst') 
-                   AND IS_ROLE_IN_SESSION('PURPOSE_CUSTOMER_SUPPORT') THEN 
-                REGEXP_REPLACE(val, '(^[^@]{1,4})(.*)(@.*$)', '\\1****\\3')
-              
-              -- Default masking for all other roles with PURPOSE_DEFAULT_ROLE_ASSIGNMENT
-              WHEN IS_ROLE_IN_SESSION('PURPOSE_DEFAULT_ROLE_ASSIGNMENT') THEN 
-                REGEXP_REPLACE(val, '(^[^@]*)(@)(.*$)', 'xxxx@####.com')
+              -- Roles with specific purpose get partial visibility
+              WHEN IS_ROLE_IN_SESSION('[ROLE]') 
+                   AND IS_ROLE_IN_SESSION('PURPOSE_[PURPOSE]') THEN 
+                REGEXP_REPLACE(val, '(^[^@]{1,4})(.*)(@.*$)', 'xxxx@####.com')
               
               -- No access for others
               ELSE NULL
             END;
         ```
-        Create masking policies based on data element names from the JSON, not data types. Name policies as mask_[data_element_name] in lowercase with underscores (e.g., mask_email, mask_address, mask_customer_id).
+        Create masking policies based on data element names from the JSON. Name policies as mask_[data_element_name] in lowercase with underscores (e.g., mask_email, mask_address, mask_customer_id).
         
-        IMPORTANT: Use purpose-based roles (like PURPOSE_DEFAULT_ROLE_ASSIGNMENT) in the masking policy conditions rather than listing all individual roles. This leverages the role hierarchy and makes policies more maintainable.
-        
-        7. APPLY MASKING POLICIES TO COLUMNS section:
+        5. APPLY MASKING POLICIES TO COLUMNS section:
         ```
         -- ---------------------------------------------------------------------
-        -- 6. APPLY MASKING POLICIES TO COLUMNS
+        -- 4. APPLY MASKING POLICIES TO COLUMNS
         -- ---------------------------------------------------------------------
         
-        -- 6.1 Customer.profiles table
+        -- Customer.profiles table
         ALTER TABLE Customer.profiles MODIFY COLUMN email SET MASKING POLICY mask_email;
-        ALTER TABLE Customer.profiles MODIFY COLUMN address SET MASKING POLICY mask_address;
-        ALTER TABLE Customer.profiles MODIFY COLUMN customer_id SET MASKING POLICY mask_customer_id;
         ```
-        Apply the appropriate masking policy to each column that requires masking according to the JSON.
         Group the ALTER TABLE statements by table, with a comment indicating the table name before each group.
         Use the data element name to match columns to their appropriate masking policies.
         
-        8. END with an ENCRYPTION POLICY NOTES section:
+        6. ENCRYPTION POLICY NOTES section:
         ```
         -- ---------------------------------------------------------------------
-        -- 7. ENCRYPTION POLICY NOTES
+        -- 5. ENCRYPTION POLICY NOTES
         -- ---------------------------------------------------------------------
         -- Note: The JSON specifies AES-256 encryption for many fields.
         -- Snowflake handles encryption at rest automatically, so no explicit
@@ -173,27 +141,17 @@ class DDLGenerator:
            - For example, use IS_ROLE_IN_SESSION('PURPOSE_DEFAULT_ROLE_ASSIGNMENT') instead of listing all roles
            - This leverages the role hierarchy and makes policies more maintainable
         
-        4. Only create data access roles that will actually be used in the role hierarchy
-           - These roles should grant specific access levels to the purpose-based roles
-           - For example, DATA_FINANCIAL_ACCESS might be granted to Financial Analysts for special access
+        4. DO NOT create any data access roles (like DATA_PII_FULL_ACCESS or DATA_PII_PARTIAL_ACCESS)
+           - Instead, use purpose-based roles directly in the role hierarchy
+           - The masking policies should check for specific Snowflake roles and purpose roles
         
-        5. For email masking:
-           - For roles with Customer Support purpose: use a format that shows first few characters (e.g., 'user****@domain.com')
-           - For default masking: use 'xxxx@####.com' format
+        5. For masking policies, determine the appropriate masking format based on the data element type and sensitivity:
+           - Choose appropriate masking formats for each data type (emails, addresses, IDs, dates, phone numbers, etc.)
+           - Consider the purpose and role when determining the level of masking
+           - For some roles/purposes, partial visibility may be appropriate
+           - For other roles/purposes, complete masking or NULL values may be required
         
-        6. For address masking: use '#### ***** St, City, ST #####' format
-        
-        7. For customer_id masking: use '######' format
-        
-        8. For date_of_birth masking: return NULL instead of a masked date
-        
-        9. For phone masking: use '###-###-####' format
-        
-        10. For credit card masking:
-            - Financial Analysts: show last 4 digits only ('****-****-****-1234')
-            - Default masking: use '####-####-####-####' format
-        
-        11. Skip masking for columns where masking_required=0 in the JSON
+        6. Skip masking for columns where masking_required=0 in the JSON
             - Columns with masking_required=0 should have FULL ACCESS for the specified roles, not NO ACCESS
             - Do not apply any masking policies to these columns
             - In masking policies for other columns, ensure roles with masking_required=0 get the original value (val) not NULL
