@@ -10,6 +10,7 @@ from UX.legal_basis_inference_page import LegalBasisInferencePage
 from UX.transfer_mechanism_page import TransferMechanismPage
 from UX.policy_compliance_page import PolicyCompliancePage
 from UX.risk_inference_page import RiskInferencePage
+from UX.data_use_governance_overview import DataUseGovernanceOverview
 from UX.core_constructs_pages import (
     LawPage,
     JurisdictionsPage,
@@ -485,6 +486,10 @@ class DataMap:
             # Third section: Data Use Governance
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
             
+            # Data Use Governance Overview menu item
+            if st.button("📊 Overview", key="dug_overview_btn", use_container_width=True):
+                st.session_state['current_section'] = 'DUG Overview'
+            
             # Purposes menu item
             if st.button("🎯 Purposes", key="purposes_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Purposes'
@@ -531,6 +536,7 @@ class DataMap:
             'DSR API': self.data_subject_rights_page,
             'Obligation API': self.obligation_inference_page,
             'Risk API': self.risk_inference_page,
+            'DUG Overview': self.data_use_governance_overview,
             'Purposes': self.purposes_page,
             'Policies': self.policies_page,
             'Roles': self.roles_page,
@@ -542,6 +548,11 @@ class DataMap:
         if handler:
             handler()
        
+    def data_use_governance_overview(self):
+        """Display the Data Use Governance Overview page with diagrams and explanations."""
+        from UX.data_use_governance_overview import DataUseGovernanceOverview
+        DataUseGovernanceOverview(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
+        
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
         from UX.control_inference_page import ControlInferencePage
