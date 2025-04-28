@@ -115,6 +115,9 @@ class DDLGenerator:
         CREATE OR REPLACE MASKING POLICY mask_email AS (val STRING)
           RETURNS STRING ->
             CASE
+              -- Roles with masking_required=0 get full access (original value)
+              WHEN IS_ROLE_IN_SESSION('[ROLE_WITH_FULL_ACCESS]') THEN val
+              
               -- Customer Data Analyst with Customer Support purpose gets partial visibility
               WHEN IS_ROLE_IN_SESSION('Customer Data Analyst') 
                    AND IS_ROLE_IN_SESSION('PURPOSE_CUSTOMER_SUPPORT') THEN 
@@ -191,6 +194,9 @@ class DDLGenerator:
             - Default masking: use '####-####-####-####' format
         
         11. Skip masking for columns where masking_required=0 in the JSON
+            - Columns with masking_required=0 should have FULL ACCESS for the specified roles, not NO ACCESS
+            - Do not apply any masking policies to these columns
+            - In masking policies for other columns, ensure roles with masking_required=0 get the original value (val) not NULL
             
             Do not include CREATE TABLE statements or other DDL not related to security policies and roles.
             Format the DDL with proper indentation and SQL best practices.

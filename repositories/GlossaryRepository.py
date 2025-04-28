@@ -1283,24 +1283,40 @@ class GlossaryRepository:
             description TEXT,
             source_system VARCHAR(255) NOT NULL,
             source_role_name VARCHAR(255) NOT NULL,
-            UNIQUE(source_system, source_role_name)
+            asset_id INT,
+            UNIQUE(source_system, source_role_name),
+            FOREIGN KEY (asset_id) REFERENCES asset(id) ON DELETE SET NULL
         );
         '''
         cursor.execute(create_table_query)
         self.connection.commit()
         cursor.close()
 
-    def add_external_role(self, name, description, source_system, source_role_name):
+    def add_external_role(self, name, description, source_system, source_role_name, asset_id=None):
         cursor = self.connection.cursor()
         try:
-            cursor.execute(
-                "INSERT IGNORE INTO external_roles (name, description, source_system, source_role_name) VALUES (%s, %s, %s, %s);",
-                (name, description, source_system, source_role_name)
-            )
+            if asset_id:
+                cursor.execute(
+                    "INSERT IGNORE INTO external_roles (name, description, source_system, source_role_name, asset_id) VALUES (%s, %s, %s, %s, %s);",
+                    (name, description, source_system, source_role_name, asset_id)
+                )
+            else:
+                cursor.execute(
+                    "INSERT IGNORE INTO external_roles (name, description, source_system, source_role_name) VALUES (%s, %s, %s, %s);",
+                    (name, description, source_system, source_role_name)
+                )
             self.connection.commit()
+            # Return the ID of the newly added role
+            cursor.execute(
+                "SELECT id FROM external_roles WHERE source_system = %s AND source_role_name = %s;",
+                (source_system, source_role_name)
+            )
+            result = cursor.fetchone()
+            return result[0] if result else None
         except Exception as e:
             print(f"Error adding external role: {e}")
             self.connection.rollback()
+            return None
         finally:
             cursor.close()
 
@@ -1335,31 +1351,57 @@ class GlossaryRepository:
             sample_data = [
                 (1, "Marketing Manager", "Marketing department manager", "CRM", "marketing_mgr", 1),
                 (2, "Data Analyst", "Data analytics team member", "Analytics Platform", "analyst", 2),
-                (3, "Customer Support", "Customer support representative", "Support System", "support_rep", 3),
-                (4, "IT Administrator", "IT system administrator", "IT Systems", "admin", 4),
-                (5, "Product Manager", "Product management team", "Product Management", "product_mgr", 5),
-                (6, "Snowflake Admin", "Administrator role for Snowflake", "Snowflake", "ACCOUNTADMIN", 6)
+                (3, "Sales Representative", "Sales team member", "CRM", "sales_rep", 1),
+                (4, "IT Administrator", "IT support staff", "IT Systems", "admin", 3),
+                (5, "Customer Service Rep", "Customer support team", "Support Portal", "cs_rep", 1)
             ]
-            if asset_id is None:
-                return sample_data
-            return [role for role in sample_data if role[5] == asset_id]
+            
+            # Filter by asset_id if provided
+            if asset_id:
+                return [(id, name, desc, src, src_role, a_id) for id, name, desc, src, src_role, a_id in sample_data if a_id == asset_id]
+            return sample_data
             
         cursor = self.connection.cursor()
         try:
             if asset_id is None:
-                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name as asset_name "
-                               "FROM external_roles r "
-                               "LEFT JOIN asset a ON r.asset_id = a.id;")
+                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name "
+                           "FROM external_roles r "
+                           "LEFT JOIN asset a ON r.asset_id = a.id;")
             else:
-                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name as asset_name "
-                               "FROM external_roles r "
-                               "LEFT JOIN asset a ON r.asset_id = a.id "
-                               "WHERE r.asset_id = %s;", (asset_id,))
+                cursor.execute("SELECT r.id, r.name, r.description, r.source_system, r.source_role_name, r.asset_id, a.name "
+                           "FROM external_roles r "
+                           "LEFT JOIN asset a ON r.asset_id = a.id "
+                           "WHERE r.asset_id = %s;", (asset_id,))
             roles = cursor.fetchall()
             return roles
         except Exception as e:
             print(f"Error fetching external roles by asset: {e}")
             return []
+        finally:
+            cursor.close()
+            
+    def link_role_to_asset(self, role_id, asset_id):
+        """Link an external role to an asset.
+        
+        Args:
+            role_id: The ID of the external role
+            asset_id: The ID of the asset
+            
+        Returns:
+            bool: True if the operation was successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "UPDATE external_roles SET asset_id = %s WHERE id = %s;",
+                (asset_id, role_id)
+            )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error linking role to asset: {e}")
+            self.connection.rollback()
+            return False
         finally:
             cursor.close()
             

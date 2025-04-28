@@ -124,35 +124,97 @@ class RolesPage:
             if selected_asset != "All Assets":
                 selected_asset_id = asset_dict.get(selected_asset)
             
-            # Display existing roles based on the selected asset
-            st.markdown("<h5>External Roles</h5>", unsafe_allow_html=True)
+            # Add new external role section
+            st.markdown("<h5>Add New External Role</h5>", unsafe_allow_html=True)
+            st.markdown("Add a new external role to the system.")
             
-            # Get roles based on the selected asset
-            if selected_asset_id is None:
-                filtered_roles = self.glossary_repository.get_external_roles_by_asset()
-            else:
-                filtered_roles = self.glossary_repository.get_external_roles_by_asset(selected_asset_id)
+            # Create columns for form and existing roles
+            col1, col2 = st.columns(2)
             
-            if filtered_roles and len(filtered_roles) > 0:
-                # Create a DataFrame for display
-                columns = ['ID', 'Name', 'Description', 'Source System', 'Source Role Name', 'Asset ID']
-                if len(filtered_roles[0]) > 6:  # Check if asset_name is included
-                    columns.append('Asset Name')
+            with col1:
+                # Create a form for adding a new external role
+                with st.form(key="add_external_role_form"):
+                    role_name = st.text_input("Role Name:", key="role_name_input")
+                    role_description = st.text_area("Description:", key="role_description_input")
+                    source_system = st.selectbox(
+                        "Source System:",
+                        options=["Snowflake", "Databricks", "AWS", "Azure", "GCP", "Other"],
+                        key="source_system_select"
+                    )
+                    source_role_name = st.text_input("Source Role Name:", key="source_role_name_input")
+                    
+                    # Add asset selection dropdown
+                    st.markdown("<h6>Link to Asset (Optional)</h6>", unsafe_allow_html=True)
+                    link_to_asset = st.checkbox("Link this role to an asset", key="link_asset_checkbox")
+                    
+                    asset_for_role = None
+                    if link_to_asset:
+                        asset_options = [name for _, name, _ in assets]
+                        asset_for_role = st.selectbox(
+                            "Select Asset:",
+                            options=asset_options,
+                            key="asset_for_role_select"
+                        )
+                    
+                    submit_button = st.form_submit_button(label="Add External Role")
+                    
+                    if submit_button and role_name and source_system and source_role_name:
+                        try:
+                            # Get the asset ID if an asset was selected
+                            asset_id = None
+                            if link_to_asset and asset_for_role:
+                                asset_id = asset_dict.get(asset_for_role)
+                            
+                            # Add the external role and get its ID
+                            role_id = self.glossary_repository.add_external_role(
+                                role_name, 
+                                role_description, 
+                                source_system, 
+                                source_role_name,
+                                asset_id  # Pass the asset_id directly to add_external_role
+                            )
+                            
+                            if role_id:
+                                st.success(f"Added new external role: {role_name}")
+                                if link_to_asset and asset_for_role and asset_id:
+                                    st.success(f"Linked role to asset: {asset_for_role}")
+                                time.sleep(1)  # Short delay to show the success message
+                                st.rerun()  # Refresh the page to show the new role
+                            else:
+                                st.warning(f"Role may already exist or could not be added")
+                        except Exception as e:
+                            st.error(f"Error adding external role: {str(e)}")
+            
+            with col2:
+                # Display existing roles based on the selected asset
+                st.markdown("<h5>External Roles</h5>", unsafe_allow_html=True)
                 
-                df = pd.DataFrame(filtered_roles, columns=columns)
-                
-                # Drop the Asset ID column if we're already filtering by asset
-                if selected_asset_id and selected_asset_id != "all":
-                    if 'Asset ID' in df.columns:
-                        df = df.drop(columns=['Asset ID'])
-                
-                # Display the DataFrame
-                st.dataframe(df, use_container_width=True, hide_index=True)
-            else:
-                if selected_asset_id and selected_asset_id != "all":
-                    st.info(f"No external roles found for the selected asset.")
+                # Get roles based on the selected asset
+                if selected_asset_id is None:
+                    filtered_roles = self.glossary_repository.get_external_roles_by_asset()
                 else:
-                    st.info("No external roles found in the system.")
+                    filtered_roles = self.glossary_repository.get_external_roles_by_asset(selected_asset_id)
+                
+                if filtered_roles and len(filtered_roles) > 0:
+                    # Create a DataFrame for display
+                    columns = ['ID', 'Name', 'Description', 'Source System', 'Source Role Name', 'Asset ID']
+                    if len(filtered_roles[0]) > 6:  # Check if asset_name is included
+                        columns.append('Asset Name')
+                    
+                    df = pd.DataFrame(filtered_roles, columns=columns)
+                    
+                    # Drop the Asset ID column if we're already filtering by asset
+                    if selected_asset_id and selected_asset_id != "all":
+                        if 'Asset ID' in df.columns:
+                            df = df.drop(columns=['Asset ID'])
+                    
+                    # Display the DataFrame
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                else:
+                    if selected_asset_id and selected_asset_id != "all":
+                        st.info(f"No external roles found for the selected asset.")
+                    else:
+                        st.info("No external roles found in the system.")
         
         # Purpose Role tab
         with tabs[1]:
@@ -215,6 +277,9 @@ class RolesPage:
                     # Format: id, name, description, source_system, source_role_name, asset_id, asset_name
                     role_id, role_name = role[0], role[1]
                     role_options[role_name] = role_id
+                    
+                # Log the roles for debugging
+                print(f"Available roles for mapping: {list(role_options.keys())}")
                 
                 # Create the form for adding a new purpose-role mapping
                 with st.form(key="add_purpose_role_form"):
@@ -224,10 +289,12 @@ class RolesPage:
                         key="purpose_select"
                     )
                     
+                    # Use the current_time in the key to force refresh when the page reloads
+                    # This ensures newly added roles appear in the dropdown
                     selected_roles = st.multiselect(
                         "Select Roles:",
                         options=list(role_options.keys()),
-                        key="roles_multiselect"
+                        key=f"roles_multiselect_{current_time}"
                     )
                     submit_button = st.form_submit_button(label="Add Mapping")
                     
