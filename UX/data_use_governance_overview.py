@@ -374,7 +374,7 @@ class DataUseGovernanceOverview:
             },
             {
                 "title": "Purpose Determination",
-                "description": "The system determines the appropriate purpose either through attached processing activities or explicitly from the user requesting access, not through manual mapping.",
+                "description": "The system determines the appropriate purpose either through attached processing activities or explicitly from the user requesting access.",
                 "icon": "📝",
                 "color": "#E53935"
             },
