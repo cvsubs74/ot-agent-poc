@@ -289,6 +289,9 @@ class RolesPage:
                         key="purpose_select"
                     )
                     
+                    # Generate a timestamp to use as a unique key
+                    current_time = int(time.time())
+                    
                     # Use the current_time in the key to force refresh when the page reloads
                     # This ensures newly added roles appear in the dropdown
                     selected_roles = st.multiselect(
