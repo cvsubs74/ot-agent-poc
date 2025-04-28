@@ -165,9 +165,9 @@ class DataUseGovernanceOverview:
         st.markdown("<h2 class='section-header'>User Journey</h2>", unsafe_allow_html=True)
         self._render_user_journey()
         
-        # Architecture
-        st.markdown("<h2 class='section-header'>Architecture</h2>", unsafe_allow_html=True)
-        self._render_architecture()
+        # Integration Workflow
+        st.markdown("<h2 class='section-header'>Integration Workflow</h2>", unsafe_allow_html=True)
+        self._render_workflow_example()
         
         # Features & Implementation
         st.markdown("<h2 class='section-header'>Features & Implementation</h2>", unsafe_allow_html=True)
@@ -225,167 +225,48 @@ class DataUseGovernanceOverview:
     
     def _render_use_case_overview(self):
         """Render the Use Case Overview section with a modern design."""
-        # Create two columns for the overview
-        col1, col2 = st.columns([3, 2])
+        # The Challenge section
+        st.markdown("### The Challenge")
+        st.write("Organizations today face increasing complexity in managing how data is used across their enterprise:")
         
-        with col1:
-            st.markdown("""
-            <div class="card">
-                <h3 class="subsection-header">The Challenge</h3>
-                <p>Organizations today face increasing complexity in managing how data is used across their enterprise:</p>
-                <ul>
-                    <li><strong>Regulatory Compliance</strong>: Meeting requirements from GDPR, CCPA, and other regulations</li>
-                    <li><strong>Purpose Limitation</strong>: Ensuring data is only used for specified, legitimate purposes</li>
-                    <li><strong>Role-Based Access</strong>: Implementing proper access controls based on user roles</li>
-                    <li><strong>Data Masking</strong>: Protecting sensitive information while enabling business functions</li>
-                </ul>
-                
-                <h3 class="subsection-header">Our Solution</h3>
-                <p>The Data Use Governance module provides a comprehensive framework for:</p>
-                <ol>
-                    <li><strong>Purpose Definition</strong>: Define clear business purposes for data use</li>
-                    <li><strong>Policy Creation</strong>: Create policies that govern how data can be used</li>
-                    <li><strong>Role Management</strong>: Define and manage roles with appropriate access levels</li>
-                    <li><strong>Asset-Purpose-Role Mapping</strong>: Create relationships between data assets, purposes, and roles</li>
-                    <li><strong>Security Policy Generation</strong>: Automatically generate Snowflake DDL for implementing security policies</li>
-                </ol>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            # Create a modern relationship diagram
-            fig = go.Figure()
-            
-            # Nodes
-            nodes = {
-                "Assets": {"x": 0, "y": 0, "color": "#1E88E5"},
-                "Purposes": {"x": 1, "y": 1, "color": "#43A047"},
-                "Roles": {"x": 2, "y": 0, "color": "#E53935"},
-                "Policies": {"x": 1, "y": -1, "color": "#8E24AA"}
-            }
-            
-            # Add nodes
-            for name, attrs in nodes.items():
-                fig.add_trace(go.Scatter(
-                    x=[attrs["x"]], 
-                    y=[attrs["y"]],
-                    mode="markers+text",
-                    marker=dict(size=40, color=attrs["color"]),
-                    text=[name],
-                    textposition="middle center",
-                    name=name,
-                    textfont=dict(color="white", size=12)
-                ))
-            
-            # Add edges
-            edges = [
-                ("Assets", "Purposes", "used for"),
-                ("Purposes", "Roles", "accessed by"),
-                ("Assets", "Policies", "governed by"),
-                ("Policies", "Roles", "enforced on")
-            ]
-            
-            for source, target, label in edges:
-                source_x, source_y = nodes[source]["x"], nodes[source]["y"]
-                target_x, target_y = nodes[target]["x"], nodes[target]["y"]
-                
-                # Add line
-                fig.add_trace(go.Scatter(
-                    x=[source_x, target_x],
-                    y=[source_y, target_y],
-                    mode="lines",
-                    line=dict(width=2, color="#9E9E9E"),
-                    showlegend=False
-                ))
-                
-                # Add label
-                fig.add_trace(go.Scatter(
-                    x=[(source_x + target_x) / 2],
-                    y=[(source_y + target_y) / 2],
-                    mode="text",
-                    text=[label],
-                    textposition="middle center",
-                    textfont=dict(size=10, color="#616161"),
-                    showlegend=False
-                ))
-            
-            fig.update_layout(
-                title="Data Use Governance Relationships",
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                showlegend=False,
-                height=400,
-                margin=dict(l=0, r=0, t=40, b=0),
-                plot_bgcolor="white"
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Create a simple diagram showing the relationships
-        fig = go.Figure()
-        
-        # Nodes
-        nodes = {
-            "Assets": {"x": 0, "y": 0, "color": "blue"},
-            "Purposes": {"x": 1, "y": 1, "color": "green"},
-            "Roles": {"x": 2, "y": 0, "color": "red"},
-            "Policies": {"x": 1, "y": -1, "color": "purple"}
-        }
-        
-        # Add nodes
-        for name, attrs in nodes.items():
-            fig.add_trace(go.Scatter(
-                x=[attrs["x"]], 
-                y=[attrs["y"]],
-                mode="markers+text",
-                marker=dict(size=30, color=attrs["color"]),
-                text=[name],
-                textposition="middle center",
-                name=name
-            ))
-        
-        # Add edges
-        edges = [
-            ("Assets", "Purposes", "used for"),
-            ("Purposes", "Roles", "accessed by"),
-            ("Assets", "Policies", "governed by"),
-            ("Policies", "Roles", "enforced on")
+        challenges = [
+            "**Regulatory Compliance**: Meeting requirements from GDPR, CCPA, and other regulations",
+            "**Purpose Limitation**: Ensuring data is only used for specified, legitimate purposes",
+            "**Role-Based Access**: Implementing proper access controls based on user roles",
+            "**Data Masking**: Protecting sensitive information while enabling business functions"
         ]
         
-        for source, target, label in edges:
-            source_x, source_y = nodes[source]["x"], nodes[source]["y"]
-            target_x, target_y = nodes[target]["x"], nodes[target]["y"]
+        for challenge in challenges:
+            st.markdown(f"- {challenge}")
             
-            # Add line
-            fig.add_trace(go.Scatter(
-                x=[source_x, target_x],
-                y=[source_y, target_y],
-                mode="lines",
-                line=dict(width=2, color="gray"),
-                showlegend=False
-            ))
-            
-            # Add label
-            fig.add_trace(go.Scatter(
-                x=[(source_x + target_x) / 2],
-                y=[(source_y + target_y) / 2],
-                mode="text",
-                text=[label],
-                textposition="middle center",
-                textfont=dict(size=10, color="black"),
-                showlegend=False
-            ))
+        # Our Solution section
+        st.markdown("### Our Solution")
+        st.write("The Data Use Governance module provides a comprehensive framework for:")
         
-        fig.update_layout(
-            title="Data Use Governance Relationships",
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            showlegend=True,
-            width=700,
-            height=500
-        )
+        solutions = [
+            "**Purpose Definition**: Define clear business purposes for data use",
+            "**Policy Creation**: Create policies that govern how data can be used",
+            "**Role Management**: Define and manage roles with appropriate access levels",
+            "**Purpose Determination**: Automatically determine purposes through processing activities or user requests",
+            "**Security Policy Generation**: Automatically generate security policies for any target system"
+        ]
         
-        st.plotly_chart(fig)
+        for i, solution in enumerate(solutions):
+            st.markdown(f"{i+1}. {solution}")
+        
+        # Control Plane Architecture section
+        st.markdown("### Control Plane Architecture")
+        st.write("This architecture serves as the control plane that governs data access across multiple external systems:")
+        
+        architecture_features = [
+            "Centralized policy management with distributed enforcement",
+            "Real-time role detection and policy application",
+            "Hierarchical policy resolution and dynamic DDL generation",
+            "Automated governance workflows with human oversight"
+        ]
+        
+        for feature in architecture_features:
+            st.markdown(f"- {feature}")
     
     def _render_user_journey(self):
         """Render the User Journey section with a modern design."""
@@ -458,62 +339,105 @@ class DataUseGovernanceOverview:
             if i < len(journey_steps) - 1:
                 st.markdown(f"<div style='border-left: 2px dashed #E0E0E0; height: 20px; margin-left: 15px;'></div>", unsafe_allow_html=True)
     
-    def _render_architecture(self):
-        """Render the Architecture section with a modern design."""
+    def _render_workflow_example(self):
+        """Render a detailed workflow example with external system integration."""
         st.markdown("""
-        <p style="font-size: 1.1rem; margin-bottom: 20px;">The Data Use Governance module is built on a layered architecture that separates concerns and provides flexibility:</p>
+        <h3 class="subsection-header">Integration Workflow</h3>
+        <p style="font-size: 1.1rem; margin-bottom: 20px;">This example illustrates how the Data Use Governance control plane manages data access across external systems:</p>
         """, unsafe_allow_html=True)
         
-        # Create a modern architecture diagram
-        architecture_layers = [
+        # Create a workflow example with modern styling
+        workflow_steps = [
             {
-                "name": "User Interface Layer",
-                "components": ["Purposes Page", "Policies Page", "Roles Page", "Policy Compliance Page"],
-                "color": "#1E88E5",  # Blue
-                "icon": "🖥️"
+                "title": "Role Detection",
+                "description": "When a role is created in an external system, a role detection agent intercepts it and pushes the event to the control plane.",
+                "icon": "🔍",
+                "color": "#1E88E5"
             },
             {
-                "name": "Business Logic Layer",
-                "components": ["Purpose Management", "Policy Management", "Role Management", "DDL Generator"],
-                "color": "#43A047",  # Green
-                "icon": "⚙️"
+                "title": "Default Purpose Assignment",
+                "description": "In the control plane, there is a default purpose with baseline policies defined to govern the use of sensitive data - such as masking, encryption, etc.",
+                "icon": "🎯",
+                "color": "#43A047"
             },
             {
-                "name": "Data Access Layer",
-                "components": ["GlossaryRepository", "PolicyRepository", "RegulatoryMetadataRepository"],
-                "color": "#FB8C00",  # Orange
-                "icon": "🔄"
+                "title": "Baseline Policy Enforcement",
+                "description": "The baseline policy enforcement agent associates the newly discovered role to the default purpose and enforces the baseline policies in the target system, ensuring continuous data use governance.",
+                "icon": "🛡️",
+                "color": "#FB8C00"
             },
             {
-                "name": "Database Layer",
-                "components": ["Purposes Table", "Policies Table", "Roles Table", "Asset-Purpose-Role Mappings"],
-                "color": "#8E24AA",  # Purple
-                "icon": "💾"
+                "title": "Data Steward Notification",
+                "description": "The system immediately notifies the data steward about this external role that is now persisted and tracked in the system.",
+                "icon": "💬",
+                "color": "#8E24AA"
+            },
+            {
+                "title": "Purpose Determination",
+                "description": "The system determines the appropriate purpose either through attached processing activities or explicitly from the user requesting access, not through manual mapping.",
+                "icon": "📝",
+                "color": "#E53935"
+            },
+            {
+                "title": "Policy Implementation",
+                "description": "The policy enforcement agent implements these policies on the source system.",
+                "icon": "⚙️",
+                "color": "#00ACC1"
+            },
+            {
+                "title": "Dynamic Policy Resolution",
+                "description": "The target policy is dynamically derived from the hierarchical policy definitions, and appropriate security configurations are generated dynamically for the target system.",
+                "icon": "🔄",
+                "color": "#5E35B1"
             }
         ]
         
-        # Render the architecture diagram with modern styling
-        for layer in architecture_layers:
+        # Display the workflow as a modern timeline with cards
+        for i, step in enumerate(workflow_steps):
             st.markdown(f"""
-            <div class="architecture-layer" style="border-left: 4px solid {layer['color']}">
+            <div class="step-card" style="border-left-color: {step['color']}">
                 <div style="display: flex; align-items: center;">
-                    <div style="font-size: 24px; margin-right: 10px;">{layer['icon']}</div>
-                    <h3 class="layer-title" style="color: {layer['color']}; margin: 0;">{layer['name']}</h3>
+                    <div style="background-color: {step['color']}; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px;">{i+1}</div>
+                    <div style="flex-grow: 1;">
+                        <h3 style="margin: 0; font-size: 1.2rem; color: {step['color']}">{step['title']}</h3>
+                        <p style="margin: 5px 0 0 0; color: #616161;">{step['description']}</p>
+                    </div>
+                    <div style="margin-left: 15px; font-size: 24px;">{step['icon']}</div>
                 </div>
-                <div style="margin-top: 15px;">
+            </div>
             """, unsafe_allow_html=True)
             
-            # Display components as pills
-            for component in layer['components']:
-                st.markdown(f"""
-                <span class="component-pill" style="background-color: {layer['color']}20; color: {layer['color']}; border: 1px solid {layer['color']}40;">{component}</span>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("</div></div>", unsafe_allow_html=True)
-            
-            # Add connector arrows between layers
-            if layer != architecture_layers[-1]:
-                st.markdown(f"<div style='text-align: center; margin: 10px 0;'><i class='fas fa-arrow-down' style='color: {layer['color']}; font-size: 20px;'></i></div>", unsafe_allow_html=True)
+            # Add connector line between steps
+            if i < len(workflow_steps) - 1:
+                st.markdown(f"<div style='border-left: 2px dashed #E0E0E0; height: 20px; margin-left: 15px;'></div>", unsafe_allow_html=True)
+        
+        # Add hierarchical policy section
+        st.markdown("""
+        <div class="card" style="margin-top: 30px;">
+            <h3 class="subsection-header">Hierarchical Policy Management</h3>
+            <p>Policies are created and maintained at multiple levels:</p>
+            <ul>
+                <li><strong>Data Element Level</strong>: Policies specific to individual data elements</li>
+                <li><strong>Data Category Level</strong>: Policies applied to entire categories of data</li>
+                <li><strong>Purpose and Data Element</strong>: Policies for specific data elements when used for particular purposes</li>
+                <li><strong>Purpose and Data Category</strong>: Policies for data categories when used for particular purposes</li>
+                <li><strong>Role, Purpose, and Data Category</strong>: Role-specific policies for data categories used for particular purposes</li>
+                <li><strong>Role, Purpose, and Data Element</strong>: The most granular level of policy definition</li>
+            </ul>
+            <p>The system dynamically resolves these hierarchical policies to determine the most appropriate access controls and security requirements for each specific context, regardless of the target system.</p>
+        </div>
+        
+        <div class="card" style="margin-top: 30px;">
+            <h3 class="subsection-header">Intelligent Agents</h3>
+            <p>The Data Use Governance control plane employs several intelligent agents to automate governance tasks:</p>
+            <ul>
+                <li><strong>Role Detection Agent</strong>: Detects the creation or modification of roles in external systems and sends these events to the control plane, which persists them as external roles</li>
+                <li><strong>Policy Enforcement Agent</strong>: When a new external role is detected, this agent assigns it to the default purpose with baseline policies and implements them in source systems like Snowflake, Databricks, etc.</li>
+                <li><strong>Policy Inference Agent</strong>: Monitors changes in organizational data (assets, processing activities) and dynamically recommends policies for effective data governance</li>
+                <li><strong>Evidence Task Generation Agent</strong>: Verifies that enforced policies are effective in source systems by automatically testing them (e.g., confirming masking policies work as expected)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     def _render_features_implementation(self):
         """Render the Features & Implementation section with a modern design."""
