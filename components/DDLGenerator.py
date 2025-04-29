@@ -97,11 +97,6 @@ class DDLGenerator:
         
         -- Create purpose-based roles
         CREATE ROLE IF NOT EXISTS PURPOSE_[PURPOSE_NAME];
-        GRANT ROLE PURPOSE_[PURPOSE_NAME] TO ROLE ACCOUNTADMIN;
-        
-        -- Create data access roles
-        CREATE ROLE IF NOT EXISTS DATA_[TABLE_NAME]_[PURPOSE_NAME];
-        GRANT ROLE DATA_[TABLE_NAME]_[PURPOSE_NAME] TO ROLE PURPOSE_[PURPOSE_NAME];
         ```
         
         IMPORTANT: Due to Snowflake's limitation where columns with masking policies cannot have row access policies, implement a two-step approach:
@@ -159,10 +154,6 @@ class DDLGenerator:
             [USER_ID_COLUMN] VARCHAR
         ) RETURNS BOOLEAN ->
           CASE
-            -- System roles bypass consent checks
-            WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN TRUE
-            WHEN IS_ROLE_IN_SESSION('SECURITYADMIN') THEN TRUE
-            
             -- For each purpose in the row_filtering list for this table
             WHEN IS_ROLE_IN_SESSION('PURPOSE_[PURPOSE_NAME]') THEN
               EXISTS (
@@ -177,7 +168,7 @@ class DDLGenerator:
               )
             
             -- Add additional WHEN clauses for each purpose in the row_filtering
-            
+        
             -- Default deny
             ELSE FALSE
           END;
@@ -239,7 +230,6 @@ class DDLGenerator:
            
            STEP 1: Create Roles and Grants
            - Create purpose-based roles
-           - Create data access roles
            - Grant purpose roles to imported roles
            
            STEP 2: Row-Level Security on Base Tables
@@ -257,21 +247,20 @@ class DDLGenerator:
              CREATE OR REPLACE SECURE VIEW schema.table_secure_view AS
              SELECT 
                CASE
-                 WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN original_column
                  WHEN IS_ROLE_IN_SESSION('PURPOSE_X') THEN original_column
+                 WHEN IS_ROLE_IN_SESSION('[SPECIFIC_ROLE]') THEN original_column
                  ELSE 'masked_value'
                END AS column_name,
                ...
              FROM schema.original_table;
              ```
            - Grant access to these secure views instead of the base tables
-           
+               
            ABSOLUTELY FORBIDDEN:
            - DO NOT create any masking policies with CREATE MASKING POLICY
            - DO NOT apply masking policies to base tables with ALTER TABLE ... SET MASKING POLICY
            - DO NOT mix the order - row filtering MUST come before column masking
-           
-           This approach is required because Snowflake does not allow row access policies on columns that have masking policies.
+           - DO NOT use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN in any part of the script
         
         CRITICAL SNOWFLAKE SYNTAX REQUIREMENTS:
         1. Do not include CREATE TABLE statements or other DDL not related to security policies and roles
@@ -284,6 +273,7 @@ class DDLGenerator:
         8. When applying row access policies, ensure the columns specified exist in the table
         9. For CASE expressions, ensure the data types in all branches are compatible
         10. Avoid using reserved keywords as identifiers, or properly quote them if necessary
+        11. DO NOT use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN in any part of the script
         
         Format the DDL with proper indentation and SQL best practices. Test each statement for syntax correctness.
         
