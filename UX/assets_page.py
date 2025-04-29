@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from components.DDLGenerator import DDLGenerator
-from components.IdentifierMatcher import IdentifierMatcher
+from components.SimpleIdentifierMatcher import SimpleIdentifierMatcher
 
 class AssetsPage:
     def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository, asset_policy_inference=None):
@@ -13,7 +13,7 @@ class AssetsPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.asset_policy_inference = asset_policy_inference
         self.ddl_generator = DDLGenerator()
-        self.identifier_matcher = IdentifierMatcher()
+        self.identifier_matcher = SimpleIdentifierMatcher()
         
     def _build_column_based_json_from_df(self, df, asset_id):
         """

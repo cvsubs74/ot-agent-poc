@@ -23,86 +23,62 @@ def render_consent_row_filtering_section():
     </div>
     """, unsafe_allow_html=True)
     
-    # Row Filtering Architecture
+    # Two-Step Security Architecture
     st.markdown("""
     <div class="architecture-container">
-        <h3 class="subsection-header">Row Filtering Architecture</h3>
+        <h3 class="subsection-header">Two-Step Security Architecture</h3>
         <p>
-            The row-level security implementation follows a sophisticated multi-layered approach:
+            Due to Snowflake's limitation where columns with masking policies cannot have row access policies, 
+            we implement a two-step security approach:
         </p>
         <ol>
-            <li><strong>Policy Generation</strong>: JSON policies are generated that include row filtering specifications</li>
-            <li><strong>Identifier Matching</strong>: AI-powered matching of user identifiers to table columns</li>
-            <li><strong>DDL Generation</strong>: Snowflake DDL with row access policies based on the matched identifiers</li>
-            <li><strong>Runtime Enforcement</strong>: Row-level filtering applied at query time based on user's role and purpose</li>
+            <li><strong>Step 1: Row-Level Security on Base Tables</strong></li>
+            <ul>
+                <li>Create a secure view of consent records that tracks user consents by purpose</li>
+                <li>Generate row access policies (RAPs) for tables with consent-based filtering</li>
+                <li>Apply these RAPs to the base tables using ALTER TABLE statements</li>
+                <li>This filters data based on user consents for specific purposes</li>
+            </ul>
+            <li><strong>Step 2: Column-Level Security via Secure Views</strong></li>
+            <ul>
+                <li>Create secure views on top of the row-filtered base tables</li>
+                <li>Implement column masking directly in the view's SELECT statement using CASE expressions</li>
+                <li>The views inherit the row-level filtering from the base tables</li>
+                <li>Grant access to these secure views instead of the base tables</li>
+            </ul>
         </ol>
+        <p>
+            This approach ensures both row-level and column-level security while working within Snowflake's constraints.
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Intelligent Column Matching
-    cols = st.columns([2, 1])
-    with cols[0]:
-        st.markdown("""
-        <div class="challenge-container">
-            <h3 class="subsection-header">AI-Powered Identifier Matching</h3>
-            <p>
-                The system uses a sophisticated AI approach to match user identifiers with table columns:
-            </p>
-            <ol>
-                <li><strong>Problem</strong>: Different tables may use different column names for the same user identifiers</li>
-                <li><strong>Solution</strong>: AI-powered semantic matching to identify the right columns</li>
-                <li><strong>Benefits</strong>: More accurate row filtering without manual configuration</li>
-            </ol>
-            <p>
-                The IdentifierMatcher class uses the following algorithm:
-            </p>
-            <ol>
-                <li>Analyze table column names, data element names, and data types</li>
-                <li>Compare against known identifier types (user_id, email)</li>
-                <li>Generate a semantic matching score based on multiple factors</li>
-                <li>Select the best matches with high confidence scores</li>
-                <li>Return a mapping of identifier types to column names</li>
-            </ol>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with cols[1]:
-        st.markdown("""
-        <div style="background-color: #f8f9fa; border-radius: 10px; padding: 15px; margin-top: 20px;">
-            <h4 style="color: #1565C0;">Example Prompt</h4>
-            <pre style="background-color: #f1f1f1; padding: 10px; border-radius: 5px; font-size: 0.8rem; overflow: auto;">
-You are an expert in data mapping and identity resolution. 
-Your task is to find the best matching columns 
-in a database table that correspond to user 
-identifiers needed for consent-based row filtering.
-
-Here are the available columns in the table, 
-with their data element names and types:
-{
-  "user_id": {
-    "data_element_name": "User Identifier",
-    "data_type": "VARCHAR"
-  },
-  "email_address": {
-    "data_element_name": "Email",
-    "data_type": "VARCHAR"
-  }
-}
-
-Here are the consent identifiers we need to match:
-{
-  "user_id": {
-    "description": "Unique identifier for a user",
-    "examples": ["user_id", "userid", "uid"]
-  },
-  "email": {
-    "description": "Email address of a user",
-    "examples": ["email", "email_address"]
-  }
-}
-            </pre>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+    <div class="challenge-container">
+        <h3 class="subsection-header">Data Element-Based Identifier Matching</h3>
+        <p>
+            The system uses a direct data element matching approach to identify user identifier columns:
+        </p>
+        <ol>
+            <li><strong>Problem</strong>: Different tables may use different column names for the same user identifiers</li>
+            <li><strong>Solution</strong>: Leverage existing data element classifications to identify the right columns</li>
+            <li><strong>Benefits</strong>: Reliable and consistent matching based on established data catalog</li>
+        </ol>
+        <p>
+            The SimpleIdentifierMatcher class uses the following approach:
+        </p>
+        <ol>
+            <li>Map consent profile identifiers to standard data elements:</li>
+            <ul>
+                <li>user_id → "Customer ID" data element</li>
+                <li>email → "Email Address" data element</li>
+            </ul>
+            <li>For each table, find columns classified with these data elements</li>
+            <li>Create a direct mapping between consent identifiers and table columns</li>
+            <li>This ensures consistent and accurate identification without complex algorithms</li>
+        </ol>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Row Filtering JSON Structure
     st.markdown("""
@@ -142,53 +118,42 @@ Here are the consent identifiers we need to match:
     <div class="architecture-container">
         <h3 class="subsection-header">Snowflake DDL Generation</h3>
         <p>
-            The system generates sophisticated Snowflake DDL that implements row-level security:
+            The system generates Snowflake DDL that implements our two-step security approach:
         </p>
         <pre style="background-color: #f1f1f1; padding: 15px; border-radius: 5px; font-size: 0.8rem; overflow: auto;">
--- Create a secure view of consent records
-CREATE OR REPLACE SECURE VIEW consent_view AS
-SELECT 
-    cp.user_id, 
-    cp.email,
-    p.name as purpose_name, 
-    cr.status
-FROM consent_record cr
-JOIN consent_profile cp ON cr.consent_profile_id = cp.id
-JOIN purpose p ON cr.purpose_id = p.id
-WHERE cr.status = 'granted'
-  AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP());
+            
+            -- STEP 1: Row-Level Security
+            CREATE OR REPLACE ROW ACCESS POLICY consent_rap AS 
+            ( email_address VARCHAR ) 
+            RETURNS BOOLEAN → 
+            CASE 
+                WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN TRUE
+                WHEN IS_ROLE_IN_SESSION('PURPOSE_MARKETING') THEN
+                    EXISTS (
+                        SELECT 1 FROM consent_view
+                        WHERE email = email_address
+                        AND purpose_name = 'MARKETING'
+                    )
+                ELSE FALSE
+            END;
 
--- Create row access policy for Customer.profiles
-CREATE OR REPLACE ROW ACCESS POLICY consent_rap_Customer_profiles AS (
-    email_address VARCHAR, 
-    user_id VARCHAR
-) RETURNS BOOLEAN ->
-  CASE
-    -- System roles bypass consent checks
-    WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN TRUE
-    WHEN IS_ROLE_IN_SESSION('SECURITYADMIN') THEN TRUE
-    
-    -- Purpose-specific consent checks
-    WHEN IS_ROLE_IN_SESSION('PURPOSE_MARKETING') THEN
-      EXISTS (
-        SELECT 1 FROM consent_view
-        WHERE (
-          (email_address IS NOT NULL AND email = email_address)
-          OR 
-          (user_id IS NOT NULL AND user_id = user_id)
-        )
-        AND purpose_name = 'MARKETING'
-      )
-    
-    -- Default deny
-    ELSE FALSE
-  END;
+            -- STEP 2: Column-Level Security
+            CREATE OR REPLACE SECURE VIEW profiles_secure AS
+            SELECT 
+                CASE 
+                    WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN email_address
+                    WHEN IS_ROLE_IN_SESSION('PURPOSE_MARKETING') THEN email_address
+                    ELSE NULL 
+                END AS email_address,
 
--- Apply row access policy to the table
-ALTER TABLE Customer.profiles ADD ROW ACCESS POLICY consent_rap_Customer_profiles ON (
-    email_address, user_id
-);
-        </pre>
+                CASE 
+                    WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN customer_id
+                    WHEN IS_ROLE_IN_SESSION('PURPOSE_CUSTOMER_SUPPORT') THEN customer_id
+                    ELSE CONCAT('****', RIGHT(customer_id, 4)) 
+                END AS customer_id,
+                first_name,
+                last_name 
+            FROM profiles;
     </div>
     """, unsafe_allow_html=True)
     
