@@ -6,18 +6,6 @@ def render_consent_row_filtering_section():
     <h2 class="section-header">Advanced Consent Management & Row-Level Security</h2>
     """, unsafe_allow_html=True)
     
-    # Overview
-    st.markdown("""
-    <div class="overview-container">
-        <h3 class="subsection-header">Overview</h3>
-        <p>
-            The advanced consent management and row-level security features enable organizations to implement
-            fine-grained access control at the individual record level, ensuring that users only see data
-            for which explicit consent has been granted for their specific purpose.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
     # Consent Management
     st.markdown("""
     <div class="solution-container">
