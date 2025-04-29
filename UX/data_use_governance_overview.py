@@ -44,9 +44,9 @@ class DataUseGovernanceOverview:
             font-size: 1.4rem;
             font-weight: 600;
             color: #1565C0;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.3rem;
+            margin-top: 0rem;
+            margin-bottom: 0rem;
+            padding-bottom: 0.1rem;
         }
         
         .card {

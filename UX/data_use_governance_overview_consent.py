@@ -11,7 +11,7 @@ def render_consent_row_filtering_section():
     <div class="overview-container">
         <h3 class="subsection-header">Overview</h3>
         <p>
-            Our advanced consent management and row-level security features enable organizations to implement
+            The advanced consent management and row-level security features enable organizations to implement
             fine-grained access control at the individual record level, ensuring that users only see data
             for which explicit consent has been granted for their specific purpose.
         </p>
@@ -40,7 +40,7 @@ def render_consent_row_filtering_section():
     <div class="architecture-container">
         <h3 class="subsection-header">Row Filtering Architecture</h3>
         <p>
-            Our row-level security implementation follows a sophisticated multi-layered approach:
+            The row-level security implementation follows a sophisticated multi-layered approach:
         </p>
         <ol>
             <li><strong>Policy Generation</strong>: JSON policies are generated that include row filtering specifications</li>
@@ -58,11 +58,11 @@ def render_consent_row_filtering_section():
         <div class="challenge-container">
             <h3 class="subsection-header">AI-Powered Identifier Matching</h3>
             <p>
-                Our system uses a sophisticated AI approach to match user identifiers with table columns:
+                The system uses a sophisticated AI approach to match user identifiers with table columns:
             </p>
             <ol>
                 <li><strong>Problem</strong>: Different tables may use different column names for the same user identifiers</li>
-                <li><strong>Solution</strong>: VertexAI-powered semantic matching to identify the right columns</li>
+                <li><strong>Solution</strong>: AI-powered semantic matching to identify the right columns</li>
                 <li><strong>Benefits</strong>: More accurate row filtering without manual configuration</li>
             </ol>
             <p>
