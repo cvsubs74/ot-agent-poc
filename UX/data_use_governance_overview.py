@@ -307,7 +307,7 @@ class DataUseGovernanceOverview:
             <div style="padding: 20px 0;">
                 <h3 style="color: #1565C0; font-weight: 600; margin-bottom: 15px;">Secure, Compliant Data Access</h3>
                 <p style="font-size: 1.1rem; line-height: 1.6; color: #424242;">
-                    Our Data Use Governance solution empowers organizations to implement purpose-based access controls, 
+                    The Data Use Governance solution empowers organizations to implement purpose-based access controls, 
                     ensuring data is only accessed for legitimate business purposes by authorized roles.
                 </p>
                 <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin-top: 20px;">
