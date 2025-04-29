@@ -293,6 +293,146 @@ class DataUseGovernanceOverview:
         # Render the new consent management and row filtering section
         render_consent_row_filtering_section()
         
+        # Regulatory Policy Gap Analysis
+        st.markdown("<h2 class='section-header'>Policy Gap Analysis</h2>", unsafe_allow_html=True)
+        
+        # Add dual policy inference engines section
+        st.markdown("""
+        <div class="overview-container">
+            <h3 class="subsection-header">Dual Policy Inference Engines</h3>
+            <p>The system leverages two complementary policy inference engines to provide comprehensive data governance:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create two columns for the policy engines
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            <div class="challenge-container">
+                <h4 class="blue-header">Purpose-Driven Policy Engine</h4>
+                <p>Infers policies based on customer-defined purpose-driven policy definitions for different roles and data elements.</p>
+                <ul>
+                    <li>Based on data steward inputs</li>
+                    <li>Reflects organizational policy preferences</li>
+                    <li>Considers business-specific requirements</li>
+                </ul>
+                <div class="highlight-text">
+                    <strong>Example:</strong> Marketing team requires email masking for customer outreach
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="solution-container">
+                <h4 class="green-header">Regulatory Intelligence Engine</h4>
+                <p>Infers policies based on regulatory intelligence built from core regulatory constructs and requirements.</p>
+                <ul>
+                    <li>Built on regulatory frameworks (GDPR, CCPA, etc.)</li>
+                    <li>Based on data element sensitivity</li>
+                    <li>Considers industry best practices</li>
+                </ul>
+                <div class="highlight-text">
+                    <strong>Example:</strong> Financial transaction data requires encryption at rest and in transit
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Add risk alert section
+        st.markdown("""
+        <div style="background-color: #FFEBEE; padding: 15px; border-radius: 10px; margin: 20px 0;">
+            <h4 style="color: #E53935; margin-top: 0;">Risk Alert: Stricter Regulatory Requirements</h4>
+            <p>When regulatory intelligence suggests stricter policies than those defined by data stewards, the system generates alerts highlighting potential compliance risks.</p>
+            <div class="highlight-text">
+                <strong>Example:</strong> Email masking required by GDPR for marketing purposes, but not implemented in current policies
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Add confidence validation section
+        st.markdown("""
+        <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 20px 0;">
+            <h4 style="color: #2E7D32; margin-top: 0;">Confidence Validation: Stricter Organizational Controls</h4>
+            <p>When data steward policies are stricter than regulatory requirements, the system confirms that the organization is exceeding compliance requirements.</p>
+            <div class="highlight-text">
+                <strong>Example:</strong> Organization implements end-to-end encryption for financial data, exceeding basic regulatory requirements
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Add regulatory intelligence policy flow section
+        st.markdown("""
+        <div class="overview-container">
+            <h3 class="subsection-header">Policy Inference and Gap Analysis Flows</h3>
+            <p>Visual representation of how business policies and regulatory requirements flow through both engines:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create a visualization of the regulatory intelligence policy flow
+        fig = go.Figure()
+        
+        # Define node positions
+        nodes = {
+            'Data Elements': {'x': 0, 'y': 5},
+            'Regulatory Requirements': {'x': -2, 'y': 3},
+            'Purpose Definitions': {'x': 2, 'y': 3},
+            'Reg Intel Policies': {'x': -2, 'y': 1},
+            'Data Steward Policies': {'x': 2, 'y': 1},
+            'Gap Analysis': {'x': 0, 'y': -1},
+            'Recommendations': {'x': 0, 'y': -3},
+            'Implemented Policies': {'x': 0, 'y': -5}
+        }
+        
+        # Add nodes
+        for node, pos in nodes.items():
+            fig.add_trace(go.Scatter(
+                x=[pos['x']], 
+                y=[pos['y']],
+                mode='markers+text',
+                marker=dict(size=25, color=['#1565C0', '#7B1FA2', '#43A047', '#7B1FA2', '#43A047', '#E53935', '#FB8C00', '#5E35B1'][list(nodes.keys()).index(node)]),
+                text=[node],
+                textposition='bottom center',
+                hoverinfo='text',
+                name=node
+            ))
+        
+        # Add edges (connections between nodes)
+        edges = [
+            ('Data Elements', 'Regulatory Requirements'),
+            ('Data Elements', 'Purpose Definitions'),
+            ('Regulatory Requirements', 'Reg Intel Policies'),
+            ('Purpose Definitions', 'Data Steward Policies'),
+            ('Reg Intel Policies', 'Gap Analysis'),
+            ('Data Steward Policies', 'Gap Analysis'),
+            ('Gap Analysis', 'Recommendations'),
+            ('Recommendations', 'Implemented Policies')
+        ]
+        
+        for edge in edges:
+            start, end = edge
+            fig.add_trace(go.Scatter(
+                x=[nodes[start]['x'], nodes[end]['x']],
+                y=[nodes[start]['y'], nodes[end]['y']],
+                mode='lines',
+                line=dict(width=2, color='rgba(100, 100, 100, 0.5)'),
+                hoverinfo='none',
+                showlegend=False
+            ))
+        
+        # Update layout
+        fig.update_layout(
+            showlegend=False,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            height=500,
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
         # Features & Implementation
         st.markdown("<h2 class='section-header'>Features & Implementation</h2>", unsafe_allow_html=True)
         self._render_features_implementation()
