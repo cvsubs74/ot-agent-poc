@@ -23,8 +23,8 @@ class DataUseGovernanceOverview:
         st.markdown("""
         <style>
         .main-header {
-            font-size: 1.5rem;
-            font-weight: 400;
+            font-size: 2.5rem;
+            font-weight: 500;
             color: #1E88E5;
             margin-bottom: 1.5rem;
             text-align: center;
