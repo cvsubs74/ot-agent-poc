@@ -61,7 +61,7 @@ class DDLGenerator:
         
         # Create a prompt for the VertexAI model to generate security policies
         prompt = f"""
-        Generate Snowflake security policy DDL statements based on the following JSON policy specification, which is organized by table/column:
+        Generate a complete, ready-to-execute Snowflake security policy DDL script based on the following JSON policy specification, which is organized by table/column:
         
         {json_str}
         
@@ -93,15 +93,13 @@ class DDLGenerator:
         2. ROLE CREATION section:
         ```
         -- ---------------------------------------------------------------------
+        -- 1. CREATE ROLES AND GRANTS
+        -- ---------------------------------------------------------------------
         -- Create roles for each purpose
         
         -- Create purpose-based roles
-        CREATE ROLE IF NOT EXISTS PURPOSE_[PURPOSE_NAME];
+        CREATE ROLE IF NOT EXISTS PURPOSE_MARKETING_CAMPAIGNS;
         ```
-        
-        IMPORTANT: Due to Snowflake's limitation where columns with masking policies cannot have row access policies, implement a two-step approach:
-        1. First apply row access policies to the base tables
-        2. Then create secure views with column masking policies on top of the row-filtered tables
         
         3. GRANT PURPOSE ROLES TO IMPORTED ROLES section:
         ```
@@ -111,7 +109,6 @@ class DDLGenerator:
         -- Grant purpose-based roles to imported Snowflake roles
         GRANT ROLE PURPOSE_MARKETING_CAMPAIGNS TO ROLE "Marketing Analyst";
         ```
-        Establish the role hierarchy by granting purpose-based roles to imported Snowflake roles as appropriate based on the JSON.
         
         4. TWO-STEP SECURITY APPROACH section:
         ```
@@ -120,13 +117,8 @@ class DDLGenerator:
         -- ---------------------------------------------------------------------
         -- Step 1: Apply row access policies to base tables
         
-        -- Create a secure view of consent records
-        
         -- Customer.profiles table
-        ALTER TABLE Customer.profiles MODIFY COLUMN email SET MASKING POLICY mask_email;
         ```
-        Group the ALTER TABLE statements by table, with a comment indicating the table name before each group.
-        Use the data element name to match columns to their appropriate masking policies.
         
         6. CREATE ROW ACCESS POLICIES section:
         ```
@@ -147,46 +139,9 @@ class DDLGenerator:
         JOIN purpose p ON cr.purpose_id = p.id
         WHERE cr.status = 'granted'
           AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP());
-        
-        -- Create row access policy for [TABLE_NAME]
-        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_[TABLE_NAME] AS (
-            [EMAIL_COLUMN] VARCHAR, 
-            [USER_ID_COLUMN] VARCHAR
-        ) RETURNS BOOLEAN ->
-          CASE
-            -- For each purpose in the row_filtering list for this table
-            WHEN IS_ROLE_IN_SESSION('PURPOSE_[PURPOSE_NAME]') THEN
-              EXISTS (
-                SELECT 1 FROM consent_view
-                WHERE (
-                  -- Match on any available identifier, prioritizing more specific matches
-                  ([EMAIL_COLUMN] IS NOT NULL AND email = [EMAIL_COLUMN])
-                  OR 
-                  ([USER_ID_COLUMN] IS NOT NULL AND user_id = [USER_ID_COLUMN])
-                )
-                AND purpose_name = '[PURPOSE_NAME]'
-              )
-            
-            -- Add additional WHEN clauses for each purpose in the row_filtering
-        
-            -- Default deny
-            ELSE FALSE
-          END;
-        
-        -- Apply row access policy to the table
-        -- Apply row access policy to the table with all potential identifier columns
-        ALTER TABLE [TABLE_NAME] ADD ROW ACCESS POLICY consent_rap_[TABLE_NAME] ON (
-            [EMAIL_COLUMN], [USER_ID_COLUMN]
-        );
         ```
         
-        The row_filtering in the JSON should specify:
-        1. identifier_columns: A mapping of consent profile identifiers to table columns
-           - This allows for flexible matching between tables and the consent_view
-           - Can include user_id, email, customer_id, or any other identifiers that can be linked to consent records
-        2. The list of purposes that require consent checks
-        
-        Generate a separate row access policy for each table that has row_filtering specified, with appropriate WHEN clauses for each purpose. The policy should attempt to match on any available identifier column, prioritizing the most reliable matches (typically email or user_id).
+        The script should be complete and ready to execute in Snowflake without any modifications. Do not include placeholders like [TABLE_NAME] or [PURPOSE_NAME] - replace these with actual values from the JSON. Do not include comments instructing users to modify the script.
         
         7. ENCRYPTION POLICY NOTES section:
         ```
@@ -199,87 +154,49 @@ class DDLGenerator:
         -- AES-256 by default.
         ```
         
-        IMPORTANT IMPLEMENTATION DETAILS:
+        For each table with row_filtering in the JSON, create a complete row access policy with all necessary WHEN clauses for each purpose. The policy should match on any available identifier column, prioritizing the most reliable matches (typically email or user_id).
+        
+        IMPLEMENTATION GUIDELINES:
         
         1. Use IS_ROLE_IN_SESSION() for all role-based conditions in masking policies
         
-        2. Create masking policies based on data element names from the JSON, not data types or column names
-           - This approach is more standardized and allows for consistent policy application across tables
-           - When the same data element appears in multiple tables, it should use the same masking policy
+        2. For secure views, implement column masking directly in the SELECT using CASE expressions that check for specific roles and purposes
         
-        3. Use purpose-based roles in masking policy conditions rather than listing individual roles
-           - For example, use IS_ROLE_IN_SESSION('PURPOSE_DEFAULT_ROLE_ASSIGNMENT') instead of listing all roles
-           - This leverages the role hierarchy and makes policies more maintainable
+        3. Create purpose-based roles and grant them to the appropriate imported roles from the JSON
         
-        4. DO NOT create any data access roles (like DATA_PII_FULL_ACCESS or DATA_PII_PARTIAL_ACCESS)
-           - Instead, use purpose-based roles directly in the role hierarchy
-           - The masking policies should check for specific Snowflake roles and purpose roles
+        4. For row access policies, create a policy for each table with row_filtering in the JSON
         
-        5. For masking policies, determine the appropriate masking format based on the data element type and sensitivity:
-           - Choose appropriate masking formats for each data type (emails, addresses, IDs, dates, phone numbers, etc.)
-           - Consider the purpose and role when determining the level of masking
-           - For some roles/purposes, partial visibility may be appropriate
-           - For other roles/purposes, complete masking or NULL values may be required
+        5. For masking in secure views, use appropriate masking formats based on data type (emails, addresses, IDs, dates, phone numbers)
         
-        6. Skip masking for columns where masking_required=0 in the JSON
-           - Columns with masking_required=0 should have FULL ACCESS for the specified roles, not NO ACCESS
-           - Do not apply any masking policies to these columns
-           - In masking policies for other columns, ensure roles with masking_required=0 get the original value (val) not NULL
+        6. Follow this implementation order:
+           - First create all roles and grants
+           - Then implement row-level security on base tables
+           - Finally create secure views with column-level masking
         
-        7. CRITICAL IMPLEMENTATION ORDER - YOU MUST FOLLOW THIS EXACT SEQUENCE:
-           
-           STEP 1: Create Roles and Grants
-           - Create purpose-based roles
-           - Grant purpose roles to imported roles
-           
-           STEP 2: Row-Level Security on Base Tables
-           - Create a secure view called 'consent_view' that exposes only valid consents
-           - Create row access policies (RAPs) for tables with row_filtering
-           - Apply these RAPs to the base tables using ALTER TABLE statements
-           - This MUST be done BEFORE any column masking
-           
-           STEP 3: Column-Level Security via Secure Views ONLY
-           - Create secure views on top of the row-filtered base tables
-           - NEVER apply masking policies directly to base tables
-           - NEVER use ALTER TABLE ... MODIFY COLUMN ... SET MASKING POLICY
-           - Instead, implement masking directly in the view's SELECT using CASE expressions:
-             ```
-             CREATE OR REPLACE SECURE VIEW schema.table_secure_view AS
-             SELECT 
-               CASE
-                 WHEN IS_ROLE_IN_SESSION('PURPOSE_X') THEN original_column
-                 WHEN IS_ROLE_IN_SESSION('[SPECIFIC_ROLE]') THEN original_column
-                 ELSE 'masked_value'
-               END AS column_name,
-               ...
-             FROM schema.original_table;
-             ```
-           - Grant access to these secure views instead of the base tables
-               
-           ABSOLUTELY FORBIDDEN:
-           - DO NOT create any masking policies with CREATE MASKING POLICY
-           - DO NOT apply masking policies to base tables with ALTER TABLE ... SET MASKING POLICY
-           - DO NOT mix the order - row filtering MUST come before column masking
-           - DO NOT use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN in any part of the script
+        The final script must:
+        1. Be complete and ready to execute without modifications
+        2. Not contain any placeholders or template variables
+        3. Not include any instructions to the user
+        4. Not use any built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
+        5. Implement all security policies specified in the JSON
+        6. Use only the existing Snowflake roles mentioned in the JSON
         
-        CRITICAL SNOWFLAKE SYNTAX REQUIREMENTS:
-        1. Do not include CREATE TABLE statements or other DDL not related to security policies and roles
-        2. Ensure all object names are properly quoted when they contain special characters or case sensitivity is required
-        3. For row access policies, ensure parameter names don't conflict with column names in the table
-        4. Use semicolons to terminate each SQL statement
-        5. Include appropriate error handling with CREATE OR REPLACE for all objects
-        6. Ensure proper dependencies - objects must be created before they are referenced
-        7. For secure views, ensure all columns from the base table are properly handled
-        8. When applying row access policies, ensure the columns specified exist in the table
-        9. For CASE expressions, ensure the data types in all branches are compatible
-        10. Avoid using reserved keywords as identifiers, or properly quote them if necessary
-        11. DO NOT use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN in any part of the script
+        CRITICAL REQUIREMENTS:
+        - Do not create any masking policies with CREATE MASKING POLICY
+        - Do not apply masking policies to base tables with ALTER TABLE ... SET MASKING POLICY
+        - Apply row filtering before column masking
+        - Do not use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
+        - Properly quote object names with special characters
+        - Use semicolons to terminate each SQL statement
+        - Ensure proper dependencies - objects must be created before they are referenced
+        - Ensure data type compatibility in CASE expressions
+        - Avoid using reserved keywords as identifiers
+        
+        The final DDL script MUST be complete, executable, and ready to be run in a Snowflake environment without any modifications or errors.
         
         Format the DDL with proper indentation and SQL best practices. Test each statement for syntax correctness.
         
-        You have flexibility to determine the best approach for implementing the security policies based on Snowflake best practices. The structure above is a guide, but you may adapt the implementation details as needed to create an optimal, maintainable solution.
-        
-        The final DDL script MUST be complete, executable, and ready to be run in a Snowflake environment without any modifications or errors.
+        The final DDL script MUST be complete, executable, and ready to be run in a Snowflake environment without any modifications, placeholders, or instructions to the user.
         """
         
         try:
@@ -292,8 +209,17 @@ class DDLGenerator:
                 # Clean up the response if it contains markdown code blocks
                 if ddl_text.startswith("```sql"):
                     ddl_text = ddl_text.replace("```sql", "", 1)
+                elif ddl_text.startswith("```"):
+                    ddl_text = ddl_text.replace("```", "", 1)
                 if ddl_text.endswith("```"):
                     ddl_text = ddl_text.replace("```", "", 1)
+                
+                # Remove any remaining template placeholders
+                ddl_text = ddl_text.replace("[TABLE_NAME]", "")
+                ddl_text = ddl_text.replace("[PURPOSE_NAME]", "")
+                ddl_text = ddl_text.replace("[EMAIL_COLUMN]", "")
+                ddl_text = ddl_text.replace("[USER_ID_COLUMN]", "")
+                ddl_text = ddl_text.replace("[SPECIFIC_ROLE]", "")
                 
                 return ddl_text.strip()
             else:
