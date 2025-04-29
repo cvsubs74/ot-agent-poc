@@ -41,13 +41,41 @@ class DDLGenerator:
         else:
             json_str = policy_json
         
+        # Example of enhanced row filtering JSON structure with supported identifier columns
+        row_filtering_example = '''
+        {
+          "tables": {
+            "Customer.profiles": {
+              "columns": { "..." },
+              "row_filtering": {
+                "identifier_columns": {
+                  "user_id": "user_id",
+                  "email": "email_address"
+                },
+                "purposes": ["Marketing Campaigns", "Customer Support"]
+              }
+            }
+          }
+        }
+        '''
+        
         # Create a prompt for the VertexAI model to generate security policies
         prompt = f"""
         Generate Snowflake security policy DDL statements based on the following JSON policy specification, which is organized by table/column:
         
         {json_str}
         
-        Note that the JSON is structured with tables at the top level, where each table contains columns. Each column contains roles, and each role contains purposes with their associated policies.
+        Note that the JSON is structured with tables at the top level, where each table contains columns. Each column contains roles, and each role contains purposes with their associated policies. Each table may also contain row_filtering information that specifies which purposes require row-level access control based on user consents.
+        
+        Here's an example of the enhanced row_filtering structure in the JSON:
+        
+        {row_filtering_example}
+        
+        The row_filtering object now specifies:
+        1. identifier_columns: A mapping of consent profile identifiers to table columns that can be used for joining with the consent_view
+           - user_id: Maps to the user_id column in the consent_profile table
+           - email: Maps to the email column in the consent_profile table
+        2. purposes: A list of purposes that require consent checks for this table
         
         Create a Snowflake DDL script that implements these security policies following this exact structure and format:
         
@@ -57,7 +85,8 @@ class DDLGenerator:
         -- SNOWFLAKE SECURITY POLICY IMPLEMENTATION
         -- =====================================================================
         -- This DDL script implements security policies based on the provided JSON
-        -- specification, using role inheritance and column-level masking policies.
+        -- specification, using role inheritance, column-level masking policies,
+        -- and row-level security based on user consents.
         -- =====================================================================
         ```
         
@@ -118,10 +147,75 @@ class DDLGenerator:
         Group the ALTER TABLE statements by table, with a comment indicating the table name before each group.
         Use the data element name to match columns to their appropriate masking policies.
         
-        6. ENCRYPTION POLICY NOTES section:
+        6. CREATE ROW ACCESS POLICIES section:
         ```
         -- ---------------------------------------------------------------------
-        -- 5. ENCRYPTION POLICY NOTES
+        -- 6. CREATE ROW ACCESS POLICIES
+        -- ---------------------------------------------------------------------
+        -- Create row access policies based on user consents
+        
+        -- Create a secure view of consent records with user_id and email lookups
+        CREATE OR REPLACE SECURE VIEW consent_view AS
+        SELECT 
+            cp.user_id, 
+            cp.email,
+            p.name as purpose_name, 
+            cr.status
+        FROM consent_record cr
+        JOIN consent_profile cp ON cr.consent_profile_id = cp.id
+        JOIN purpose p ON cr.purpose_id = p.id
+        WHERE cr.status = 'granted'
+          AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP());
+        
+        -- For each table that has row_filtering specified in the JSON, create a specific row access policy
+        -- This example shows a more sophisticated approach that can match on multiple identifier columns
+        -- Create row access policy for [TABLE_NAME]
+        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_[TABLE_NAME] AS (
+            [EMAIL_COLUMN] VARCHAR, 
+            [USER_ID_COLUMN] VARCHAR
+        ) RETURNS BOOLEAN ->
+          CASE
+            -- System roles bypass consent checks
+            WHEN IS_ROLE_IN_SESSION('ACCOUNTADMIN') THEN TRUE
+            WHEN IS_ROLE_IN_SESSION('SECURITYADMIN') THEN TRUE
+            
+            -- For each purpose in the row_filtering list for this table
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_[PURPOSE_NAME]') THEN
+              EXISTS (
+                SELECT 1 FROM consent_view
+                WHERE (
+                  -- Match on any available identifier, prioritizing more specific matches
+                  ([EMAIL_COLUMN] IS NOT NULL AND email = [EMAIL_COLUMN])
+                  OR 
+                  ([USER_ID_COLUMN] IS NOT NULL AND user_id = [USER_ID_COLUMN])
+                )
+                AND purpose_name = '[PURPOSE_NAME]'
+              )
+            
+            -- Add additional WHEN clauses for each purpose in the row_filtering
+            
+            -- Default deny
+            ELSE FALSE
+          END;
+        
+        -- Apply row access policy to the table with all potential identifier columns
+        ALTER TABLE [TABLE_NAME] ADD ROW ACCESS POLICY consent_rap_[TABLE_NAME] ON (
+            [EMAIL_COLUMN], [USER_ID_COLUMN]
+        );
+        ```
+        
+        The row_filtering in the JSON should specify:
+        1. identifier_columns: A mapping of consent profile identifiers to table columns
+           - This allows for flexible matching between tables and the consent_view
+           - Can include user_id, email, customer_id, or any other identifiers that can be linked to consent records
+        2. The list of purposes that require consent checks
+        
+        Generate a separate row access policy for each table that has row_filtering specified, with appropriate WHEN clauses for each purpose. The policy should attempt to match on any available identifier column, prioritizing the most reliable matches (typically email or user_id).
+        
+        7. ENCRYPTION POLICY NOTES section:
+        ```
+        -- ---------------------------------------------------------------------
+        -- 7. ENCRYPTION POLICY NOTES
         -- ---------------------------------------------------------------------
         -- Note: The JSON specifies AES-256 encryption for many fields.
         -- Snowflake handles encryption at rest automatically, so no explicit
@@ -152,16 +246,26 @@ class DDLGenerator:
            - For other roles/purposes, complete masking or NULL values may be required
         
         6. Skip masking for columns where masking_required=0 in the JSON
-            - Columns with masking_required=0 should have FULL ACCESS for the specified roles, not NO ACCESS
-            - Do not apply any masking policies to these columns
-            - In masking policies for other columns, ensure roles with masking_required=0 get the original value (val) not NULL
-            
-            Do not include CREATE TABLE statements or other DDL not related to security policies and roles.
-            Format the DDL with proper indentation and SQL best practices.
-            
-            Follow the structure and formatting shown above exactly. The section headers, comments, and overall organization should match the template precisely. The specific roles, purposes, and masking policies should be derived from the JSON input, but the format and approach should be consistent with the example.
-            
-            The final DDL script should be complete, executable, and ready to be run in a Snowflake environment without any modifications.
+           - Columns with masking_required=0 should have FULL ACCESS for the specified roles, not NO ACCESS
+           - Do not apply any masking policies to these columns
+           - In masking policies for other columns, ensure roles with masking_required=0 get the original value (val) not NULL
+        
+        7. Implement row-level security based on user consents:
+           - Create a secure view called 'consent_view' that exposes only valid consents from the consent_record table
+           - For tables that have row_filtering specified in the JSON, create row access policies (RAPs)
+           - The RAPs should filter data based on user consents for the specific purposes listed in row_filtering
+           - Use the user_id column (or equivalent specified in the row_filtering) to join with the consent_view
+           - Implement CASE statements in the RAP to check for different purpose roles
+           - For each purpose role, verify consent exists for that specific purpose
+           - Allow system roles (like ACCOUNTADMIN, SECURITYADMIN) to bypass consent checks
+           - Apply these RAPs to the appropriate tables using ALTER TABLE statements
+        
+        Do not include CREATE TABLE statements or other DDL not related to security policies and roles.
+        Format the DDL with proper indentation and SQL best practices.
+        
+        You have flexibility to determine the best approach for implementing the security policies based on Snowflake best practices. The structure above is a guide, but you may adapt the implementation details as needed to create an optimal, maintainable solution.
+        
+        The final DDL script should be complete, executable, and ready to be run in a Snowflake environment without any modifications.
         """
         
         try:

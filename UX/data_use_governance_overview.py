@@ -6,6 +6,7 @@ from PIL import Image
 import base64
 import io
 import numpy as np
+from UX.data_use_governance_overview_consent import render_consent_row_filtering_section
 
 class DataUseGovernanceOverview:
     """Class to render the Data Use Governance Overview page."""
@@ -22,8 +23,8 @@ class DataUseGovernanceOverview:
         st.markdown("""
         <style>
         .main-header {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 1.5rem;
+            font-weight: 400;
             color: #1E88E5;
             margin-bottom: 1.5rem;
             text-align: center;
@@ -272,7 +273,7 @@ class DataUseGovernanceOverview:
         """, unsafe_allow_html=True)
         
         # Page header
-        st.markdown("<h1 class='main-header'>Data Use Governance</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 class='main-header'>Data Use Governance</h2>", unsafe_allow_html=True)
         
         # Introduction section with hero image/diagram
         self._render_hero_section()
@@ -288,6 +289,9 @@ class DataUseGovernanceOverview:
         # Integration Workflow
         st.markdown("<h2 class='section-header'>Integration Workflow</h2>", unsafe_allow_html=True)
         self._render_workflow_example()
+        
+        # Render the new consent management and row filtering section
+        render_consent_row_filtering_section()
         
         # Features & Implementation
         st.markdown("<h2 class='section-header'>Features & Implementation</h2>", unsafe_allow_html=True)
@@ -678,6 +682,21 @@ class DataUseGovernanceOverview:
                 "icon": "🛡️",
                 "title": "Security Policies",
                 "description": "Automatically generate security policies for any target system"
+            },
+            {
+                "icon": "✅",
+                "title": "Consent Management",
+                "description": "Track and enforce user consents for specific data processing purposes"
+            },
+            {
+                "icon": "🔍",
+                "title": "Row-Level Security",
+                "description": "Implement fine-grained access control at the row level based on user identifiers"
+            },
+            {
+                "icon": "🧠",
+                "title": "Intelligent Column Matching",
+                "description": "Use AI to intelligently match user identifiers to table columns for row filtering"
             }
         ]
         

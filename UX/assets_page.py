@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from components.DDLGenerator import DDLGenerator
+from components.IdentifierMatcher import IdentifierMatcher
 
 class AssetsPage:
     def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository, asset_policy_inference=None):
@@ -12,6 +13,7 @@ class AssetsPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.asset_policy_inference = asset_policy_inference
         self.ddl_generator = DDLGenerator()
+        self.identifier_matcher = IdentifierMatcher()
         
     def _build_column_based_json_from_df(self, df, asset_id):
         """
@@ -42,6 +44,9 @@ class AssetsPage:
         if df.empty:
             return result
         
+        # Track unique purposes for each table to add to row filtering
+        table_purposes = {}
+        
         # Process each row in the DataFrame
         for _, row in df.iterrows():
             schema_name = row.get('schema_name')
@@ -54,6 +59,11 @@ class AssetsPage:
             
             # Create table key (schema.table)
             table_key = f"{schema_name}.{table_name}"
+            
+            # Track purposes for row filtering
+            if table_key not in table_purposes:
+                table_purposes[table_key] = set()
+            table_purposes[table_key].add(purpose_name)
             
             # Initialize table if not exists
             if table_key not in result["tables"]:
@@ -114,7 +124,46 @@ class AssetsPage:
                     "retention_basis": row.get('retention_basis')
                 })
         
+        # Add row filtering information to each table
+        for table_key, purposes in table_purposes.items():
+            # Collect all columns in the table with their data element names
+            table_columns = {}
+            for column_name, column_data in result["tables"][table_key]["columns"].items():
+                data_element_name = column_data.get("data_element_name", "")
+                data_type = column_data.get("data_type", "")
+                if data_element_name:
+                    table_columns[column_name] = {
+                        "data_element_name": data_element_name,
+                        "data_type": data_type
+                    }
+            
+            # Define consent identifiers with examples and descriptions
+            # Only include identifiers that exist in the consent_profile table
+            consent_identifiers = {
+                "user_id": {
+                    "description": "Unique identifier for a user in the system",
+                    "examples": ["user_id", "userid", "uid", "id"]
+                },
+                "email": {
+                    "description": "Email address of a user",
+                    "examples": ["email", "email_address", "user_email"]
+                }
+                # Note: customer_id is removed as it doesn't exist in consent_profile table
+            }
+            
+            # Find potential identifier columns for row filtering using VertexAI
+            identifier_columns = self.identifier_matcher.find_identifier_columns(table_columns, consent_identifiers)
+            
+            # If we found identifier columns, add row filtering to the table
+            if identifier_columns:
+                result["tables"][table_key]["row_filtering"] = {
+                    "identifier_columns": identifier_columns,
+                    "purposes": list(purposes)
+                }
+        
         return result
+        
+    # The _find_identifier_columns method has been moved to the IdentifierMatcher class
 
     def render(self):
         """Render the Assets page with asset inventory, filtering, and inference actions."""
@@ -173,21 +222,9 @@ class AssetsPage:
                 'name': data_element_name,
                 'description': ade['data_element_description']
             })
-        data_element_options = list(data_element_names)
-        data_element_options.sort()
-        selected_data_elements = st.multiselect(
-            "Filter by Data Element",
-            options=data_element_options,
-            help="Select one or more data elements to filter assets"
-        )
+        
         filtered_assets = assets
-        if selected_data_elements:
-            filtered_asset_ids = set()
-            for asset_id, data_elements in asset_to_data_elements.items():
-                de_names = {de['name'] for de in data_elements}
-                if all(de_name in de_names for de_name in selected_data_elements):
-                    filtered_asset_ids.add(asset_id)
-            filtered_assets = [asset for asset in assets if asset['id'] in filtered_asset_ids]
+        
         asset_data = {
             "Asset": [],
             "Description": [],
@@ -202,9 +239,7 @@ class AssetsPage:
             asset_data["Type"].append(asset.get('type', 'N/A'))
             asset_data["Status"].append(asset.get('status', 'Active'))
             asset_data["Data Element Count"].append(len(data_elements))
-        df = pd.DataFrame(asset_data)
-        df = df.dropna(how='all')
-        st.dataframe(df, use_container_width=True, height=min(400, len(df) * 35 + 38))
+
         asset_names = [asset['name'] for asset in filtered_assets]
         if asset_names:
             selected_asset_name = st.selectbox("Select an asset to view details", asset_names)

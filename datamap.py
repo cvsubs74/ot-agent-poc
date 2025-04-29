@@ -72,6 +72,7 @@ from repositories.DatabaseManager import DatabaseManager
 from repositories.PolicyRepository import PolicyRepository
 from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
+from repositories.ConsentRepository import ConsentRepository
 from core.asset_policy_inference import AssetPolicyInference
 
 class DataMap:
@@ -84,6 +85,7 @@ class DataMap:
         self.obligation_repository = ObligationRepository(self.database_manager.connection)
         self.catalog_repository = CatalogRepository(self.database_manager.connection)
         self.policy_repository = PolicyRepository(self.database_manager.connection)
+        self.consent_repository = ConsentRepository(self.database_manager.connection)
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
@@ -502,6 +504,10 @@ class DataMap:
             if st.button("👥 Roles", key="roles_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Roles'
             
+            # Consent Management menu item
+            if st.button("🔐 Consents", key="consent_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Consent Management'
+            
             # Governance menu item
             if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Compliance'
@@ -540,6 +546,7 @@ class DataMap:
             'Purposes': self.purposes_page,
             'Policies': self.policies_page,
             'Roles': self.roles_page,
+            'Consent Management': self.consent_management_page,
             'Policy Compliance': self.policy_compliance,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
@@ -628,6 +635,16 @@ class DataMap:
             self.regulatory_metadata_repository,
             self.obligation_repository
         ).render()
+        
+    def consent_management_page(self):
+        """Render the Consent Management page to manage user consents linked to purposes."""
+        from UX.consent_management import ConsentManagementPage
+        page = ConsentManagementPage(
+            consent_repo=self.consent_repository,
+            glossary_repo=self.glossary_repository,
+            policy_repo=self.policy_repository
+        )
+        page.render()
 
 if __name__ == "__main__":
     app = DataMap()

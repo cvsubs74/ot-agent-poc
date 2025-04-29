@@ -1078,6 +1078,42 @@ INSERT INTO `data_subject_right_implementation_steps` (`law_id`, `right_type`, `
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 8, 'Document the deletion process and maintain records');
 
 -- =============================================
+-- CONSENT MANAGEMENT TABLES
+-- =============================================
+
+-- Drop existing consent tables if they exist
+DROP TABLE IF EXISTS consent_record;
+DROP TABLE IF EXISTS consent_profile;
+
+-- Create consent_profile table to store user profiles
+CREATE TABLE IF NOT EXISTS `consent_profile` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `email` VARCHAR(255) NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `user_id` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE(`email`),
+    UNIQUE(`user_id`)
+);
+
+-- Create consent_record table to map users to purposes with their consent status
+CREATE TABLE IF NOT EXISTS `consent_record` (
+    `id` INTEGER PRIMARY KEY AUTO_INCREMENT,
+    `consent_profile_id` INTEGER NOT NULL,
+    `purpose_id` INTEGER NOT NULL,
+    `status` ENUM('granted', 'denied', 'withdrawn', 'expired') NOT NULL,
+    `consent_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `expiry_date` TIMESTAMP NULL,
+    `proof_of_consent` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE(`consent_profile_id`, `purpose_id`),
+    FOREIGN KEY (`consent_profile_id`) REFERENCES `consent_profile`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purpose_id`) REFERENCES `purpose`(`id`) ON DELETE CASCADE
+);
+
+-- =============================================
 -- SEED DATA SUBJECT RIGHTS EXEMPTIONS
 -- =============================================
 
@@ -1108,6 +1144,103 @@ INSERT INTO `data_subject_right_exemptions` (`law_id`, `right_type`, `exemption`
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Debug to identify and repair errors'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Exercise free speech or ensure another consumer\'s right to exercise free speech'),
 ((SELECT id FROM law WHERE name = 'CCPA'), 'Erasure', 'Comply with legal obligations');
+
+-- Seed consent_profile data
+INSERT INTO `consent_profile` (`email`, `name`, `user_id`) VALUES
+('john.doe@example.com', 'John Doe', 'user123'),
+('jane.smith@example.com', 'Jane Smith', 'user456'),
+('bob.johnson@example.com', 'Bob Johnson', 'user789'),
+('alice.williams@example.com', 'Alice Williams', 'user101'),
+('charlie.brown@example.com', 'Charlie Brown', 'user202'),
+('diana.prince@example.com', 'Diana Prince', 'user303'),
+('edward.stark@example.com', 'Edward Stark', 'user404'),
+('fiona.gallagher@example.com', 'Fiona Gallagher', 'user505'),
+('george.wilson@example.com', 'George Wilson', 'user606'),
+('hannah.montana@example.com', 'Hannah Montana', 'user707');
+
+-- Seed consent_record data for Marketing Campaigns purpose
+INSERT INTO `consent_record` (`consent_profile_id`, `purpose_id`, `status`, `expiry_date`, `proof_of_consent`) VALUES
+((SELECT id FROM consent_profile WHERE email = 'john.doe@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-15'),
+
+((SELECT id FROM consent_profile WHERE email = 'jane.smith@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-16'),
+
+((SELECT id FROM consent_profile WHERE email = 'bob.johnson@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), 
+ 'denied', NULL, 'Consent denied via web form on 2025-01-17'),
+
+((SELECT id FROM consent_profile WHERE email = 'alice.williams@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-18'),
+
+((SELECT id FROM consent_profile WHERE email = 'charlie.brown@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Marketing Campaigns'), 
+ 'withdrawn', NULL, 'Consent withdrawn via email on 2025-01-19');
+
+-- Seed consent_record data for Customer Support purpose
+INSERT INTO `consent_record` (`consent_profile_id`, `purpose_id`, `status`, `expiry_date`, `proof_of_consent`) VALUES
+((SELECT id FROM consent_profile WHERE email = 'john.doe@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 YEAR), 'Consent granted via web form on 2025-01-15'),
+
+((SELECT id FROM consent_profile WHERE email = 'jane.smith@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 YEAR), 'Consent granted via web form on 2025-01-16'),
+
+((SELECT id FROM consent_profile WHERE email = 'bob.johnson@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 YEAR), 'Consent granted via web form on 2025-01-17'),
+
+((SELECT id FROM consent_profile WHERE email = 'diana.prince@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 YEAR), 'Consent granted via web form on 2025-01-20'),
+
+((SELECT id FROM consent_profile WHERE email = 'edward.stark@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Customer Support'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 YEAR), 'Consent granted via web form on 2025-01-21');
+
+-- Seed consent_record data for Product Analytics purpose
+INSERT INTO `consent_record` (`consent_profile_id`, `purpose_id`, `status`, `expiry_date`, `proof_of_consent`) VALUES
+((SELECT id FROM consent_profile WHERE email = 'john.doe@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-15'),
+
+((SELECT id FROM consent_profile WHERE email = 'fiona.gallagher@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-22'),
+
+((SELECT id FROM consent_profile WHERE email = 'george.wilson@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR), 'Consent granted via web form on 2025-01-23'),
+
+((SELECT id FROM consent_profile WHERE email = 'hannah.montana@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Product Analytics'), 
+ 'denied', NULL, 'Consent denied via web form on 2025-01-24');
+
+-- Seed consent_record data for Payment Processing purpose
+INSERT INTO `consent_record` (`consent_profile_id`, `purpose_id`, `status`, `expiry_date`, `proof_of_consent`) VALUES
+((SELECT id FROM consent_profile WHERE email = 'john.doe@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 YEAR), 'Consent granted via web form on 2025-01-15'),
+
+((SELECT id FROM consent_profile WHERE email = 'jane.smith@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 YEAR), 'Consent granted via web form on 2025-01-16'),
+
+((SELECT id FROM consent_profile WHERE email = 'alice.williams@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 YEAR), 'Consent granted via web form on 2025-01-18'),
+
+((SELECT id FROM consent_profile WHERE email = 'diana.prince@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 YEAR), 'Consent granted via web form on 2025-01-20'),
+
+((SELECT id FROM consent_profile WHERE email = 'george.wilson@example.com'), 
+ (SELECT id FROM purpose WHERE name = 'Payment Processing'), 
+ 'granted', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 YEAR), 'Consent granted via web form on 2025-01-23');
 
 -- =============================================
 -- POLICY INFERENCE API TABLES
