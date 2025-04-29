@@ -695,8 +695,8 @@ class DataUseGovernanceOverview:
             },
             {
                 "icon": "🧠",
-                "title": "Intelligent Column Matching",
-                "description": "Use AI to intelligently match user identifiers to table columns for row filtering"
+                "title": "Identifier Matching",
+                "description": "Match consent profile identifiers to table columns for row filtering"
             }
         ]
         
