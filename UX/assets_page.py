@@ -613,20 +613,7 @@ class AssetsPage:
                         ''', unsafe_allow_html=True) 
 
                 # Show info box about analysis workflow after the results   
-                # Create a unique key for this asset's policy analysis results in session state
-                policy_results_key = f"policy_analysis_results_{selected_asset['id']}"
-                policy_params_key = f"policy_analysis_params_{selected_asset['id']}"
-                
-                # Initialize unique_data_elements as an empty set
-                unique_data_elements = set()
-                
-                # Extract unique data elements from the policy analysis for filtering
-                if policy_analysis and policy_analysis.get('tables'):
-                    for table_key, table_data in policy_analysis['tables'].items():
-                        for column_name, column_data in table_data.get('columns', {}).items():
-                            if 'data_element_name' in column_data:
-                                unique_data_elements.add(column_data['data_element_name'])
-                unique_data_elements = sorted(list(unique_data_elements))
+                # No need to store unique data elements for filtering anymore
                 
                 # Handle the Run Policy Analysis button click
                 if run_policy_analysis and self.asset_policy_inference:
@@ -662,13 +649,7 @@ class AssetsPage:
                             # Format boolean columns as checkboxes
                             formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
                             
-                            # Store the formatted DataFrame and display parameters in session state
-                            st.session_state[policy_results_key] = formatted_df
-                            st.session_state[policy_params_key] = {
-                                'purpose_display': purpose_display,
-                                'policy_type_display': policy_type_display,
-                                'role_display': role_display
-                            }
+                            # No need to store results in session state anymore
                             
                             # Rename columns for better display
                             column_mapping = {
@@ -694,152 +675,13 @@ class AssetsPage:
                             else:
                                 st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
                             
-                            # Create session state keys for filters
-                            data_element_filter_key = f"data_element_filter_{selected_asset['id']}"
-                            role_filter_key = f"role_filter_{selected_asset['id']}"
-                            
-                            # Initialize session state for filters if not already set
-                            if data_element_filter_key not in st.session_state:
-                                st.session_state[data_element_filter_key] = "All Data Elements"
-                            if role_filter_key not in st.session_state:
-                                st.session_state[role_filter_key] = "All Roles"
-                            
-                            # Create a container for filters
-                            filter_container = st.container()
-                            with filter_container:
-                                # Create two columns for filters
-                                filter_col1, filter_col2 = st.columns(2)
-                                
-                                # Initialize filtered_df with the full DataFrame
-                                filtered_df = formatted_df.copy()
-                                
-                                # Add a filter by data element in the first column
-                                with filter_col1:
-                                    if 'Data Element' in formatted_df.columns:
-                                        unique_data_elements = sorted(formatted_df['Data Element'].unique())
-                                        if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
-                                            # Create callback for data element filter
-                                            def on_data_element_change():
-                                                st.session_state[data_element_filter_key] = st.session_state[f"{data_element_filter_key}_widget"]
-                                            
-                                            # Use selectbox for filtering with the callback
-                                            selected_data_element_filter = st.selectbox(
-                                                "Filter by Data Element:",
-                                                options=["All Data Elements"] + list(unique_data_elements),
-                                                key=f"{data_element_filter_key}_widget",
-                                                on_change=on_data_element_change,
-                                                index=0 if st.session_state[data_element_filter_key] not in unique_data_elements else list(["All Data Elements"] + list(unique_data_elements)).index(st.session_state[data_element_filter_key])
-                                            )
-                                            
-                                            # Apply the filter if a specific data element is selected
-                                            if st.session_state[data_element_filter_key] != "All Data Elements" and st.session_state[data_element_filter_key] in unique_data_elements:
-                                                filtered_df = filtered_df[filtered_df['Data Element'] == st.session_state[data_element_filter_key]]
-                                
-                                # Add a filter by role in the second column
-                                with filter_col2:
-                                    if 'Role' in formatted_df.columns:
-                                        unique_roles = sorted(formatted_df['Role'].unique())
-                                        if len(unique_roles) > 1:  # Only show filter if there's more than one role
-                                            # Create callback for role filter
-                                            def on_role_change():
-                                                st.session_state[role_filter_key] = st.session_state[f"{role_filter_key}_widget"]
-                                            
-                                            # Use selectbox for filtering with the callback
-                                            selected_role_filter = st.selectbox(
-                                                "Filter by Role:",
-                                                options=["All Roles"] + list(unique_roles),
-                                                key=f"{role_filter_key}_widget",
-                                                on_change=on_role_change,
-                                                index=0 if st.session_state[role_filter_key] not in unique_roles else list(["All Roles"] + list(unique_roles)).index(st.session_state[role_filter_key])
-                                            )
-                                            
-                                            # Apply the filter if a specific role is selected
-                                            if st.session_state[role_filter_key] != "All Roles" and st.session_state[role_filter_key] in unique_roles:
-                                                filtered_df = filtered_df[filtered_df['Role'] == st.session_state[role_filter_key]]
-                            
-                            # Display the filtered DataFrame
-                            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+                            # Display the DataFrame without filters
+                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
                         else:
                             # If no results were found
                             st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")                
                         
-                # Check if we have policy analysis results in session state but no analysis was just run
-                elif policy_results_key in st.session_state and not run_policy_analysis:
-                    formatted_df = st.session_state[policy_results_key]
-                    params = st.session_state[policy_params_key]
-                    purpose_display = params['purpose_display']
-                    
-                    # Add a note about encryption settings for non-Default Role Assignment purposes
-                    if "all" in selected_purposes or any(purpose_options.get(p) != "Default Role Assignment" for p in selected_purposes):
-                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
-                    
-                    # Create session state keys for filters
-                    data_element_filter_key = f"data_element_filter_{selected_asset['id']}_saved"
-                    role_filter_key = f"role_filter_{selected_asset['id']}_saved"
-                    
-                    # Initialize session state for filters if not already set
-                    if data_element_filter_key not in st.session_state:
-                        st.session_state[data_element_filter_key] = "All Data Elements"
-                    if role_filter_key not in st.session_state:
-                        st.session_state[role_filter_key] = "All Roles"
-                    
-                    # Create a container for filters
-                    filter_container = st.container()
-                    with filter_container:
-                        # Create two columns for filters
-                        filter_col1, filter_col2 = st.columns(2)
-                        
-                        # Initialize filtered_df with the full DataFrame
-                        filtered_df = formatted_df.copy()
-                        
-                        # Add a filter by data element in the first column
-                        with filter_col1:
-                            if 'Data Element' in formatted_df.columns:
-                                unique_data_elements = sorted(formatted_df['Data Element'].unique())
-                                if len(unique_data_elements) > 1:  # Only show filter if there's more than one data element
-                                    # Create callback for data element filter
-                                    def on_data_element_change_saved():
-                                        st.session_state[data_element_filter_key] = st.session_state[f"{data_element_filter_key}_widget"]
-                                    
-                                    # Use selectbox for filtering with the callback
-                                    selected_data_element_filter = st.selectbox(
-                                        "Filter by Data Element:",
-                                        options=["All Data Elements"] + list(unique_data_elements),
-                                        key=f"{data_element_filter_key}_widget",
-                                        on_change=on_data_element_change_saved,
-                                        index=0 if st.session_state[data_element_filter_key] not in unique_data_elements else list(["All Data Elements"] + list(unique_data_elements)).index(st.session_state[data_element_filter_key])
-                                    )
-                                    
-                                    # Apply the filter if a specific data element is selected
-                                    if st.session_state[data_element_filter_key] != "All Data Elements" and st.session_state[data_element_filter_key] in unique_data_elements:
-                                        filtered_df = filtered_df[filtered_df['Data Element'] == st.session_state[data_element_filter_key]]
-                        
-                        # Add a filter by role in the second column
-                        with filter_col2:
-                            if 'Role' in formatted_df.columns:
-                                unique_roles = sorted(formatted_df['Role'].unique())
-                                if len(unique_roles) > 1:  # Only show filter if there's more than one role
-                                    # Create callback for role filter
-                                    def on_role_change_saved():
-                                        st.session_state[role_filter_key] = st.session_state[f"{role_filter_key}_widget"]
-                                    
-                                    # Use selectbox for filtering with the callback
-                                    selected_role_filter = st.selectbox(
-                                        "Filter by Role:",
-                                        options=["All Roles"] + list(unique_roles),
-                                        key=f"{role_filter_key}_widget",
-                                        on_change=on_role_change_saved,
-                                        index=0 if st.session_state[role_filter_key] not in unique_roles else list(["All Roles"] + list(unique_roles)).index(st.session_state[role_filter_key])
-                                    )
-                                    
-                                    # Apply the filter if a specific role is selected
-                                    if st.session_state[role_filter_key] != "All Roles" and st.session_state[role_filter_key] in unique_roles:
-                                        filtered_df = filtered_df[filtered_df['Role'] == st.session_state[role_filter_key]]
-                    
-                    # Display the filtered DataFrame
-                    st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+                # No longer need to handle previous policy analysis results from session state
 
                 # Handle the Run Asset Analysis button click
                 if run_analysis:
