@@ -245,7 +245,7 @@ class DDLGenerator:
         - Apply row filtering before column masking
         - Do not use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN anywhere in the script
         - For row access policies, do NOT use CURRENT_ROLE() IN ('ACCOUNTADMIN', 'SECURITYADMIN')
-        - Row access policies should be based on purposes and external roles from the JSON only
+        - Row access policies should be based ONLY on the purposes and roles from the JSON
         - Properly quote object names with special characters
         - Use semicolons to terminate each SQL statement
         - Ensure proper dependencies - objects must be created before they are referenced
@@ -288,3 +288,167 @@ class DDLGenerator:
         except Exception as e:
             st.error(f"An error occurred while generating security policy DDL: {str(e)}")
             return None
+
+    def _generate_access_role_ddl_prompt(self, json_str, role_name):
+        """Generate the prompt for the VertexAI model to create a data access role DDL."""
+        return f"""
+        Generate a Snowflake DDL script to create a data access role based on the following JSON policy specification:
+        
+        {json_str}
+        
+        The role name should be: {role_name}
+        
+        Create a DDL script that follows these requirements:
+        
+        1. Create a purpose-based role hierarchy:
+           - Create the specified data access role if it doesn't exist
+           - Create purpose-based roles for each purpose in the JSON (e.g., PURPOSE_MARKETING_CAMPAIGNS)
+           - Grant purpose-based roles to the data access role
+        
+        2. Apply row-level security using row access policies:
+           - Create row access policies for tables that have row_filtering in the JSON
+           - Policies should filter rows based on user consents for the specified purposes
+           - Apply these policies to the base tables
+           - Row access policies should use IS_ROLE_IN_SESSION() with purpose-based roles
+        
+        3. Create secure views for each table in the JSON:
+           - Include ALL columns from the original tables
+           - Apply column-level masking in the secure views using CASE expressions with IS_ROLE_IN_SESSION checks
+           - Only apply masking to columns that have policies defined in the JSON
+           - Non-classified columns should be returned as-is without any masking
+           - Name masking policies based on data element names (not data types or column names)
+        
+        4. Set up proper access controls:
+           - Revoke access to the original tables from the role
+           - Grant access to the secure views to the role
+           - Do not use any built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
+        
+        The script should follow this structure:
+        
+        1. CREATE ROLES section
+        ```
+        -- Create the data access role
+        CREATE ROLE IF NOT EXISTS {role_name};
+        
+        -- Create purpose-based roles
+        CREATE ROLE IF NOT EXISTS PURPOSE_MARKETING_CAMPAIGNS;
+        
+        -- Grant purpose roles to the data access role
+        GRANT ROLE PURPOSE_MARKETING_CAMPAIGNS TO ROLE {role_name};
+        ```
+        
+        2. ROW ACCESS POLICIES section
+        ```
+        -- Create row access policy for Customer.profiles
+        CREATE OR REPLACE ROW ACCESS POLICY customer_profiles_rap AS (
+            email VARCHAR, 
+            customer_id VARCHAR
+        ) RETURNS BOOLEAN ->
+          EXISTS (
+            SELECT 1 FROM consent_record cr
+            JOIN consent_profile cp ON cr.consent_profile_id = cp.id
+            JOIN purpose p ON cr.purpose_id = p.id
+            WHERE (
+              (email IS NOT NULL AND cp.email = email)
+              OR 
+              (customer_id IS NOT NULL AND cp.user_id = customer_id)
+            )
+            AND p.name IN ('Marketing Campaigns', 'Customer Support')
+            AND cr.status = 'granted'
+            AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP())
+          );
+          
+        -- Apply row access policy
+        ALTER TABLE Customer.profiles ADD ROW ACCESS POLICY customer_profiles_rap(email, customer_id);
+        ```
+        
+        3. SECURE VIEWS section
+        ```
+        -- Create secure view for Customer.profiles
+        CREATE OR REPLACE SECURE VIEW Customer.profiles_secure_view AS
+        SELECT
+          -- Masked column with policy
+          CASE
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_MARKETING_CAMPAIGNS') THEN email
+            ELSE 'xxxx@example.com'
+          END AS email,
+          
+          -- Another masked column with policy
+          CASE
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_CUSTOMER_SUPPORT') THEN phone
+            ELSE '###-###-####'
+          END AS phone,
+          
+          -- Non-classified columns passed through as-is
+          customer_id,
+          first_name,
+          last_name,
+          address,
+          city,
+          state,
+          zip_code,
+          registration_date
+        FROM Customer.profiles;
+        ```
+        
+        4. REVOKE & GRANT section
+        ```
+        -- Revoke access to original tables
+        REVOKE ALL PRIVILEGES ON TABLE Customer.profiles FROM ROLE {role_name};
+        
+        -- Grant access to secure views
+        GRANT SELECT ON VIEW Customer.profiles_secure_view TO ROLE {role_name};
+        ```
+        
+        The final script must:
+        1. Be complete and ready to execute without modifications
+        2. Not contain any placeholders or template variables
+        3. Not include any instructions to the user
+        4. Not use any built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
+        5. Include ALL columns from original tables in secure views (both classified and non-classified columns)
+        6. Apply masking only to columns that have policies defined in the JSON
+        7. Non-classified columns must be passed through as-is without any masking
+        8. Include row filtering policies based on the purposes in the JSON
+        9. Use purpose-based roles in the role hierarchy and in masking policy conditions
+        10. Name masking policies based on data element names for standardization
+        
+        Format the DDL with proper indentation and SQL best practices.
+        """
+        
+    def generate_access_role_ddl(self, policy_json, role_name):
+        """Generate Snowflake DDL for creating a data access role based on the provided policy JSON."""
+        if policy_json is None:
+            return "No policy JSON provided"
+        
+        # Convert policy_json to string if it's a dictionary
+        if isinstance(policy_json, dict):
+            import json
+            json_str = json.dumps(policy_json, indent=2)
+        else:
+            json_str = policy_json
+            
+        # Generate the prompt
+        prompt = self._generate_access_role_ddl_prompt(json_str, role_name)
+        
+        try:
+            response = self.model.generate_content(prompt)
+            
+            if response and hasattr(response, 'text'):
+                # Extract the SQL content from the response
+                ddl_text = response.text.strip()
+                
+                # Clean up the response if it contains markdown code blocks
+                if ddl_text.startswith("```sql"):
+                    ddl_text = ddl_text.replace("```sql", "", 1)
+                elif ddl_text.startswith("```"):
+                    ddl_text = ddl_text.replace("```", "", 1)
+                if ddl_text.endswith("```"):
+                    ddl_text = ddl_text.replace("```", "", 1)
+                
+                return ddl_text.strip()
+            else:
+                st.error("Failed to generate access role DDL. No valid response from the AI model.")
+                return ""
+        except Exception as e:
+            st.error(f"Error generating access role DDL: {e}")
+            return ""

@@ -29,6 +29,7 @@ DROP TABLE IF EXISTS law_data_subject_type_data_element_sensitivity;
 DROP TABLE IF EXISTS data_category_data_element;
 DROP TABLE IF EXISTS law_incident_breach_guidance;
 DROP TABLE IF EXISTS law_legal_basis;
+DROP TABLE IF EXISTS data_access_request;
 DROP TABLE IF EXISTS law_jurisdiction;
 DROP TABLE IF EXISTS obligation;
 DROP TABLE IF EXISTS policy;
@@ -653,6 +654,28 @@ CREATE TABLE IF NOT EXISTS `processing_activity_asset_data_element` (
     FOREIGN KEY (`processing_activity_id`) REFERENCES `processing_activity`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`data_element_id`) REFERENCES `data_element`(`id`) ON DELETE CASCADE
+);
+
+-- Create Data Access Request table
+CREATE TABLE IF NOT EXISTS `data_access_request` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `requester_name` VARCHAR(255) NOT NULL,
+    `requester_email` VARCHAR(255) NOT NULL,
+    `asset_id` INT NOT NULL,
+    `asset_name` VARCHAR(255) NOT NULL,
+    `tables` TEXT NOT NULL,
+    `purposes` TEXT NOT NULL,
+    `purpose_ids` TEXT NOT NULL,
+    `role_name` VARCHAR(255) NOT NULL,
+    `status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    `request_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `approval_date` TIMESTAMP NULL,
+    `expiry_date` TIMESTAMP NULL,
+    `ddl` TEXT NOT NULL,
+    `policy_json` TEXT NOT NULL,
+    `notes` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`asset_id`) REFERENCES `asset`(`id`) ON DELETE CASCADE
 );
 
 -- Seed Asset data

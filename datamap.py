@@ -73,6 +73,7 @@ from repositories.PolicyRepository import PolicyRepository
 from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
 from repositories.ConsentRepository import ConsentRepository
+from repositories.DataAccessRepository import DataAccessRepository
 from core.asset_policy_inference import AssetPolicyInference
 
 class DataMap:
@@ -86,6 +87,7 @@ class DataMap:
         self.catalog_repository = CatalogRepository(self.database_manager.connection)
         self.policy_repository = PolicyRepository(self.database_manager.connection)
         self.consent_repository = ConsentRepository(self.database_manager.connection)
+        self.data_access_repository = DataAccessRepository(self.database_manager.connection)
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
@@ -508,6 +510,10 @@ class DataMap:
             if st.button("🔐 Consents", key="consent_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Consent Management'
             
+            # Request Data Access menu item
+            if st.button("🔑 Request Data Access", key="data_access_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Data Access Request'
+            
             # Governance menu item
             if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Compliance'
@@ -547,6 +553,7 @@ class DataMap:
             'Policies': self.policies_page,
             'Roles': self.roles_page,
             'Consent Management': self.consent_management_page,
+            'Data Access Request': self.data_access_request_page,
             'Policy Compliance': self.policy_compliance,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
@@ -643,6 +650,17 @@ class DataMap:
             consent_repo=self.consent_repository,
             glossary_repo=self.glossary_repository,
             policy_repo=self.policy_repository
+        )
+        page.render()
+        
+    def data_access_request_page(self):
+        """Render the Data Access Request page to request access to specific tables for specific purposes."""
+        from UX.data_access_request_page import DataAccessRequestPage
+        page = DataAccessRequestPage(
+            glossary_repository=self.glossary_repository,
+            catalog_repository=self.catalog_repository,
+            asset_policy_inference=self.asset_policy_inference,
+            data_access_repository=self.data_access_repository
         )
         page.render()
 
