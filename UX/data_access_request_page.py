@@ -421,8 +421,6 @@ class DataAccessRequestPage:
                         <p><strong>Tables:</strong> {', '.join(request.get('tables', []))}</p>
                         <p><strong>Purposes:</strong> {', '.join(request.get('purposes', []))}</p>
                         <p><strong>Request Date:</strong> {request.get('request_date')}</p>
-                        {f'<p><strong>Approval Date:</strong> {request.get("approval_date")}</p>' if request.get('approval_date') else ''}
-                        {f'<p><strong>Expiry Date:</strong> {request.get("expiry_date")}</p>' if request.get('expiry_date') else ''}
                         <p><strong>Notes:</strong> {request.get('notes', 'N/A')}</p>
                     </div>
                     """, unsafe_allow_html=True)
