@@ -425,6 +425,224 @@ class AssetsPage:
                                     # Display the DDL
                                     st.markdown(f"<h4>Snowflake Security Policy DDL for {selected_asset['name']}</h4>", unsafe_allow_html=True)
                                     
+                                    # Create a data-driven explanation based on the actual DDL and JSON
+                                    # Extract key information from the policy_analysis JSON
+                                    tables_count = len(policy_analysis.get('tables', {}))
+                                    
+                                    # Get table names and details
+                                    table_names = []
+                                    tables_with_row_filtering = []
+                                    table_details = {}
+                                    
+                                    for table_key, table_info in policy_analysis.get('tables', {}).items():
+                                        table_names.append(table_key)
+                                        table_details[table_key] = {
+                                            'schema': table_info.get('schema', ''),
+                                            'table': table_info.get('table', ''),
+                                            'columns_count': len(table_info.get('columns', {})),
+                                            'sensitive_columns': [],
+                                            'has_row_filtering': 'row_filtering' in table_info,
+                                            'purposes': set()
+                                        }
+                                        
+                                        if 'row_filtering' in table_info:
+                                            tables_with_row_filtering.append(table_key)
+                                            if 'purposes' in table_info['row_filtering']:
+                                                table_details[table_key]['row_filtering_purposes'] = table_info['row_filtering'].get('purposes', [])
+                                    
+                                    # Count the number of columns with security policies and collect details
+                                    columns_with_security = 0
+                                    sensitive_columns = []
+                                    purpose_role_mapping = {}
+                                    column_policy_details = {}
+                                    
+                                    for table_key, table_info in policy_analysis.get('tables', {}).items():
+                                        for col_name, col_info in table_info.get('columns', {}).items():
+                                            column_has_security = False
+                                            column_key = f"{table_key}.{col_name}"
+                                            column_policy_details[column_key] = {
+                                                'masking': False,
+                                                'encryption': False,
+                                                'purposes': set(),
+                                                'roles': set()
+                                            }
+                                            
+                                            for role_name, role_info in col_info.get('roles', {}).items():
+                                                column_policy_details[column_key]['roles'].add(role_name)
+                                                
+                                                # Track purpose-role mapping
+                                                if role_name not in purpose_role_mapping:
+                                                    purpose_role_mapping[role_name] = set()
+                                                
+                                                for purpose_name, purpose_info in role_info.get('purposes', {}).items():
+                                                    purpose_role_mapping[role_name].add(purpose_name)
+                                                    column_policy_details[column_key]['purposes'].add(purpose_name)
+                                                    table_details[table_key]['purposes'].add(purpose_name)
+                                                    
+                                                    if 'security' in purpose_info:
+                                                        column_has_security = True
+                                                        security_info = purpose_info['security']
+                                                        
+                                                        # Check for masking
+                                                        if security_info.get('masking_required'):
+                                                            column_policy_details[column_key]['masking'] = True
+                                                            column_policy_details[column_key]['masking_format'] = security_info.get('masking_format')
+                                                            sensitive_columns.append(column_key)
+                                                            table_details[table_key]['sensitive_columns'].append(col_name)
+                                                        
+                                                        # Check for encryption
+                                                        if security_info.get('encryption_required'):
+                                                            column_policy_details[column_key]['encryption'] = True
+                                                            column_policy_details[column_key]['encryption_algorithm'] = security_info.get('encryption_algorithm')
+                                            
+                                            if column_has_security:
+                                                columns_with_security += 1
+                                    
+                                    # Get unique purposes and roles
+                                    all_purposes = set()
+                                    all_roles = set()
+                                    for role, purposes in purpose_role_mapping.items():
+                                        all_roles.add(role)
+                                        all_purposes.update(purposes)
+                                    
+                                    # Format for display
+                                    purpose_list = ", ".join([f"'{p}'" for p in all_purposes]) if all_purposes else "All Purposes"
+                                    role_list = ", ".join([f"'{r}'" for r in all_roles]) if all_roles else "All Roles"
+                                    
+                                    # Select an example table and column for the user access example
+                                    example_table = tables_with_row_filtering[0] if tables_with_row_filtering else (table_names[0] if table_names else "example_table")
+                                    example_column = table_details[example_table]['sensitive_columns'][0] if table_details[example_table]['sensitive_columns'] else "email"
+                                    example_purpose = list(table_details[example_table]['purposes'])[0] if table_details[example_table]['purposes'] else "Marketing"
+                                    example_role = None
+                                    for role, purposes in purpose_role_mapping.items():
+                                        if example_purpose in purposes:
+                                            example_role = role
+                                            break
+                                    if not example_role and all_roles:
+                                        example_role = list(all_roles)[0]
+                                    
+                                    # Analyze the DDL content to extract key information
+                                    role_creation_count = ddl_content.count("CREATE ROLE")
+                                    view_creation_count = ddl_content.count("CREATE OR REPLACE SECURE VIEW")
+                                    row_policy_count = ddl_content.count("CREATE OR REPLACE ROW ACCESS POLICY")
+                                    masking_policy_count = ddl_content.count("CREATE OR REPLACE MASKING POLICY")
+                                    
+                                    # Create a user-friendly explanation using HTML component with scrolling
+                                    html_content = f"""
+                                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db; font-size: 16px; line-height: 1.5; max-height: 600px; overflow-y: auto;">
+                                        <h3 style="color: #2c3e50; font-size: 22px;">How This Security Policy Works</h3>
+                                        
+                                        <p>This DDL script creates a comprehensive security policy system for <strong>{selected_asset['name']}</strong>, implementing protections for <strong>{tables_count} tables</strong> with <strong>{columns_with_security} sensitive columns</strong>. Here's what it implements:</p>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔐 Role-Based Access Control</h4>
+                                        <ul>
+                                            <li>Creates <strong>{role_creation_count} roles</strong> to manage access to your data</li>
+                                            <li>Establishes purpose-specific roles for: {purpose_list}</li>
+                                            <li>Configures role hierarchy to enforce least privilege access principles</li>
+                                        </ul>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔍 Row-Level Security</h4>
+                                        <ul>
+                                            <li>Implements <strong>{row_policy_count} row access policies</strong> for data filtering</li>
+                                            <li>Applies row-level security to <strong>{len(tables_with_row_filtering)} tables</strong> based on user consent</li>
+                                            <li>Creates a consent tracking system that filters data in real-time based on purpose</li>
+                                        </ul>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🛡️ Column-Level Protection</h4>
+                                        <ul>
+                                            <li>Creates <strong>{masking_policy_count} masking policies</strong> for sensitive data</li>
+                                            <li>Protects <strong>{len(sensitive_columns)} columns</strong> with dynamic data masking</li>
+                                            <li>Implements <strong>{view_creation_count} secure views</strong> with appropriate masking</li>
+                                        </ul>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">📎 Protected Tables & Applied Policies</h4>
+                                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px; max-height: 200px; overflow-y: auto;">
+                                            {''.join([f'''
+                                            <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
+                                                <p><strong>Table:</strong> {table_key}</p>
+                                                <p><strong>Columns:</strong> {table_details[table_key]['columns_count']}</p>
+                                                <p><strong>Sensitive Columns:</strong> {', '.join(table_details[table_key]['sensitive_columns']) if table_details[table_key]['sensitive_columns'] else 'None'}</p>
+                                                <p><strong>Row Filtering:</strong> {'Yes - filters by consent for: ' + ', '.join(table_details[table_key].get('row_filtering_purposes', [])) if table_details[table_key]['has_row_filtering'] else 'No'}</p>
+                                                <p><strong>Purposes:</strong> {', '.join(table_details[table_key]['purposes']) if table_details[table_key]['purposes'] else 'All'}</p>
+                                            </div>''' for table_key in table_names])}
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔗 Purpose-Role Mapping</h4>
+                                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px; max-height: 200px; overflow-y: auto;">
+                                            {''.join([f'''
+                                            <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
+                                                <p><strong>Role:</strong> {role}</p>
+                                                <p><strong>Authorized Purposes:</strong> {', '.join(purposes)}</p>
+                                            </div>''' for role, purposes in purpose_role_mapping.items()])}
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">📋 Your Configuration Summary</h4>
+                                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                            <p><strong>Asset:</strong> {selected_asset['name']}</p>
+                                            <p><strong>Tables Protected:</strong> {tables_count}</p>
+                                            <p><strong>Purposes:</strong> {purpose_list}</p>
+                                            <p><strong>Roles:</strong> {role_list}</p>
+                                            <p><strong>Policy Types:</strong> {policy_type_display}</p>
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">📚 Privacy & Compliance Rationale</h4>
+                                        <div style="background-color: #f0f9ff; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                            <p><strong>Regulatory Compliance:</strong> This security policy implementation helps meet requirements from regulations like GDPR, CCPA, HIPAA, and industry standards.</p>
+                                            <p><strong>Data Governance:</strong> Establishes clear boundaries for data usage based on purpose, ensuring data is only used for its intended purposes.</p>
+                                            <p><strong>Risk Mitigation:</strong> Reduces the risk of data breaches by limiting access to sensitive information and providing audit trails.</p>
+                                            <p><strong>Privacy by Design:</strong> Implements privacy controls directly in the database layer, making privacy a fundamental part of data access.</p>
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">💡 Access Example</h4>
+                                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                            <p><strong>Example Scenario:</strong> Accessing the <code>{example_table}</code> table</p>
+                                            
+                                            <div style="margin-top: 10px; padding: 10px; background-color: #fff; border-radius: 5px; border-left: 3px solid #27ae60;">
+                                                <p><strong>User WITH Role '{example_role}' and Purpose '{example_purpose}':</strong></p>
+                                                <ul>
+                                                    <li>Can see all rows where users have consented to '{example_purpose}'</li>
+                                                    <li>Sees unmasked data for the <code>{example_column}</code> column</li>
+                                                    <li>Has all access logged for audit purposes</li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div style="margin-top: 10px; padding: 10px; background-color: #fff; border-radius: 5px; border-left: 3px solid #e74c3c;">
+                                                <p><strong>User WITHOUT Role '{example_role}' or Purpose '{example_purpose}':</strong></p>
+                                                <ul>
+                                                    <li>Cannot see any rows from the table</li>
+                                                    <li>Sees masked/redacted data for sensitive columns</li>
+                                                    <li>All access attempts are logged and can trigger alerts</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔄 Continuous Data Governance</h4>
+                                        <div style="background-color: #f0f9ff; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                            <p>This implementation enables continuous data governance through:</p>
+                                            <ul>
+                                                <li><strong>Real-time Consent Enforcement:</strong> Access policies check consent status in real-time, so consent changes are immediately reflected</li>
+                                                <li><strong>Comprehensive Audit Logging:</strong> All data access is logged, enabling monitoring and compliance reporting</li>
+                                                <li><strong>Centralized Policy Management:</strong> Security policies are managed centrally, allowing for consistent updates</li>
+                                                <li><strong>Dynamic Access Control:</strong> As users' roles change, their data access automatically adjusts</li>
+                                                <li><strong>Automated Compliance:</strong> The system automatically enforces privacy rules without manual intervention</li>
+                                            </ul>
+                                        </div>
+                                        
+                                        <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">💻 Technical Implementation</h4>
+                                        <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                            <p>This DDL creates the following database objects:</p>
+                                            <ul>
+                                                <li><strong>{role_creation_count} roles</strong> for purpose-based access control</li>
+                                                <li><strong>{row_policy_count} row access policies</strong> for consent-based filtering</li>
+                                                <li><strong>{masking_policy_count} masking policies</strong> for sensitive data protection</li>
+                                                <li><strong>{view_creation_count} secure views</strong> that enforce all security policies</li>
+                                            </ul>
+                                            <p>After running this DDL, users will need to be granted the appropriate roles to access the data according to their job functions and authorized purposes.</p>
+                                        </div>
+                                    </div>
+                                    """
+                                    st.components.v1.html(html_content, height=700)
+                                    
                                     # Add a download button for the DDL
                                     st.download_button(
                                         label="Download Security Policy DDL",

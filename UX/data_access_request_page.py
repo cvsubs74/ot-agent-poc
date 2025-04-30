@@ -199,19 +199,83 @@ class DataAccessRequestPage:
                                                 notes=notes
                                             )
                                             
-                                            # Just display a success message, no tab switching
-                                            if request_id > 0:
-                                                st.success(f"Request saved with ID: {request_id}")
-                                        
-                                        # Display the results
+                                        # Display the results - simplified success message
                                         st.markdown(f"""
                                         <div class="success-card card">
                                         <h3>✅ Access Request Submitted Successfully!</h3>
-                                        <p>Your request has been processed and is pending approval.</p>
-                                        <p><strong>Request ID:</strong> {request_id if request_id > 0 else 'N/A'}</p>
                                         <p><strong>Role Name:</strong> {role_name}</p>
                                         </div>
                                         """, unsafe_allow_html=True)
+                                        
+                                        # Display a user-friendly explanation of what the DDL will accomplish
+                                        # Get the purposes for a more user-friendly explanation
+                                        purpose_names = [purpose_options[p_id] for p_id in selected_purposes]
+                                        purpose_list = ", ".join([f"'{p}'" for p in purpose_names])
+                                        
+                                        # Create a user-friendly explanation using HTML component with scrolling
+                                        html_content = f"""
+                                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #3498db; font-size: 16px; line-height: 1.5; max-height: 600px; overflow-y: auto;">
+                                            <h3 style="color: #2c3e50; font-size: 22px;">How This Data Access Control Works</h3>
+                                            
+                                            <p>This DDL script creates a secure access control system for the selected tables. Here's what happens when users access this data:</p>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔐 Role-Based Access</h4>
+                                            <ul>
+                                                <li>A new role <code>{role_name}</code> is created specifically for this access request.</li>
+                                                <li>Purpose-specific roles are created for each purpose: {purpose_list}.</li>
+                                                <li>Users must be assigned to both the main role and the appropriate purpose roles to access data.</li>
+                                            </ul>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔍 Row-Level Security</h4>
+                                            <ul>
+                                                <li>Users will only see rows where the data subject has explicitly consented to the purposes: {purpose_list}.</li>
+                                                <li>Even if a user has the role, they won't see data for individuals who haven't provided consent.</li>
+                                                <li>The system checks consent records in real-time when queries are executed.</li>
+                                            </ul>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🛡️ Column-Level Masking</h4>
+                                            <ul>
+                                                <li>Sensitive data like emails, phone numbers, and personal identifiers are masked by default.</li>
+                                                <li>Users will only see unmasked sensitive data if they have the appropriate purpose role.</li>
+                                                <li>Non-sensitive data is always visible (if row-level access is granted).</li>
+                                            </ul>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">🔒 Secure Implementation</h4>
+                                            <ul>
+                                                <li>Original tables are protected - users can only access secure views.</li>
+                                                <li>All access is logged and auditable.</li>
+                                                <li>No administrative privileges are granted to regular users.</li>
+                                            </ul>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">📋 Your Configuration Summary</h4>
+                                            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                                <p><strong>Asset:</strong> {policy_json.get('asset_name', 'Selected Asset')}</p>
+                                                <p><strong>Tables:</strong> {', '.join(selected_tables)}</p>
+                                                <p><strong>Purposes:</strong> {purpose_list}</p>
+                                                <p><strong>Role Created:</strong> <code>{role_name}</code></p>
+                                            </div>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">📚 Privacy & Compliance Rationale</h4>
+                                            <div style="background-color: #f0f9ff; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                                <p><strong>Data Privacy Compliance:</strong> This access control system ensures that data is only accessed in accordance with privacy regulations like GDPR, CCPA, and HIPAA.</p>
+                                                <p><strong>Purpose Limitation:</strong> By creating purpose-specific roles, we enforce the principle that data should only be used for the specific purposes for which consent was given.</p>
+                                                <p><strong>Data Minimization:</strong> Users only see the specific tables and columns they need for their authorized purposes, reducing unnecessary data exposure.</p>
+                                                <p><strong>Consent Management:</strong> The row-level security ensures that only data from individuals who have explicitly consented to the specified purposes is accessible.</p>
+                                                <p><strong>Auditability:</strong> All access is logged and can be audited to demonstrate compliance with privacy regulations.</p>
+                                            </div>
+                                            
+                                            <h4 style="color: #2980b9; font-size: 18px; margin-top: 20px;">💡 Example Scenario</h4>
+                                            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                                                <p>When a user with role <code>{role_name}</code> and purpose role <code>PURPOSE_{purpose_names[0].upper().replace(' ', '_')}</code> 
+                                                queries the data, they will only see records for individuals who have explicitly consented to <code>{purpose_names[0]}</code>. 
+                                                Sensitive fields will only be visible for that specific purpose, and all access will be logged for audit purposes.</p>
+                                                
+                                                <p>For example, if a marketing analyst needs to access customer data for a campaign, they will only see data for customers who have consented to marketing communications, 
+                                                and sensitive information like full addresses or financial details will remain masked unless specifically authorized.</p>
+                                            </div>
+                                        </div>
+                                        """
+                                        st.components.v1.html(html_content, height=700)
                                         
                                         # Display the JSON policy specification
                                         with st.expander("View Policy JSON"):
