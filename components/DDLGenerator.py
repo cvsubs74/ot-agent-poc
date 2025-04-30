@@ -120,7 +120,7 @@ class DDLGenerator:
         -- Customer.profiles table
         ```
         
-        6. CREATE ROW ACCESS POLICIES section:
+        5. CREATE ROW ACCESS POLICIES section:
         ```
         -- ---------------------------------------------------------------------
         -- 6. CREATE ROW ACCESS POLICIES
@@ -140,6 +140,60 @@ class DDLGenerator:
         WHERE cr.status = 'granted'
           AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP());
         ```
+        
+        6. CREATE SECURE VIEWS section:
+        ```
+        -- ---------------------------------------------------------------------
+        -- STEP 3: Column-Level Security via Secure Views ONLY
+        -- ---------------------------------------------------------------------
+        -- Create secure views on top of the row-filtered base tables
+        -- NEVER apply masking policies directly to base tables
+        -- NEVER use ALTER TABLE ... MODIFY COLUMN ... SET MASKING POLICY
+        -- Include ALL columns from the original table in the secure view
+        -- Only apply masking to columns that have policies defined
+        -- Non-classified columns should be returned as-is without any masking
+        -- Implement masking directly in the view's SELECT using CASE expressions:
+        ```
+        CREATE OR REPLACE SECURE VIEW schema.table_secure_view AS
+        SELECT 
+          -- Masked column with policy
+          CASE
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_X') THEN sensitive_column
+            WHEN IS_ROLE_IN_SESSION('[SPECIFIC_ROLE]') THEN sensitive_column
+            ELSE 'masked_value'
+          END AS sensitive_column,
+          
+          -- Non-classified column passed through as-is
+          regular_column,
+          
+          -- Other columns...
+          *
+        FROM schema.original_table;
+        
+        -- REVOKE access to the original table from all roles
+        REVOKE ALL PRIVILEGES ON schema.original_table FROM ROLE ALL;
+        
+        -- GRANT access to the secure view to appropriate roles
+        GRANT SELECT ON schema.table_secure_view TO ROLE "Marketing Analyst";
+        
+        -- Example row access policy format (will be generated with actual values from JSON)
+        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_customer_profiles AS (
+            email_address VARCHAR, 
+            user_id VARCHAR
+        ) RETURNS BOOLEAN ->
+          EXISTS (
+            SELECT 1 FROM consent_view
+            WHERE (
+              -- Match on any available identifier, prioritizing more specific matches
+              (email_address IS NOT NULL AND email = email_address)
+              OR 
+              (user_id IS NOT NULL AND user_id = user_id)
+            )
+            AND purpose_name IN ('Marketing Campaigns', 'Customer Support', 'Default Role Assignment')
+          );
+        
+        -- DO NOT use ACCOUNTADMIN or SECURITYADMIN in row access policies
+        -- Row access should be based ONLY on the purposes and roles from the JSON
         
         The script should be complete and ready to execute in Snowflake without any modifications. Do not include placeholders like [TABLE_NAME] or [PURPOSE_NAME] - replace these with actual values from the JSON. Do not include comments instructing users to modify the script.
         
@@ -180,12 +234,18 @@ class DDLGenerator:
         4. Not use any built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
         5. Implement all security policies specified in the JSON
         6. Use only the existing Snowflake roles mentioned in the JSON
+        7. Include ALL columns from original tables in secure views (not just classified columns)
+        8. Apply masking only to columns that have policies defined in the JSON
+        9. Include proper REVOKE statements to remove access to original tables
+        10. Include proper GRANT statements to give access to secure views
         
         CRITICAL REQUIREMENTS:
         - Do not create any masking policies with CREATE MASKING POLICY
         - Do not apply masking policies to base tables with ALTER TABLE ... SET MASKING POLICY
         - Apply row filtering before column masking
-        - Do not use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
+        - Do not use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN anywhere in the script
+        - For row access policies, do NOT use CURRENT_ROLE() IN ('ACCOUNTADMIN', 'SECURITYADMIN')
+        - Row access policies should be based on purposes and external roles from the JSON only
         - Properly quote object names with special characters
         - Use semicolons to terminate each SQL statement
         - Ensure proper dependencies - objects must be created before they are referenced
