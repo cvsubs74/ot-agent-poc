@@ -19,6 +19,7 @@ class AssetsPage:
         """
         Build a column-based JSON structure from the policy analysis DataFrame.
         The structure is organized by table/column first, with roles and purposes nested under each column.
+        Includes ALL columns from each table, not just the classified ones with policies.
         
         Args:
             df: DataFrame containing policy analysis results
@@ -40,14 +41,43 @@ class AssetsPage:
                 result["asset_name"] = asset[1]
                 break
         
-        # If no policies found, return the basic structure
-        if df.empty:
-            return result
-        
         # Track unique purposes for each table to add to row filtering
         table_purposes = {}
         
-        # Process each row in the DataFrame
+        # Get all catalog entries for this asset to include ALL columns
+        all_columns = self.catalog_repository.get_catalog_entries_by_asset(asset_id)
+        
+        # First, create the structure with ALL columns from the catalog
+        for col in all_columns:
+            schema_name = col.get('schema_name')
+            table_name = col.get('table_name')
+            column_name = col.get('column_name')
+            
+            # Create table key (schema.table)
+            table_key = f"{schema_name}.{table_name}"
+            
+            # Initialize table if not exists
+            if table_key not in result["tables"]:
+                result["tables"][table_key] = {
+                    "schema": schema_name,
+                    "table": table_name,
+                    "columns": {}
+                }
+            
+            # Add column to the table (even if it has no policies)
+            if column_name not in result["tables"][table_key]["columns"]:
+                result["tables"][table_key]["columns"][column_name] = {
+                    "data_element_id": col.get('data_element_id'),
+                    "data_element_name": col.get('data_element_name'),
+                    "data_type": col.get('data_type'),
+                    "roles": {}
+                }
+        
+        # If no policies found, return the structure with all columns but no policies
+        if df.empty:
+            return result
+        
+        # Now add policy information to the columns that have policies
         for _, row in df.iterrows():
             schema_name = row.get('schema_name')
             table_name = row.get('table_name')
@@ -64,23 +94,6 @@ class AssetsPage:
             if table_key not in table_purposes:
                 table_purposes[table_key] = set()
             table_purposes[table_key].add(purpose_name)
-            
-            # Initialize table if not exists
-            if table_key not in result["tables"]:
-                result["tables"][table_key] = {
-                    "schema": schema_name,
-                    "table": table_name,
-                    "columns": {}
-                }
-            
-            # Initialize column if not exists for this table
-            if column_name not in result["tables"][table_key]["columns"]:
-                result["tables"][table_key]["columns"][column_name] = {
-                    "data_element_id": row.get('data_element_id'),
-                    "data_element_name": row.get('data_element_name'),
-                    "data_type": row.get('data_type'),
-                    "roles": {}
-                }
             
             # Initialize role if not exists for this column
             if role_name not in result["tables"][table_key]["columns"][column_name]["roles"]:
@@ -121,45 +134,28 @@ class AssetsPage:
                 result["tables"][table_key]["columns"][column_name]["roles"][role_name]["purposes"][purpose_name]["retention"].append({
                     "policy_name": row.get('policy_name'),
                     "retention_period": row.get('retention_period'),
-                    "retention_basis": row.get('retention_basis')
+                    "retention_condition": row.get('retention_condition'),
+                    "is_override": row.get('is_override', False)
                 })
         
-        # Add row filtering information to each table
+        # Add row filtering information to tables
         for table_key, purposes in table_purposes.items():
-            # Collect all columns in the table with their data element names
-            table_columns = {}
-            for column_name, column_data in result["tables"][table_key]["columns"].items():
-                data_element_name = column_data.get("data_element_name", "")
-                data_type = column_data.get("data_type", "")
-                if data_element_name:
-                    table_columns[column_name] = {
-                        "data_element_name": data_element_name,
-                        "data_type": data_type
+            if table_key in result["tables"]:
+                # Get identifier columns for this table (email and user_id if available)
+                identifier_columns = {}
+                for col_name, col_info in result["tables"][table_key]["columns"].items():
+                    data_element_name = col_info.get("data_element_name", "").lower() if col_info.get("data_element_name") else ""
+                    if "email" in data_element_name:
+                        identifier_columns["email"] = col_name
+                    elif "user" in data_element_name and "id" in data_element_name:
+                        identifier_columns["user_id"] = col_name
+                
+                # Only add row filtering if we have identifier columns
+                if identifier_columns:
+                    result["tables"][table_key]["row_filtering"] = {
+                        "identifier_columns": identifier_columns,
+                        "purposes": list(purposes)
                     }
-            
-            # Define consent identifiers with examples and descriptions
-            # Only include identifiers that exist in the consent_profile table
-            consent_identifiers = {
-                "user_id": {
-                    "description": "Unique identifier for a user in the system",
-                    "examples": ["user_id", "userid", "uid", "id"]
-                },
-                "email": {
-                    "description": "Email address of a user",
-                    "examples": ["email", "email_address", "user_email"]
-                }
-                # Note: customer_id is removed as it doesn't exist in consent_profile table
-            }
-            
-            # Find potential identifier columns for row filtering using VertexAI
-            identifier_columns = self.identifier_matcher.find_identifier_columns(table_columns, consent_identifiers)
-            
-            # If we found identifier columns, add row filtering to the table
-            if identifier_columns:
-                result["tables"][table_key]["row_filtering"] = {
-                    "identifier_columns": identifier_columns,
-                    "purposes": list(purposes)
-                }
         
         return result
         
