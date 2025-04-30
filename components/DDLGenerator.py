@@ -170,26 +170,31 @@ class DDLGenerator:
           *
         FROM schema.original_table;
         
-        -- REVOKE access to the original table from all roles
-        REVOKE ALL PRIVILEGES ON schema.original_table FROM ROLE ALL;
+        -- REVOKE access to the original table from the specific role only
+        REVOKE ALL PRIVILEGES ON schema.original_table FROM ROLE "Marketing Analyst";
         
         -- GRANT access to the secure view to appropriate roles
         GRANT SELECT ON schema.table_secure_view TO ROLE "Marketing Analyst";
         
         -- Example row access policy format (will be generated with actual values from JSON)
-        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_customer_profiles AS (
-            email_address VARCHAR, 
-            user_id VARCHAR
+        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_table AS (
+            identifier_column VARCHAR
         ) RETURNS BOOLEAN ->
           EXISTS (
             SELECT 1 FROM consent_view
             WHERE (
-              -- Match on any available identifier, prioritizing more specific matches
-              (email_address IS NOT NULL AND email = email_address)
-              OR 
-              (user_id IS NOT NULL AND user_id = user_id)
+              -- Match on available identifier
+              (identifier_column IS NOT NULL AND identifier_field = identifier_column)
             )
-            AND purpose_name IN ('Marketing Campaigns', 'Customer Support', 'Default Role Assignment')
+            AND purpose_name IN ('Purpose A', 'Purpose B')
+            AND (
+              -- Only allow roles with the appropriate purpose to access the data
+              CASE
+                WHEN purpose_name = 'Purpose A' THEN IS_ROLE_IN_SESSION('PURPOSE_A')
+                WHEN purpose_name = 'Purpose B' THEN IS_ROLE_IN_SESSION('PURPOSE_B')
+                ELSE FALSE
+              END
+            )
           );
         
         -- DO NOT use ACCOUNTADMIN or SECURITYADMIN in row access policies
@@ -218,7 +223,7 @@ class DDLGenerator:
         
         3. Create purpose-based roles and grant them to the appropriate imported roles from the JSON
         
-        4. For row access policies, create a policy for each table with row_filtering in the JSON
+        4. For row access policies, create a policy for each table with row_filtering in the JSON, ensuring that policies include role checks using IS_ROLE_IN_SESSION() to verify that users have the appropriate role for the purpose
         
         5. For masking in secure views, use appropriate masking formats based on data type (emails, addresses, IDs, dates, phone numbers)
         
@@ -246,6 +251,8 @@ class DDLGenerator:
         - Do not use built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN anywhere in the script
         - For row access policies, do NOT use CURRENT_ROLE() IN ('ACCOUNTADMIN', 'SECURITYADMIN')
         - Row access policies should be based ONLY on the purposes and roles from the JSON
+        - Row access policies MUST include role checks using IS_ROLE_IN_SESSION() to verify that users have the appropriate role for the purpose
+        - When revoking privileges, only revoke from the specific role mentioned, not from all roles (do not use FROM ROLE ALL)
         - Properly quote object names with special characters
         - Use semicolons to terminate each SQL statement
         - Ensure proper dependencies - objects must be created before they are referenced
@@ -309,7 +316,8 @@ class DDLGenerator:
            - Create row access policies for tables that have row_filtering in the JSON
            - Policies should filter rows based on user consents for the specified purposes
            - Apply these policies to the base tables
-           - Row access policies should use IS_ROLE_IN_SESSION() with purpose-based roles
+           - Row access policies MUST include role checks using IS_ROLE_IN_SESSION() with purpose-based roles
+           - Even if users have consented to a purpose, they should only see data if they have the appropriate role
         
         3. Create secure views for each table in the JSON:
            - Include ALL columns from the original tables
@@ -319,7 +327,7 @@ class DDLGenerator:
            - Name masking policies based on data element names (not data types or column names)
         
         4. Set up proper access controls:
-           - Revoke access to the original tables from the role
+           - Revoke access to the original tables from the specific role mentioned, not from all roles
            - Grant access to the secure views to the role
            - Do not use any built-in administrative roles like ACCOUNTADMIN or SECURITYADMIN
         
@@ -339,65 +347,64 @@ class DDLGenerator:
         
         2. ROW ACCESS POLICIES section
         ```
-        -- Create row access policy for Customer.profiles
-        CREATE OR REPLACE ROW ACCESS POLICY customer_profiles_rap AS (
-            email VARCHAR, 
-            customer_id VARCHAR
+        -- Create row access policy for a table
+        CREATE OR REPLACE ROW ACCESS POLICY consent_rap_table AS (
+            identifier_column VARCHAR
         ) RETURNS BOOLEAN ->
           EXISTS (
-            SELECT 1 FROM consent_record cr
-            JOIN consent_profile cp ON cr.consent_profile_id = cp.id
-            JOIN purpose p ON cr.purpose_id = p.id
+            SELECT 1 FROM consent_view
             WHERE (
-              (email IS NOT NULL AND cp.email = email)
-              OR 
-              (customer_id IS NOT NULL AND cp.user_id = customer_id)
+              (identifier_column IS NOT NULL AND identifier_field = identifier_column)
             )
-            AND p.name IN ('Marketing Campaigns', 'Customer Support')
-            AND cr.status = 'granted'
-            AND (cr.expiry_date IS NULL OR cr.expiry_date > CURRENT_TIMESTAMP())
+            AND purpose_name IN ('Purpose A', 'Purpose B')
+            AND consent_status = 'granted'
+            AND (expiry_date IS NULL OR expiry_date > CURRENT_TIMESTAMP())
+            -- Only allow roles with the appropriate purpose to access the data
+            AND CASE
+              WHEN purpose_name = 'Purpose A' THEN IS_ROLE_IN_SESSION('PURPOSE_A')
+              WHEN purpose_name = 'Purpose B' THEN IS_ROLE_IN_SESSION('PURPOSE_B')
+              ELSE FALSE
+            END
           );
           
         -- Apply row access policy
-        ALTER TABLE Customer.profiles ADD ROW ACCESS POLICY customer_profiles_rap(email, customer_id);
+        ALTER TABLE schema.table ADD ROW ACCESS POLICY consent_rap_table(identifier_column);
         ```
         
         3. SECURE VIEWS section
         ```
-        -- Create secure view for Customer.profiles
-        CREATE OR REPLACE SECURE VIEW Customer.profiles_secure_view AS
+        -- Create secure view for a table
+        CREATE OR REPLACE SECURE VIEW schema.table_secure_view AS
         SELECT
           -- Masked column with policy
           CASE
-            WHEN IS_ROLE_IN_SESSION('PURPOSE_MARKETING_CAMPAIGNS') THEN email
-            ELSE 'xxxx@example.com'
-          END AS email,
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_A') THEN sensitive_column_1
+            ELSE 'masked_value_1'
+          END AS sensitive_column_1,
           
           -- Another masked column with policy
           CASE
-            WHEN IS_ROLE_IN_SESSION('PURPOSE_CUSTOMER_SUPPORT') THEN phone
-            ELSE '###-###-####'
-          END AS phone,
+            WHEN IS_ROLE_IN_SESSION('PURPOSE_B') THEN sensitive_column_2
+            ELSE 'masked_value_2'
+          END AS sensitive_column_2,
           
           -- Non-classified columns passed through as-is
-          customer_id,
-          first_name,
-          last_name,
-          address,
-          city,
-          state,
-          zip_code,
-          registration_date
-        FROM Customer.profiles;
+          id,
+          non_sensitive_column_1,
+          non_sensitive_column_2,
+          non_sensitive_column_3,
+          created_at,
+          updated_at
+        FROM schema.table;
         ```
         
         4. REVOKE & GRANT section
         ```
-        -- Revoke access to original tables
-        REVOKE ALL PRIVILEGES ON TABLE Customer.profiles FROM ROLE {role_name};
+        -- Revoke access to original tables from the specific role only
+        REVOKE ALL PRIVILEGES ON TABLE schema.table FROM ROLE {role_name};
         
         -- Grant access to secure views
-        GRANT SELECT ON VIEW Customer.profiles_secure_view TO ROLE {role_name};
+        GRANT SELECT ON VIEW schema.table_secure_view TO ROLE {role_name};
         ```
         
         The final script must:
@@ -409,8 +416,10 @@ class DDLGenerator:
         6. Apply masking only to columns that have policies defined in the JSON
         7. Non-classified columns must be passed through as-is without any masking
         8. Include row filtering policies based on the purposes in the JSON
-        9. Use purpose-based roles in the role hierarchy and in masking policy conditions
-        10. Name masking policies based on data element names for standardization
+        9. Ensure row filtering policies include role checks (using IS_ROLE_IN_SESSION) to verify that users have the appropriate role for the purpose
+        10. Use purpose-based roles in the role hierarchy and in masking policy conditions
+        11. Name masking policies based on data element names for standardization
+        12. When revoking privileges, only revoke from the specific role mentioned, not from all roles
         
         Format the DDL with proper indentation and SQL best practices.
         """
