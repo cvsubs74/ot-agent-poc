@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS risk_control;
 DROP TABLE IF EXISTS obligation_risk;
 DROP TABLE IF EXISTS obligation_policy;
 DROP TABLE IF EXISTS risk;
+DROP TABLE IF EXISTS sensitivity_policy_mapping;
 DROP TABLE IF EXISTS sensitivity_obligation;
 DROP TABLE IF EXISTS obligation;
 DROP TABLE IF EXISTS purpose_role;
@@ -2149,11 +2150,23 @@ CREATE TABLE IF NOT EXISTS `sensitivity_obligation` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `sensitivity_id` INT NOT NULL,
     `obligation_id` INT NOT NULL,
-    `priority` VARCHAR(50) DEFAULT 'Medium',
+    `priority` INT DEFAULT 5,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`obligation_id`) REFERENCES `obligation`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_sensitivity_obligation` (`sensitivity_id`, `obligation_id`)
+);
+
+-- Create Sensitivity Policy mapping table
+CREATE TABLE IF NOT EXISTS `sensitivity_policy_mapping` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `sensitivity_id` INT NOT NULL,
+    `policy_id` INT NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`sensitivity_id`) REFERENCES `sensitivity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`policy_id`) REFERENCES `policy`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_sensitivity_policy` (`sensitivity_id`, `policy_id`)
 );
 
 -- Create Obligation Policy mapping table
@@ -2249,6 +2262,42 @@ VALUES
 
 -- Public (minimal sensitivity)
 -- No obligations required for public data
+
+-- =============================================
+-- SEED SENSITIVITY POLICY MAPPINGS
+-- =============================================
+
+-- Map sensitivity levels to appropriate policies
+INSERT INTO `sensitivity_policy_mapping` (`sensitivity_id`, `policy_id`, `description`)
+VALUES
+-- Public data sensitivity mappings
+((SELECT id FROM sensitivity WHERE name = 'Public'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Public data requires basic access controls'),
+((SELECT id FROM sensitivity WHERE name = 'Public'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Public data still requires retention policies'),
+
+-- Internal data sensitivity mappings
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Internal data requires organization-level access controls'),
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Internal data requires standard retention policies'),
+((SELECT id FROM sensitivity WHERE name = 'Internal'), (SELECT id FROM policy WHERE name = 'Data Sharing Policy'), 'Internal data has sharing restrictions'),
+
+-- Confidential data sensitivity mappings
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Confidential data requires strict access controls'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Confidential data requires careful retention management'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM policy WHERE name = 'Data Sharing Policy'), 'Confidential data has significant sharing restrictions'),
+((SELECT id FROM sensitivity WHERE name = 'Confidential'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Confidential data requires security measures'),
+
+-- Restricted data sensitivity mappings
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Restricted data requires very strict access controls'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Restricted data requires careful retention management'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM policy WHERE name = 'Data Sharing Policy'), 'Restricted data has severe sharing restrictions'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Restricted data requires enhanced security measures'),
+((SELECT id FROM sensitivity WHERE name = 'Restricted'), (SELECT id FROM policy WHERE name = 'Data Minimization Policy'), 'Restricted data should be minimized where possible'),
+
+-- Special Category data sensitivity mappings
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM policy WHERE name = 'Data Access Control Policy'), 'Special Category data requires the strictest access controls'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM policy WHERE name = 'Data Retention Policy'), 'Special Category data requires careful retention management'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM policy WHERE name = 'Data Sharing Policy'), 'Special Category data has the most severe sharing restrictions'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM policy WHERE name = 'Data Security Policy'), 'Special Category data requires the highest security measures'),
+((SELECT id FROM sensitivity WHERE name = 'Special Category'), (SELECT id FROM policy WHERE name = 'Data Minimization Policy'), 'Special Category data should be strictly minimized');
 
 -- =============================================
 -- SEED SAMPLE RISKS

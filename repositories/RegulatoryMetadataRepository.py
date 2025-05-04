@@ -5,7 +5,372 @@ class RegulatoryMetadataRepository:
 
     def __init__(self, connection):
         self.connection = connection
+        
+    # --- SENSITIVITY TO POLICY MAPPING METHODS ---
+    def create_sensitivity_policy_mapping_table(self):
+        """Create the table that maps sensitivity levels to policies."""
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sensitivity_policy_mapping (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                sensitivity_id INTEGER NOT NULL,
+                policy_id INTEGER NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(sensitivity_id, policy_id),
+                FOREIGN KEY (sensitivity_id) REFERENCES sensitivity(id) ON DELETE CASCADE,
+                FOREIGN KEY (policy_id) REFERENCES policy(id) ON DELETE CASCADE
+            );
+        ''')
+        self.connection.commit()
+        cursor.close()
+        
+    def add_sensitivity_policy_mapping(self, sensitivity_id, policy_id, description=None):
+        """Add a mapping between a sensitivity level and a policy.
+        
+        Args:
+            sensitivity_id (int): The ID of the sensitivity level
+            policy_id (int): The ID of the policy
+            description (str, optional): Description of why this mapping exists
+            
+        Returns:
+            int: The ID of the newly created mapping
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO sensitivity_policy_mapping (sensitivity_id, policy_id, description)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE description = VALUES(description)
+            ''', (sensitivity_id, policy_id, description))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding sensitivity policy mapping: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def get_sensitivity_policy_mappings(self, sensitivity_id=None, policy_id=None):
+        """Get sensitivity-to-policy mappings with optional filters.
+        
+        Args:
+            sensitivity_id (int, optional): Filter by sensitivity ID
+            policy_id (int, optional): Filter by policy ID
+            
+        Returns:
+            list: List of dictionaries containing mapping information
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = '''
+                SELECT spm.id, s.id as sensitivity_id, s.name as sensitivity_name, 
+                       p.id as policy_id, p.name as policy_name, spm.description
+                FROM sensitivity_policy_mapping spm
+                JOIN sensitivity s ON spm.sensitivity_id = s.id
+                JOIN policy p ON spm.policy_id = p.id
+                WHERE 1=1
+            '''
+            params = []
+            
+            if sensitivity_id:
+                query += " AND spm.sensitivity_id = %s"
+                params.append(sensitivity_id)
+                
+            if policy_id:
+                query += " AND spm.policy_id = %s"
+                params.append(policy_id)
+                
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "id": row[0],
+                    "sensitivity_id": row[1],
+                    "sensitivity_name": row[2],
+                    "policy_id": row[3],
+                    "policy_name": row[4],
+                    "description": row[5]
+                })
+            return results
+        except Exception as e:
+            print(f"Error getting sensitivity policy mappings: {e}")
+            return []
+        finally:
+            cursor.close()
+            
+    def delete_sensitivity_policy_mapping(self, mapping_id):
+        """Delete a sensitivity-to-policy mapping.
+        
+        Args:
+            mapping_id (int): The ID of the mapping to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("DELETE FROM sensitivity_policy_mapping WHERE id = %s", (mapping_id,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting sensitivity policy mapping: {e}")
+            return False
+        finally:
+            cursor.close()
+            
+    def get_policies_by_sensitivity(self, sensitivity_id):
+        """Get all policies associated with a specific sensitivity level.
+        
+        Args:
+            sensitivity_id (int): The ID of the sensitivity level
+            
+        Returns:
+            list: List of basic policy dictionaries associated with the sensitivity level
+        """
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            # Get the basic policy information
+            cursor.execute('''
+                SELECT p.id, p.name, p.description, p.status, p.effective_date, p.expiration_date, p.policy_type,
+                       spm.description as mapping_description
+                FROM policy p
+                JOIN sensitivity_policy_mapping spm ON p.id = spm.policy_id
+                WHERE spm.sensitivity_id = %s
+            ''', (sensitivity_id,))
+            
+            policies = cursor.fetchall()
+            
+            # Get sensitivity name
+            cursor.execute("SELECT name FROM sensitivity WHERE id = %s", (sensitivity_id,))
+            sensitivity_row = cursor.fetchone()
+            sensitivity_name = sensitivity_row['name'] if sensitivity_row else 'Unknown'
+            
+            # Add sensitivity name to each policy
+            for policy in policies:
+                policy['sensitivity_name'] = sensitivity_name
+                
+            return policies
+        except Exception as e:
+            print(f"Error getting policies by sensitivity: {e}")
+            return []
+        finally:
+            cursor.close()
+            
 
+            
+    def get_sensitivity_by_name(self, sensitivity_name):
+        """Get sensitivity details by name.
+        
+        Args:
+            sensitivity_name (str): The name of the sensitivity level
+            
+        Returns:
+            dict: Dictionary containing sensitivity information or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT id, name, description FROM sensitivity WHERE name = %s", (sensitivity_name,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting sensitivity by name: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def get_purpose_based_policies_for_data_element(self, data_element_id):
+        """Get policies associated with a data element through purpose-based mappings.
+        
+        Args:
+            data_element_id (int): The ID of the data element
+            
+        Returns:
+            list: List of policy dictionaries with detailed information
+        """
+        cursor = self.connection.cursor()
+        purpose_policies = []
+        
+        try:
+            # First get the basic policy information
+            cursor.execute('''
+                SELECT DISTINCT p.id, p.name, p.description, pt.name as policy_type
+                FROM policy p
+                JOIN policy_type pt ON p.policy_type_id = pt.id
+                JOIN policy_purpose pp ON p.id = pp.policy_id
+                JOIN policy_purpose_data_element ppde ON pp.id = ppde.policy_purpose_id
+                WHERE ppde.data_element_id = %s
+            ''', (data_element_id,))
+            
+            for row in cursor.fetchall():
+                policy_id = row[0]
+                policy = {
+                    "id": policy_id,
+                    "name": row[1],
+                    "description": row[2],
+                    "type": row[3],  # Using policy_type from the join
+                    "policy_type": row[3]  # Duplicate for compatibility with sensitivity-based policies
+                }
+                
+                # Get security details for this policy
+                security_details = self.get_policy_security_details(policy_id)
+                if security_details:
+                    policy.update(security_details)
+                
+                # Get usage details for this policy
+                usage_details = self.get_policy_usage_details(policy_id)
+                if usage_details:
+                    policy.update(usage_details)
+                
+                # Get retention details for this policy
+                retention_details = self.get_policy_retention_details(policy_id)
+                if retention_details:
+                    policy.update(retention_details)
+                
+                purpose_policies.append(policy)
+                
+            return purpose_policies
+        except Exception as e:
+            print(f"Error getting purpose-based policies: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_policy_security_details(self, policy_id):
+        """Get security details for a policy.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            
+        Returns:
+            dict: Dictionary with security details or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                SELECT requires_encryption, encryption_algorithm, 
+                       requires_masking, masking_format,
+                       requires_access_control, access_control_type
+                FROM policy_security
+                WHERE policy_id = %s
+            ''', (policy_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "requires_encryption": row[0],
+                    "encryption_algorithm": row[1],
+                    "requires_masking": row[2],
+                    "masking_format": row[3],
+                    "requires_access_control": row[4],
+                    "access_control_type": row[5]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting policy security details: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_policy_usage_details(self, policy_id):
+        """Get usage details for a policy.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            
+        Returns:
+            dict: Dictionary with usage details or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                SELECT usage_operations, usage_allowed
+                FROM policy_usage
+                WHERE policy_id = %s
+            ''', (policy_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "usage_operations": row[0],
+                    "usage_allowed": row[1]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting policy usage details: {e}")
+            return None
+        finally:
+            cursor.close()
+    
+    def get_policy_retention_details(self, policy_id):
+        """Get retention details for a policy.
+        
+        Args:
+            policy_id (int): The ID of the policy
+            
+        Returns:
+            dict: Dictionary with retention details or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                SELECT retention_period, retention_basis
+                FROM policy_retention
+                WHERE policy_id = %s
+            ''', (policy_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "retention_period": row[0],
+                    "retention_basis": row[1]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting policy retention details: {e}")
+            return None
+        finally:
+            cursor.close()
+            
+    def get_data_element_by_id(self, data_element_id):
+        """Get data element details by ID.
+        
+        Args:
+            data_element_id (int): The ID of the data element
+            
+        Returns:
+            dict: Dictionary containing data element details or None if not found
+        """
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                SELECT id, name, description, data_category_id
+                FROM data_element
+                WHERE id = %s
+            """
+            cursor.execute(query, (data_element_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2],
+                    "data_category_id": row[3]
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting data element by ID: {e}")
+            return None
+        finally:
+            cursor.close()
+    
     # --- POLICY OVERRIDE TABLES: CRUD Methods ---
     def create_policy_override_role_purpose_data_usage_table(self):
         cursor = self.connection.cursor()
@@ -534,6 +899,7 @@ class RegulatoryMetadataRepository:
         self.create_framework_control_table()
         self.create_policy_control_table()
         self.create_risk_control_table()
+        self.create_sensitivity_policy_mapping_table()
         
     def create_law_jurisdiction_table(self):
         """Create the Law Jurisdiction table."""

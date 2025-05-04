@@ -409,229 +409,16 @@ class FrameworkControlPage:
             st.info("No framework-control mappings found with the selected filters.")
 
 
-class ObligationRiskPage:
-    def __init__(self, glossary_repository, obligation_repository):
+class SensitivityPoliciesPage:
+    def __init__(self, glossary_repository, regulatory_metadata_repository):
         self.glossary_repository = glossary_repository
-        self.obligation_repository = obligation_repository
+        self.regulatory_metadata_repository = regulatory_metadata_repository
 
     def render(self):
         st.markdown('''
         <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-            <b>About Obligation-Risk Mapping:</b><br>
-            This section maps obligations to potential risks, establishing which risks may materialize if specific obligations are not fulfilled. These mappings help organizations understand the consequences of non-compliance with regulatory obligations.
-        </div>
-        ''', unsafe_allow_html=True)
-
-        # Get all obligations
-        obligations = self.obligation_repository.get_obligations()
-        obligation_options = {o["id"]: o["name"] for o in obligations}
-        obligation_options[0] = "All Obligations"
-
-        # Get risk data from the repository
-        risk_data = self.glossary_repository.get_risks()
-        if not risk_data:
-            st.warning("No risk data available in the database.")
-            return
-        risk_options = {r["id"]: r["name"] for r in risk_data}
-        risk_options[0] = "All Risks"
-
-        # Create filters
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            selected_obligation_id = st.selectbox(
-                "Filter by Obligation",
-                options=list(obligation_options.keys()),
-                format_func=lambda x: obligation_options[x],
-                index=0,
-                key="obligation_risk_obligation_filter"
-            )
-        with col2:
-            selected_risk_id = st.selectbox(
-                "Filter by Risk",
-                options=list(risk_options.keys()),
-                format_func=lambda x: risk_options[x],
-                index=0,
-                key="obligation_risk_risk_filter"
-            )
-        with col3:
-            risk_categories = ["All", "Security", "Privacy", "Consent", "Transfer", "Rights", "Third Party", "Governance"]
-            selected_risk_category = st.selectbox(
-                "Filter by Risk Category",
-                options=risk_categories,
-                index=0,
-                key="obligation_risk_category_filter"
-            )
-
-        # Get obligation-risk mappings from the repository
-        obligation_risk_data = self.obligation_repository.get_obligation_risks()
-
-        # Filter the data based on selections
-        filtered_data = obligation_risk_data
-        if selected_obligation_id != 0:
-            filtered_data = [item for item in filtered_data if item["obligation_id"] == selected_obligation_id]
-        if selected_risk_id != 0:
-            filtered_data = [item for item in filtered_data if item["risk_id"] == selected_risk_id]
-        if selected_risk_category != "All":
-            filtered_data = [item for item in filtered_data if item.get("category", "") == selected_risk_category]
-
-        if filtered_data:
-            # Create a DataFrame
-            df = pd.DataFrame(filtered_data)
-            # Create a mapping of columns that might exist in the data
-            column_mapping = {}
-            if "obligation_name" in df.columns:
-                column_mapping["obligation_name"] = "Obligation"
-            if "risk_name" in df.columns:
-                column_mapping["risk_name"] = "Risk"
-            if "category" in df.columns:
-                column_mapping["category"] = "Risk Category"
-            if "likelihood" in df.columns:
-                column_mapping["likelihood"] = "Likelihood"
-            if "impact" in df.columns:
-                column_mapping["impact"] = "Impact"
-            # Rename columns that exist
-            df = df.rename(columns=column_mapping)
-            # Display columns in a specific order, but only include columns that exist
-            display_columns = ["Obligation", "Risk", "Risk Category", "Likelihood", "Impact"]
-            available_columns = [col for col in display_columns if col in df.columns]
-            if available_columns:
-                df = df[available_columns]
-            # Sort by risk category and likelihood, but only use columns that exist
-            sort_columns = []
-            if "Risk Category" in df.columns:
-                sort_columns.append("Risk Category")
-            if "Likelihood" in df.columns:
-                sort_columns.append("Likelihood")
-            if "Impact" in df.columns:
-                sort_columns.append("Impact")
-            if sort_columns:
-                df = df.sort_values(by=sort_columns)
-            # Display the dataframe
-            st.dataframe(df, use_container_width=True)
-            # Add explanation
-            st.markdown("""
-            <div style=\"background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;\">
-                <h4 style=\"margin-top: 0;\">How Obligation-Risk Mapping Works</h4>
-                <p>The Obligation-Risk mapping identifies potential risks that may materialize if specific obligations are not fulfilled:</p>
-                <ul>
-                    <li><strong>Risk Assessment:</strong> Each mapping includes the likelihood and impact of the risk materializing</li>
-                    <li><strong>Risk Categories:</strong> Risks are categorized by type (security, privacy, etc.) for easier management</li>
-                    <li><strong>Multiple Risks:</strong> An obligation may mitigate multiple risks with varying degrees of likelihood and impact</li>
-                </ul>
-                <p>This mapping enables organizations to make risk-based decisions about which obligations to prioritize and which risks to accept.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("No obligation-risk mappings match the selected filters.")
-
-
-class ObligationPolicyPage:
-    def __init__(self, glossary_repository, obligation_repository):
-        self.glossary_repository = glossary_repository
-        self.obligation_repository = obligation_repository
-
-    def render(self):
-        st.markdown('''
-        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-            <b>About Obligation-Policy Mapping:</b><br>
-            This section maps obligations to organizational policies, establishing which policies address specific compliance requirements. These mappings help organizations understand how their internal policies support regulatory compliance.
-        </div>
-        ''', unsafe_allow_html=True)
-
-        # Get all obligations
-        obligations = self.obligation_repository.get_obligations()
-        # Create a filter for obligations
-        obligation_options = {o["id"]: o["name"] for o in obligations}
-        obligation_options[0] = "All Obligations"
-
-        # Get all policies
-        policies = self.glossary_repository.get_policies()
-        # Create a filter for policies
-        policy_options = {p["id"]: p["name"] for p in policies}
-        policy_options[0] = "All Policies"
-
-        # Create filters
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            selected_obligation_id = st.selectbox(
-                "Filter by Obligation",
-                options=list(obligation_options.keys()),
-                format_func=lambda x: obligation_options[x],
-                index=0,
-                key="obligation_policy_obligation_filter"
-            )
-        with col2:
-            selected_policy_id = st.selectbox(
-                "Filter by Policy",
-                options=list(policy_options.keys()),
-                format_func=lambda x: policy_options[x],
-                index=0,
-                key="obligation_policy_policy_filter"
-            )
-        with col3:
-            control_types = ["All", "Encryption", "Access Control", "Masking", "Monitoring", "Retention", "General"]
-            selected_control_type = st.selectbox(
-                "Filter by Control Type",
-                options=control_types,
-                index=0,
-                key="obligation_policy_control_filter"
-            )
-
-        # Get obligation-policy mappings from the repository
-        obligation_policy_data = self.obligation_repository.get_obligation_policies()
-
-        # Filter the data based on selections
-        filtered_data = obligation_policy_data
-        if selected_obligation_id != 0:
-            filtered_data = [item for item in filtered_data if item["obligation_id"] == selected_obligation_id]
-        if selected_policy_id != 0:
-            filtered_data = [item for item in filtered_data if item["policy_id"] == selected_policy_id]
-        if selected_control_type != "All":
-            filtered_data = [item for item in filtered_data if item["control_type"] == selected_control_type]
-
-        if filtered_data:
-            # Create a DataFrame
-            df = pd.DataFrame(filtered_data)
-            df = df.rename(columns={
-                "obligation_name": "Obligation",
-                "policy_name": "Policy",
-                "control_type": "Control Type",
-                "relevance_score": "Relevance Score"
-            })
-            # Display columns in a specific order
-            display_columns = ["Obligation", "Policy", "Control Type", "Relevance Score"]
-            df = df[display_columns]
-            # Sort by relevance score (descending)
-            df = df.sort_values(by=["Relevance Score"], ascending=False)
-            # Display the dataframe
-            st.dataframe(df, use_container_width=True)
-            # Add explanation
-            st.markdown("""
-            <div style=\"background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;\">
-                <h4 style=\"margin-top: 0;\">How Obligation-Policy Mapping Works</h4>
-                <p>The Obligation-Policy mapping establishes which organizational policies address specific compliance obligations:</p>
-                <ul>
-                    <li><strong>Relevance Score:</strong> Indicates how directly a policy addresses an obligation (1.0 = perfect match)</li>
-                    <li><strong>Control Type:</strong> Categorizes the type of control implemented by the obligation</li>
-                    <li><strong>Multiple Policies:</strong> An obligation may be addressed by multiple policies with varying degrees of relevance</li>
-                </ul>
-                <p>This mapping enables organizations to demonstrate compliance by linking obligations to specific policy documents.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("No obligation-policy mappings match the selected filters.")
-
-
-class SensitivityObligationsPage:
-    def __init__(self, glossary_repository, obligation_repository):
-        self.glossary_repository = glossary_repository
-        self.obligation_repository = obligation_repository
-
-    def render(self):
-        st.markdown('''
-        <div style="background-color: #eaf7ea; padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 5px solid #27ae60;">
-            <b>About Sensitivity Obligations Mapping:</b><br>
-            This section defines standard security and privacy obligations that should be applied based on data sensitivity levels. These mappings help organizations implement appropriate safeguards for different types of data based on their sensitivity classification.
+            <b>About Sensitivity Policies:</b><br>
+            This section defines standard security and privacy policies that should be applied based on data sensitivity levels. These mappings help organizations implement appropriate safeguards for different types of data based on their sensitivity classification.
         </div>
         ''', unsafe_allow_html=True)
 
@@ -647,38 +434,189 @@ class SensitivityObligationsPage:
             options=list(sensitivity_options.keys()),
             format_func=lambda x: sensitivity_options[x],
             index=0,
-            key="sensitivity_filter"
+            key="sensitivity_policy_filter"
         )
 
-        # Get sensitivity obligations with filter
-        sensitivity_id = None if selected_sensitivity_id == 0 else selected_sensitivity_id
-        sensitivity_obligations = self.obligation_repository.get_sensitivity_obligations(sensitivity_id)
+        # Get policies for the selected sensitivity
+        if selected_sensitivity_id == 0:
+            # Get policies for all sensitivities
+            all_policies = []
+            for sensitivity in sensitivities:
+                policies = self.regulatory_metadata_repository.get_policies_by_sensitivity(sensitivity["id"])
+                all_policies.extend(policies)
+            sensitivity_policies = all_policies
+        else:
+            # Get policies for the selected sensitivity
+            sensitivity_policies = self.regulatory_metadata_repository.get_policies_by_sensitivity(selected_sensitivity_id)
 
-        if sensitivity_obligations:
+        if sensitivity_policies:
+            # Enhance policies with security, usage, and retention details
+            enhanced_policies = []
+            for policy in sensitivity_policies:
+                policy_id = policy['id']
+                enhanced_policy = dict(policy)
+                
+                # Get data elements associated with this sensitivity level
+                cursor = self.regulatory_metadata_repository.connection.cursor()
+                try:
+                    # Extract sensitivity_id from the policy
+                    sensitivity_id = None
+                    for s in sensitivities:
+                        if s['name'] == policy['sensitivity_name']:
+                            sensitivity_id = s['id']
+                            break
+                    
+                    if sensitivity_id is not None:
+                        cursor.execute('''
+                            SELECT de.id
+                            FROM data_element de
+                            JOIN data_element_sensitivity des ON de.id = des.data_element_id
+                            WHERE des.sensitivity_id = %s
+                        ''', (sensitivity_id,))
+                    
+                    data_element_ids = [row[0] for row in cursor.fetchall()]
+                    
+                    # If no data elements found for this sensitivity, use a representative one
+                    if not data_element_ids:
+                        cursor.execute("SELECT id FROM data_element LIMIT 1")
+                        de_row = cursor.fetchone()
+                        if de_row:
+                            data_element_ids = [de_row[0]]
+                except Exception as e:
+                    print(f"Error getting data elements: {e}")
+                    data_element_ids = []
+                finally:
+                    cursor.close()
+                
+                # Only proceed if we have data elements
+                if data_element_ids:
+                    # Get security policies
+                    security_policies = []
+                    for de_id in data_element_ids:
+                        sec_policies = self.regulatory_metadata_repository.get_policy_data_element_security(
+                            policy_id=policy_id, data_element_id=de_id)
+                        security_policies.extend(sec_policies)
+                    
+                    # Get usage policies
+                    usage_policies = []
+                    for de_id in data_element_ids:
+                        use_policies = self.regulatory_metadata_repository.get_policy_data_element_usage(
+                            policy_id=policy_id, data_element_id=de_id)
+                        usage_policies.extend(use_policies)
+                    
+                    # Get retention policies
+                    retention_policies = []
+                    for de_id in data_element_ids:
+                        ret_policies = self.regulatory_metadata_repository.get_policy_data_element_retention(
+                            policy_id=policy_id, data_element_id=de_id)
+                        retention_policies.extend(ret_policies)
+                    
+                    # Add security details
+                    if security_policies:
+                        enhanced_policy['requires_encryption'] = any(p['requires_encryption'] for p in security_policies)
+                        encryption_algos = [p['encryption_algorithm'] for p in security_policies if p['encryption_algorithm']]
+                        enhanced_policy['encryption_algorithm'] = encryption_algos[0] if encryption_algos else None
+                        
+                        enhanced_policy['requires_masking'] = any(p['requires_masking'] for p in security_policies)
+                        masking_formats = [p['masking_format'] for p in security_policies if p['masking_format']]
+                        enhanced_policy['masking_format'] = masking_formats[0] if masking_formats else None
+                        
+                        enhanced_policy['requires_access_control'] = any(p['requires_access_control'] for p in security_policies)
+                        access_types = [p['access_control_type'] for p in security_policies if p['access_control_type']]
+                        enhanced_policy['access_control_type'] = access_types[0] if access_types else None
+                    else:
+                        # Default values if no security policies found
+                        enhanced_policy['requires_encryption'] = False
+                        enhanced_policy['encryption_algorithm'] = None
+                        enhanced_policy['requires_masking'] = False
+                        enhanced_policy['masking_format'] = None
+                        enhanced_policy['requires_access_control'] = False
+                        enhanced_policy['access_control_type'] = None
+                    
+                    # Add usage details
+                    if usage_policies:
+                        operations = [p['operation'] for p in usage_policies]
+                        allowed = [p['allowed'] for p in usage_policies]
+                        enhanced_policy['usage_operations'] = ', '.join(operations)
+                        enhanced_policy['usage_allowed'] = 'Yes' if all(allowed) else 'No' if not any(allowed) else 'Partial'
+                    else:
+                        enhanced_policy['usage_operations'] = None
+                        enhanced_policy['usage_allowed'] = None
+                    
+                    # Add retention details
+                    if retention_policies:
+                        retention_periods = [p['retention_period'] for p in retention_policies if p['retention_period']]
+                        enhanced_policy['retention_period'] = retention_periods[0] if retention_periods else None
+                        
+                        retention_bases = [p['retention_basis'] for p in retention_policies if p['retention_basis']]
+                        enhanced_policy['retention_basis'] = retention_bases[0] if retention_bases else None
+                    else:
+                        enhanced_policy['retention_period'] = None
+                        enhanced_policy['retention_basis'] = None
+                
+                enhanced_policies.append(enhanced_policy)
+            
             # Convert to DataFrame for display
-            df = pd.DataFrame(sensitivity_obligations)
+            df = pd.DataFrame(enhanced_policies)
+            
+            # Add policy type filter if we have policy types
+            if "policy_type" in df.columns:
+                policy_types = sorted(df["policy_type"].unique())
+                selected_policy_type = st.selectbox(
+                    "Filter by Policy Type",
+                    options=["All"] + list(policy_types),
+                    index=0,
+                    key="policy_type_filter"
+                )
+                if selected_policy_type != "All":
+                    df = df[df["policy_type"] == selected_policy_type]
+            
             # Rename columns for better display
-            df = df.rename(columns={
+            column_mapping = {
                 "id": "ID",
                 "sensitivity_name": "Sensitivity Level",
-                "obligation_name": "Standard Obligation",
-                "obligation_description": "Description",
-                "control_type": "Control Type",
-                "priority": "Priority"
-            })
+                "name": "Policy Name",
+                "description": "Description",
+                "policy_type": "Policy Type",
+                "requires_encryption": "Encryption Required",
+                "encryption_algorithm": "Encryption Algorithm",
+                "requires_masking": "Masking Required",
+                "masking_format": "Masking Format",
+                "requires_access_control": "Access Control Required",
+                "access_control_type": "Access Control Type",
+                "usage_operations": "Usage Operations",
+                "usage_allowed": "Usage Allowed",
+                "retention_period": "Retention Period",
+                "retention_basis": "Retention Basis"
+            }
+            # Only rename columns that exist in the DataFrame
+            rename_cols = {k: v for k, v in column_mapping.items() if k in df.columns}
+            df = df.rename(columns=rename_cols)
 
-            # Reorder columns for better display
-            display_columns = ["ID", "Sensitivity Level", "Standard Obligation", "Description", "Control Type", "Priority"]
-            df = df[display_columns]
+            # Define display columns (only include columns that exist)
+            all_display_columns = ["ID", "Sensitivity Level", "Policy Name", "Description", "Policy Type", 
+                                 "Encryption Required", "Encryption Algorithm", "Masking Required", "Masking Format", 
+                                 "Access Control Required", "Access Control Type", "Usage Operations", "Usage Allowed",
+                                 "Retention Period", "Retention Basis"]
+            display_columns = [col for col in all_display_columns if col in df.columns]
+
+            # Sort by sensitivity level and policy name
+            df = df.sort_values(by=["Sensitivity Level", "Policy Name"])
+
+            # Format boolean columns to Yes/No
+            boolean_columns = ["Encryption Required", "Masking Required", "Access Control Required"]
+            for col in boolean_columns:
+                if col in df.columns:
+                    df[col] = df[col].map({True: "Yes", False: "No"})
 
             # Display the dataframe
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df[display_columns], use_container_width=True)
 
             # Add explanation
             st.markdown("""
-            <div style=\"background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;\">
-                <h4 style=\"margin-top: 0;\">How Sensitivity Obligations Work</h4>
-                <p>This mapping table defines the standard security and privacy controls that should be applied based on data sensitivity:</p>
+            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                <h4 style="margin-top: 0;">How Sensitivity Policies Work</h4>
+                <p>This mapping table defines the standard security and privacy policies that should be applied based on data sensitivity:</p>
                 <ul>
                     <li><strong>Special Category Data:</strong> Requires the highest level of protection with strict encryption, access controls, and monitoring</li>
                     <li><strong>Restricted Data:</strong> Requires strong protection measures including encryption and access restrictions</li>
@@ -686,11 +624,11 @@ class SensitivityObligationsPage:
                     <li><strong>Internal Data:</strong> Requires standard organizational controls</li>
                     <li><strong>Public Data:</strong> Requires basic integrity controls</li>
                 </ul>
-                <p>These mappings are used by the Obligation Inference API to recommend appropriate controls based on data sensitivity.</p>
+                <p>These mappings are used by the Policy Inference API to recommend appropriate controls based on data sensitivity.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.warning("No sensitivity-obligation mappings available in the database.")
+            st.warning("No sensitivity policies available for the selected sensitivity level.")
 
 
 class PolicyPurposeDataUsagePage:

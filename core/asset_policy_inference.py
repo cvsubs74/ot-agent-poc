@@ -1,4 +1,6 @@
 import pandas as pd
+from core.sensitivity_inference import SensitivityInference
+from repositories.GlossaryRepository import GlossaryRepository
 
 class AssetPolicyInference:
     """
@@ -6,18 +8,21 @@ class AssetPolicyInference:
     for a given asset and purpose, including all policy types (security, usage, retention).
     """
     
-    def __init__(self, catalog_repository, regulatory_metadata_repository, glossary_repository):
+    def __init__(self, catalog_repository, regulatory_metadata_repository, inventory_repository):
         """
         Initialize the AssetPolicyInference with required repositories.
         
         Args:
             catalog_repository: Repository for accessing catalog data
             regulatory_metadata_repository: Repository for accessing policy metadata
-            glossary_repository: Repository for accessing glossary data
+            inventory_repository: Repository for accessing inventory data
         """
         self.catalog_repository = catalog_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
-        self.glossary_repository = glossary_repository
+        self.inventory_repository = inventory_repository
+        # Initialize the glossary repository with the same connection as the regulatory metadata repository
+        self.glossary_repository = GlossaryRepository(regulatory_metadata_repository.connection)
+        self.sensitivity_inference = SensitivityInference(self.glossary_repository, regulatory_metadata_repository)
     
     def get_applied_policies_for_asset_purpose(self, asset_id, purpose_id, policy_type='all', role_id='all'):
         """
@@ -41,10 +46,10 @@ class AssetPolicyInference:
         
         # Get asset name for reference
         asset_name = None
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset[0] == asset_id:
-                asset_name = asset[1]
+            if asset['id'] == asset_id:
+                asset_name = asset['name']
                 break
         logger.info(f"Asset: {asset_name} (ID: {asset_id})")
         
@@ -123,7 +128,6 @@ class AssetPolicyInference:
                 logger.warning(f"Purpose with ID {current_purpose_id} not found")
         
         # Create a DataFrame from the results
-        import pandas as pd
         if results:
             df = pd.DataFrame(results)
             logger.info(f"Created DataFrame with {len(df)} rows")
@@ -881,6 +885,321 @@ class AssetPolicyInference:
         # Call the column-based JSON generation method
         return self.generate_column_based_policy_json(asset_id, purpose_id, policy_type, role_id)
 
+    def get_data_element_by_id(self, data_element_id):
+        """
+        Get data element details by ID.
+        
+        Args:
+            data_element_id: The ID of the data element
+            
+        Returns:
+            Dictionary containing data element details or None if not found
+        """
+        # Get all data elements from the glossary repository
+        data_elements = self.glossary_repository.get_data_elements()
+        
+        # Find the data element with the matching ID
+        for element in data_elements:
+            if element.get('id') == data_element_id:
+                return element
+                
+        return None
+    
+    def get_sensitivity_based_policies_for_asset(self, asset_id):
+        """
+        Get sensitivity-based policies for all data elements in an asset.
+        
+        Args:
+            asset_id: ID of the asset
+            
+        Returns:
+            DataFrame containing sensitivity-based policies for the asset's data elements
+        """
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger('AssetPolicyInference')
+        
+        logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS STARTED =====")
+        logger.info(f"Parameters: asset_id={asset_id}")
+        print(f"===== SENSITIVITY-BASED POLICY ANALYSIS STARTED =====")
+        print(f"Parameters: asset_id={asset_id}")
+        
+        # Get asset name for reference
+        asset_name = None
+        assets = self.inventory_repository.get_assets()
+        for asset in assets:
+            if asset['id'] == asset_id:
+                asset_name = asset['name']
+                break
+        logger.info(f"Asset: {asset_name} (ID: {asset_id})")
+        
+        # Get all catalog entries for the asset
+        catalog_entries = self.catalog_repository.get_catalog_entries_by_asset(asset_id)
+        logger.info(f"Retrieved {len(catalog_entries)} catalog entries for asset")
+        
+        # Initialize results list
+        results = []
+        
+        # Process each catalog entry
+        for entry in catalog_entries:
+            # Skip entries without data elements
+            if not entry.get('data_element_id'):
+                logger.info(f"Skipping entry without data element ID")
+                continue
+                
+            data_element_id = entry.get('data_element_id')
+            logger.info(f"Processing data element ID: {data_element_id}")
+            print(f"Processing data element ID: {data_element_id}")
+            
+            data_element = self.get_data_element_by_id(data_element_id)
+            
+            if not data_element:
+                logger.info(f"Data element not found for ID: {data_element_id}")
+                continue
+                
+            logger.info(f"Found data element: {data_element.get('name')}")
+            print(f"Found data element: {data_element.get('name')}")
+            
+            # Get sensitivity-based policies for this data element
+            sensitivity_result = self.infer_policies_by_data_element_sensitivity(data_element_id)
+            
+            # Skip if no sensitivity or policies found
+            if not sensitivity_result['sensitivity'] or not sensitivity_result['policies']:
+                logger.info(f"No sensitivity or policies found for data element: {data_element.get('name')}")
+                continue
+                
+            sensitivity_name = sensitivity_result['sensitivity'].get('name', 'Unknown')
+            logger.info(f"Sensitivity: {sensitivity_name}")
+            print(f"Sensitivity: {sensitivity_name}")
+            
+            # Log the number of policies found
+            logger.info(f"Found {len(sensitivity_result['policies'])} policies for data element: {data_element.get('name')}")
+            print(f"Found {len(sensitivity_result['policies'])} policies for data element: {data_element.get('name')}")
+            
+            # Log the first policy's keys to see what fields are available
+            if sensitivity_result['policies']:
+                first_policy = sensitivity_result['policies'][0]
+                logger.info(f"First policy keys: {list(first_policy.keys())}")
+                print(f"First policy keys: {list(first_policy.keys())}")
+            
+            # Add each policy to results
+            for policy in sensitivity_result['policies']:
+                result = {
+                    'schema_name': entry.get('schema_name', ''),
+                    'table_name': entry.get('table_name', ''),
+                    'column_name': entry.get('column_name', ''),
+                    'data_type': entry.get('data_type', ''),
+                    'data_element_name': data_element.get('name', ''),
+                    'sensitivity': sensitivity_name,
+                    'policy_name': policy.get('name', ''),
+                    'policy_type': policy.get('policy_type', '')
+                }
+                
+                # Add security policy details
+                logger.info(f"Checking for security policy details in policy: {policy.get('name')}")
+                print(f"Checking for security policy details in policy: {policy.get('name')}")
+                if 'requires_encryption' in policy:
+                    logger.info(f"Found security details: encryption={policy.get('requires_encryption')}, masking={policy.get('requires_masking')}")
+                    print(f"Found security details: encryption={policy.get('requires_encryption')}, masking={policy.get('requires_masking')}")
+                    result['encryption_required'] = policy.get('requires_encryption', False)
+                    result['encryption_algorithm'] = policy.get('encryption_algorithm', '')
+                    result['masking_required'] = policy.get('requires_masking', False)
+                    result['masking_format'] = policy.get('masking_format', '')
+                    result['access_control_required'] = policy.get('requires_access_control', False)
+                    result['access_control_type'] = policy.get('access_control_type', '')
+                else:
+                    logger.info(f"No security details found in policy")
+                    print(f"No security details found in policy")
+                
+                # Add usage policy details
+                logger.info(f"Checking for usage policy details")
+                print(f"Checking for usage policy details")
+                if 'usage_operations' in policy:
+                    logger.info(f"Found usage details: operations={policy.get('usage_operations')}, allowed={policy.get('usage_allowed')}")
+                    print(f"Found usage details: operations={policy.get('usage_operations')}, allowed={policy.get('usage_allowed')}")
+                    result['usage_operations'] = policy.get('usage_operations', '')
+                    result['usage_allowed'] = policy.get('usage_allowed', '')
+                else:
+                    logger.info(f"No usage details found in policy")
+                    print(f"No usage details found in policy")
+                
+                # Add retention policy details
+                logger.info(f"Checking for retention policy details")
+                print(f"Checking for retention policy details")
+                if 'retention_period' in policy:
+                    logger.info(f"Found retention details: period={policy.get('retention_period')}, basis={policy.get('retention_basis')}")
+                    print(f"Found retention details: period={policy.get('retention_period')}, basis={policy.get('retention_basis')}")
+                    result['retention_period'] = policy.get('retention_period', '')
+                    result['retention_basis'] = policy.get('retention_basis', '')
+                else:
+                    logger.info(f"No retention details found in policy")
+                    print(f"No retention details found in policy")
+                
+                results.append(result)
+        
+        # Create a DataFrame from the results
+        if results:
+            df = pd.DataFrame(results)
+            logger.info(f"Created DataFrame with {len(df)} rows")
+            logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS COMPLETED =====")
+            return df
+        else:
+            logger.info("No sensitivity-based policies found")
+            logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS COMPLETED =====")
+            return pd.DataFrame()
+    
+    def infer_policies_by_data_element_sensitivity(self, data_element_id):
+        """
+        Infer policies for a data element based on its sensitivity level.
+        
+        Args:
+            data_element_id: The ID of the data element
+            
+        Returns:
+            Dictionary containing inferred policies and sensitivity information
+        """
+        # Get the data element details
+        data_element = self.get_data_element_by_id(data_element_id)
+        if not data_element:
+            return {
+                "data_element_id": data_element_id,
+                "sensitivity": None,
+                "policies": []
+            }
+        
+        # Use sensitivity inference to get the sensitivity
+        sensitivities = self.sensitivity_inference.infer_data_element_sensitivities([data_element])
+        if data_element['name'] not in sensitivities:
+            return {
+                "data_element_id": data_element_id,
+                "sensitivity": None,
+                "policies": []
+            }
+        
+        sensitivity_info = sensitivities[data_element['name']]
+        sensitivity_name = sensitivity_info['sensitivity']
+        
+        # If sensitivity is unknown, return empty result
+        if sensitivity_name == 'Unknown':
+            return {
+                "data_element_id": data_element_id,
+                "sensitivity": {
+                    "name": "Unknown",
+                    "source": sensitivity_info['source']
+                },
+                "policies": []
+            }
+        
+        # Get sensitivity details
+        sensitivity = self.regulatory_metadata_repository.get_sensitivity_by_name(sensitivity_name)
+        if not sensitivity:
+            return {
+                "data_element_id": data_element_id,
+                "sensitivity": {
+                    "name": sensitivity_name,
+                    "source": sensitivity_info['source']
+                },
+                "policies": []
+            }
+        
+        # Add source information to sensitivity
+        sensitivity["source"] = sensitivity_info['source']
+        
+        # Get basic policies for this sensitivity
+        basic_policies = self.regulatory_metadata_repository.get_policies_by_sensitivity(sensitivity["id"])
+        
+        # Enhance policies with security, usage, and retention details
+        enhanced_policies = []
+        for policy in basic_policies:
+            policy_id = policy['id']
+            enhanced_policy = dict(policy)
+            
+            # Get security policies for this data element
+            security_policies = self.regulatory_metadata_repository.get_policy_data_element_security(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Get usage policies for this data element
+            usage_policies = self.regulatory_metadata_repository.get_policy_data_element_usage(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Get retention policies for this data element
+            retention_policies = self.regulatory_metadata_repository.get_policy_data_element_retention(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Add security details
+            if security_policies:
+                enhanced_policy['requires_encryption'] = any(p['requires_encryption'] for p in security_policies)
+                encryption_algos = [p['encryption_algorithm'] for p in security_policies if p['encryption_algorithm']]
+                enhanced_policy['encryption_algorithm'] = encryption_algos[0] if encryption_algos else None
+                
+                enhanced_policy['requires_masking'] = any(p['requires_masking'] for p in security_policies)
+                masking_formats = [p['masking_format'] for p in security_policies if p['masking_format']]
+                enhanced_policy['masking_format'] = masking_formats[0] if masking_formats else None
+                
+                enhanced_policy['requires_access_control'] = any(p['requires_access_control'] for p in security_policies)
+                access_types = [p['access_control_type'] for p in security_policies if p['access_control_type']]
+                enhanced_policy['access_control_type'] = access_types[0] if access_types else None
+            
+            # Add usage details
+            if usage_policies:
+                operations = [p['operation'] for p in usage_policies]
+                allowed = [p['allowed'] for p in usage_policies]
+                enhanced_policy['usage_operations'] = ', '.join(operations)
+                enhanced_policy['usage_allowed'] = 'Yes' if all(allowed) else 'No' if not any(allowed) else 'Partial'
+            
+            # Add retention details
+            if retention_policies:
+                retention_periods = [p['retention_period'] for p in retention_policies if p['retention_period']]
+                enhanced_policy['retention_period'] = retention_periods[0] if retention_periods else None
+                
+                retention_bases = [p['retention_basis'] for p in retention_policies if p['retention_basis']]
+                enhanced_policy['retention_basis'] = retention_bases[0] if retention_bases else None
+            
+            enhanced_policies.append(enhanced_policy)
+        
+        return {
+            "data_element_id": data_element_id,
+            "sensitivity": sensitivity,
+            "policies": enhanced_policies
+        }
+    
+    def compare_purpose_and_sensitivity_policies(self, data_element_id):
+        """
+        Compare policies inferred from purpose-based approach vs. sensitivity-based approach.
+        
+        Args:
+            data_element_id: The ID of the data element
+            
+        Returns:
+            Dictionary containing both sets of policies and gap analysis
+        """
+        # Get policies from purpose-based approach
+        purpose_policies = self.regulatory_metadata_repository.get_purpose_based_policies_for_data_element(data_element_id)
+        
+        # Get policies from sensitivity-based approach
+        sensitivity_result = self.infer_policies_by_data_element_sensitivity(data_element_id)
+        sensitivity_policies = sensitivity_result["policies"]
+        
+        # Identify gaps (policies in one approach but not the other)
+        purpose_policy_ids = set(p["id"] for p in purpose_policies)
+        sensitivity_policy_ids = set(p["id"] for p in sensitivity_policies)
+        
+        missing_in_purpose = [p for p in sensitivity_policies if p["id"] not in purpose_policy_ids]
+        missing_in_sensitivity = [p for p in purpose_policies if p["id"] not in sensitivity_policy_ids]
+        
+        return {
+            "data_element_id": data_element_id,
+            "data_element_name": self.get_data_element_by_id(data_element_id)['name'] if self.get_data_element_by_id(data_element_id) else None,
+            "sensitivity": sensitivity_result["sensitivity"],
+            "purpose_policies": purpose_policies,
+            "sensitivity_policies": sensitivity_policies,
+            "gap_analysis": {
+                "missing_in_purpose_approach": missing_in_purpose,
+                "missing_in_sensitivity_approach": missing_in_sensitivity,
+                "has_gaps": len(missing_in_purpose) > 0 or len(missing_in_sensitivity) > 0
+            }
+        }
+        
     def generate_column_based_policy_json(self, asset_id, purpose_id=None, policy_type='all', role_id='all'):
         """
         Generate a column-based JSON structure for policy analysis.
@@ -918,10 +1237,10 @@ class AssetPolicyInference:
         }
         
         # Get asset name
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset[0] == asset_id:
-                result["asset_name"] = asset[1]
+            if asset['id'] == asset_id:
+                result["asset_name"] = asset['name']
                 break
         
         # If no policies found, return the basic structure
@@ -1056,10 +1375,10 @@ class AssetPolicyInference:
         }
         
         # Get asset name
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset[0] == asset_id:
-                result["asset_name"] = asset[1]
+            if asset['id'] == asset_id:
+                result["asset_name"] = asset['name']
                 break
         
         # If no policies found, return the basic structure

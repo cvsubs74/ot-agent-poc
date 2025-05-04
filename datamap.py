@@ -43,9 +43,7 @@ from UX.regulatory_metadata_pages import (
     PolicyPurposePage,
     PolicyPurposeDataElementPage,
     PolicyPurposeDataUsagePage,
-    SensitivityObligationsPage,
-    ObligationPolicyPage,
-    ObligationRiskPage,
+    SensitivityPoliciesPage,
     FrameworkControlPage,
     PolicyControlPage,
     RiskControlPage
@@ -99,7 +97,7 @@ class DataMap:
             self.glossary_repository,
             self.regulatory_metadata_repository
         )
-
+        
         self.policy_compliance_page = PolicyCompliancePage(
             self.glossary_repository,
             self.regulatory_metadata_repository
@@ -195,9 +193,7 @@ class DataMap:
             ("Policy Purpose", lambda: PolicyPurposePage(self.regulatory_metadata_repository).render()),
             ("Policy Purpose Data Element", lambda: PolicyPurposeDataElementPage(self.regulatory_metadata_repository).render()),
             ("Policy Purpose Data Usage", lambda: PolicyPurposeDataUsagePage(self.regulatory_metadata_repository).render()),
-            ("Sensitivity Obligations", lambda: SensitivityObligationsPage(self.glossary_repository, self.obligation_repository).render()),
-            ("Obligation Policy", lambda: ObligationPolicyPage(self.glossary_repository, self.obligation_repository).render()),
-            ("Obligation Risk", lambda: ObligationRiskPage(self.glossary_repository, self.obligation_repository).render()),
+            ("Sensitivity Policies", lambda: SensitivityPoliciesPage(self.glossary_repository, self.regulatory_metadata_repository).render()),
             ("Framework Control", lambda: FrameworkControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
             ("Policy Control", lambda: PolicyControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
             ("Risk Control", lambda: RiskControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()),
@@ -213,10 +209,10 @@ class DataMap:
             "Breach Notification Inference": [2],  # Law Incident Breach Notification tab
             "Transfer Mechanism Inference": [3],  # Law Transfer tab
             "Data Subject Rights Inference": [4],  # Data Subject Access Request tab
-            "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Obligations
-            "Obligation Inference": [5, 6, 7, 8, 9, 15],  # Same tabs as Data Sensitivity Inference + Sensitivity Obligations
-            "Risk Inference": [5, 6, 7, 8, 9, 15, 17],  # All tabs from Sensitivity Inference, Obligation Inference + Obligation Risk
-            "Control Inference": [18, 19, 20]  # Framework Control, Policy Control, Risk Control tabs
+            "Data Sensitivity Inference": [5, 6, 7, 8, 9, 15],  # Various sensitivity-related tabs including Sensitivity Policies
+            "Obligation Inference": [5, 6, 7, 8, 9, 15],  # Same tabs as Data Sensitivity Inference + Sensitivity Policies
+            "Risk Inference": [5, 6, 7, 8, 9, 15],  # All tabs from Sensitivity Inference, Obligation Inference
+            "Control Inference": [16, 17, 18]  # Framework Control, Policy Control, Risk Control tabs
         }
 
         # Create a filter for inference APIs
@@ -350,22 +346,13 @@ class DataMap:
                     from UX.regulatory_metadata_pages import PolicyPurposeDataUsagePage
                     PolicyPurposeDataUsagePage(self.regulatory_metadata_repository).render()
                  
-                # Sensitivity Obligations tab
+                # Sensitivity Policies tab
                 elif tab_idx == 15:
-                    from UX.regulatory_metadata_pages import SensitivityObligationsPage
-                    SensitivityObligationsPage(self.glossary_repository, self.obligation_repository).render()
-                
-                # Obligation Policy tab
-                elif tab_idx == 16:
-                    from UX.regulatory_metadata_pages import ObligationPolicyPage
-                    ObligationPolicyPage(self.glossary_repository, self.obligation_repository).render()
-                
-                # Obligation Risk tab
-                elif tab_idx == 17:
-                    ObligationRiskPage(self.glossary_repository, self.obligation_repository).render()
+                    from UX.regulatory_metadata_pages import SensitivityPoliciesPage
+                    SensitivityPoliciesPage(self.glossary_repository, self.regulatory_metadata_repository).render()
                 
                 # Framework Control tab
-                elif tab_idx == 18:
+                elif tab_idx == 16:
                     FrameworkControlPage(self.regulatory_metadata_repository, self.glossary_repository).render()
                 
                 # Policy Control tab
@@ -386,7 +373,6 @@ class DataMap:
             self.sensitivity_inference,
             self.catalog_repository,
             self.regulatory_metadata_repository,
-            self.asset_policy_inference
         ).render()
     
     def processing_activities_section(self):
