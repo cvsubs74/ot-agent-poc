@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from components.DDLGenerator import DDLGenerator
 from components.SimpleIdentifierMatcher import SimpleIdentifierMatcher
 from components.JSONGenerator import JSONGenerator
@@ -653,23 +654,28 @@ class AssetsPage:
                 # Default to 'all' if nothing is selected
                 selected_roles = ["all"]
                 
-                # Create three columns for the buttons
-                col1, col2, col3, col4, col5 = st.columns(5)
+                # Create columns for the buttons (now with 6 buttons)
+                col1, col2, col3 = st.columns(3)
+                col4, col5, col6 = st.columns(3)
+                
                 with col1:
                     # Run analysis button
-                    run_analysis = st.button("Policy Inference by Sensitivity", key=f"run_analysis_{selected_asset['id']}")
+                    run_analysis = st.button("Policy Inference by Sensitivity", key=f"run_analysis_{selected_asset['id']}", use_container_width=True)
                 with col2:
                     # Run policy analysis button
-                    run_policy_analysis = st.button("Policy Inference by Purpose", key=f"run_policy_analysis_{selected_asset['id']}")
+                    run_policy_analysis = st.button("Policy Inference by Purpose", key=f"run_policy_analysis_{selected_asset['id']}", use_container_width=True)
                 with col3:
                     # Comprehensive policy inference button
-                    run_comprehensive_inference = st.button("Policy Inference", key=f"run_comprehensive_inference_{selected_asset['id']}")
+                    run_comprehensive_inference = st.button("Policy Inference by Purpose and Sensitivity", key=f"run_comprehensive_inference_{selected_asset['id']}", use_container_width=True)
                 with col4:
-                    # Generate JSON policy specification button
-                    generate_json = st.button("Generate Target Policy JSON", key=f"generate_json_{selected_asset['id']}")
+                    # Gap Analysis button
+                    run_gap_analysis = st.button("Gap Analysis", key=f"run_gap_analysis_{selected_asset['id']}", use_container_width=True)
                 with col5:
+                    # Generate JSON policy specification button
+                    generate_json = st.button("Generate Target Policy JSON", key=f"generate_json_{selected_asset['id']}", use_container_width=True)
+                with col6:
                     # Generate DDL button
-                    generate_ddl = st.button("Generate Snowflake DDL", key=f"generate_ddl_{selected_asset['id']}")                 # Removed the explanation section from here - it will be shown after the results                    
+                    generate_ddl = st.button("Generate Snowflake DDL", key=f"generate_ddl_{selected_asset['id']}", use_container_width=True)                 # Removed the explanation section from here - it will be shown after the results                    
                 
                 # Variables to store policy analysis results
                 policy_analysis = None
@@ -677,9 +683,8 @@ class AssetsPage:
                 policy_type_display = ""
                 role_display = ""
                 
-                # Handle the Comprehensive Policy Inference button click
-                if run_comprehensive_inference:
-                    # Get data elements for this asset
+                # Get data elements for this asset (used by multiple analysis methods)
+                def get_asset_data_elements():
                     asset_data_elements = []
                     asset_data_elements_raw = self.inventory_repository.get_asset_data_elements()
                     for ade in asset_data_elements_raw:
@@ -690,10 +695,43 @@ class AssetsPage:
                     
                     if not asset_data_elements:
                         st.warning(f"No data elements found for {selected_asset['name']}.")
+                        return None
+                    return asset_data_elements
+                
+                # Handle the Comprehensive Policy Inference button click
+                if run_comprehensive_inference:
+                    # Get data elements for this asset
+                    asset_data_elements = get_asset_data_elements()
+                    if not asset_data_elements:
                         return
                     
                     # Call the comprehensive policy inference method
                     self.run_comprehensive_policy_inference(
+                        selected_asset=selected_asset,
+                        data_elements=asset_data_elements,
+                        selected_purposes=selected_purposes,
+                        selected_policy_types=selected_policy_types,
+                        selected_roles=selected_roles,
+                        purpose_options=purpose_options,
+                        policy_type_options=policy_type_options,
+                        role_options=role_options
+                    )
+                
+                # Handle the Gap Analysis button click
+                if run_gap_analysis:
+                    # Get data elements for this asset
+                    asset_data_elements = get_asset_data_elements()
+                    if not asset_data_elements:
+                        return
+                    
+                    # Call the gap analysis method
+                    st.markdown(f"""<h3 style="color: #3498db;">Policy Gap Analysis</h3>
+                    <p>Comparing sensitivity-based and purpose-based policies for {selected_asset['name']}...</p>
+                    <p>This analysis identifies where purpose-based policies meet, exceed, or fall short of the requirements derived from data sensitivity classifications.</p>
+                    """, unsafe_allow_html=True)
+                    
+                    # Run the gap analysis
+                    self.run_policy_gap_analysis(
                         selected_asset=selected_asset,
                         data_elements=asset_data_elements,
                         selected_purposes=selected_purposes,
@@ -1183,6 +1221,489 @@ class AssetsPage:
         else:
             st.info("No policies found for the identified obligations.")            
 
+    def run_policy_gap_analysis(self, selected_asset, data_elements, selected_purposes, selected_policy_types, selected_roles, purpose_options, policy_type_options, role_options):
+        """Run a gap analysis between sensitivity-based and purpose-based policies.
+        
+        This method compares the policies derived from data element sensitivities with
+        the policies applied based on purposes. It identifies where purpose-based policies
+        meet, exceed, or fall short of the sensitivity-based policy requirements.
+        
+        Args:
+            selected_asset (dict): The selected asset information
+            data_elements (list): List of data elements for the asset
+            selected_purposes (list): List of selected purpose IDs
+            selected_policy_types (list): List of selected policy types
+            selected_roles (list): List of selected role IDs
+            purpose_options (dict): Mapping of purpose IDs to names
+            policy_type_options (dict): Mapping of policy type IDs to names
+            role_options (dict): Mapping of role IDs to names
+            
+        Returns:
+            pandas.DataFrame: DataFrame containing gap analysis results
+        """
+        import streamlit as st
+        import pandas as pd
+        import numpy as np
+        
+        # Get sensitivity-based policies
+        with st.spinner(f"Running sensitivity-based policy analysis for {selected_asset['name']}..."):
+            result = self.run_sensitivity_based_policy_inference(
+                selected_asset, 
+                data_elements, 
+                selected_policy_types=selected_policy_types,
+                display_results=False
+            )
+            
+            # Check if we got a valid result
+            if result is None:
+                st.warning("No sensitivity-based policies found for the selected asset.")
+                return None
+                
+            # Unpack the result - it returns a tuple of (dict_records, dataframe)
+            sensitivity_results, sensitivity_df = result
+            
+            if sensitivity_df is not None and not sensitivity_df.empty:
+                st.success(f"Retrieved {len(sensitivity_df)} sensitivity-based policies for analysis.")
+            else:
+                st.warning("No sensitivity-based policies found for the selected asset.")
+                return None
+        
+        # Get purpose-based policies
+        with st.spinner(f"Running purpose-based policy analysis for {selected_asset['name']}..."):
+            result = self.run_purpose_based_policy_inference(
+                selected_asset,
+                selected_purposes,
+                selected_policy_types,
+                selected_roles,
+                purpose_options,
+                policy_type_options,
+                role_options,
+                display_results=False
+            )
+            
+            # Check if we got a valid result
+            if result is None:
+                st.warning("No purpose-based policies found for the selected asset and purposes.")
+                return None
+                
+            # Unpack the result - it returns a tuple of (dict_records, dataframe)
+            purpose_results, purpose_df = result
+            
+            if purpose_df is not None and not purpose_df.empty:
+                st.success(f"Retrieved {len(purpose_df)} purpose-based policies for analysis.")
+            else:
+                st.warning("No purpose-based policies found for the selected asset and purposes.")
+                return None
+        
+        # Prepare DataFrames for comparison
+        # Check and standardize column names
+        sensitivity_cols = sensitivity_df.columns.tolist()
+        purpose_cols = purpose_df.columns.tolist()
+        
+        # Get column names for comparison (no longer showing in UI)
+        # sensitivity_cols and purpose_cols are already defined above
+        
+        # Define mappings for column names (both original and renamed versions)
+        schema_col_names = ['Schema', 'schema_name']
+        table_col_names = ['Table', 'table_name']
+        column_col_names = ['Column', 'column_name']
+        data_element_col_names = ['Data Element', 'data_element_name']
+        
+        # Find the actual column names in each DataFrame
+        sens_schema_col = next((col for col in schema_col_names if col in sensitivity_cols), None)
+        sens_table_col = next((col for col in table_col_names if col in sensitivity_cols), None)
+        sens_column_col = next((col for col in column_col_names if col in sensitivity_cols), None)
+        sens_data_element_col = next((col for col in data_element_col_names if col in sensitivity_cols), None)
+        
+        purpose_schema_col = next((col for col in schema_col_names if col in purpose_cols), None)
+        purpose_table_col = next((col for col in table_col_names if col in purpose_cols), None)
+        purpose_column_col = next((col for col in column_col_names if col in purpose_cols), None)
+        purpose_data_element_col = next((col for col in data_element_col_names if col in purpose_cols), None)
+        
+        # Check if we found all required columns
+        if not all([sens_schema_col, sens_table_col, sens_column_col]):
+            st.error("Missing required columns in sensitivity-based policies. Cannot perform gap analysis.")
+            st.write("Required columns: schema, table, column. Found columns:", sensitivity_cols)
+            return None
+            
+        if not all([purpose_schema_col, purpose_table_col, purpose_column_col]):
+            st.error("Missing required columns in purpose-based policies. Cannot perform gap analysis.")
+            st.write("Required columns: schema, table, column. Found columns:", purpose_cols)
+            return None
+        
+        # Create a unified DataFrame for comparison
+        gap_analysis_data = []
+        
+        # Process each table/column in sensitivity-based policies
+        for _, sens_row in sensitivity_df.iterrows():
+            table_key = f"{sens_row[sens_schema_col]}.{sens_row[sens_table_col]}"
+            column_key = sens_row[sens_column_col]
+            data_element = sens_row.get(sens_data_element_col, 'Unknown') if sens_data_element_col else 'Unknown'
+            sensitivity = sens_row.get('Sensitivity', 'Unknown')
+            
+            # Find matching purpose-based policies
+            matching_purpose_rows = purpose_df[
+                (purpose_df[purpose_schema_col] == sens_row[sens_schema_col]) & 
+                (purpose_df[purpose_table_col] == sens_row[sens_table_col]) & 
+                (purpose_df[purpose_column_col] == sens_row[sens_column_col])
+            ]
+            
+            if matching_purpose_rows.empty:
+                # No purpose-based policy exists for this table/column
+                gap_analysis_data.append({
+                    'Schema': sens_row[sens_schema_col],
+                    'Table': sens_row[sens_table_col],
+                    'Column': sens_row[sens_column_col],
+                    'Data Element': data_element,
+                    'Sensitivity': sensitivity,
+                    'Has Purpose Policy': 'No',
+                    'Gap Status': 'Missing Purpose Policy',
+                    'Encryption Gap': 'Missing Purpose Policy',
+                    'Masking Gap': 'Missing Purpose Policy',
+                    'Details': 'No purpose-based policy exists for this column.',
+                    'Recommendation': 'Create purpose-based policies to meet sensitivity requirements.'
+                })
+            else:
+                # Compare each purpose-based policy with the sensitivity-based policy
+                for _, purpose_row in matching_purpose_rows.iterrows():
+                    # Get purpose and role names
+                    purpose_name = purpose_row.get('Purpose', purpose_row.get('purpose_name', 'Unknown'))
+                    role_name = purpose_row.get('Role', purpose_row.get('role_name', 'Unknown'))
+                    
+                    # Define security policy column mappings
+                    encryption_required_cols = ['Encryption Required', 'encryption_required']
+                    encryption_algo_cols = ['Encryption Algorithm', 'encryption_algorithm']
+                    masking_required_cols = ['Masking Required', 'masking_required']
+                    masking_format_cols = ['Masking Format', 'masking_format']
+                    
+                    # Get the actual column names in each row
+                    sens_encryption_col = next((col for col in encryption_required_cols if col in sensitivity_cols), None)
+                    sens_encryption_algo_col = next((col for col in encryption_algo_cols if col in sensitivity_cols), None)
+                    sens_masking_col = next((col for col in masking_required_cols if col in sensitivity_cols), None)
+                    sens_masking_format_col = next((col for col in masking_format_cols if col in sensitivity_cols), None)
+                    
+                    purpose_encryption_col = next((col for col in encryption_required_cols if col in purpose_cols), None)
+                    purpose_encryption_algo_col = next((col for col in encryption_algo_cols if col in purpose_cols), None)
+                    purpose_masking_col = next((col for col in masking_required_cols if col in purpose_cols), None)
+                    purpose_masking_format_col = next((col for col in masking_format_cols if col in purpose_cols), None)
+                    
+                    # Compare encryption requirements
+                    sens_encryption = sens_row.get(sens_encryption_col, 'No') if sens_encryption_col else 'No'
+                    purpose_encryption = purpose_row.get(purpose_encryption_col, 'No') if purpose_encryption_col else 'No'
+                    encryption_gap = self._compare_policy_values(sens_encryption, purpose_encryption)
+                    
+                    # Compare encryption algorithms
+                    sens_encryption_algo = sens_row.get(sens_encryption_algo_col, 'None') if sens_encryption_algo_col else 'None'
+                    purpose_encryption_algo = purpose_row.get(purpose_encryption_algo_col, 'None') if purpose_encryption_algo_col else 'None'
+                    encryption_algo_gap = self._compare_policy_values(sens_encryption_algo, purpose_encryption_algo, is_algorithm=True)
+                    
+                    # Compare masking requirements
+                    sens_masking = sens_row.get(sens_masking_col, 'No') if sens_masking_col else 'No'
+                    purpose_masking = purpose_row.get(purpose_masking_col, 'No') if purpose_masking_col else 'No'
+                    masking_gap = self._compare_policy_values(sens_masking, purpose_masking)
+                    
+                    # Compare masking formats
+                    sens_masking_format = sens_row.get(sens_masking_format_col, 'None') if sens_masking_format_col else 'None'
+                    purpose_masking_format = purpose_row.get(purpose_masking_format_col, 'None') if purpose_masking_format_col else 'None'
+                    masking_format_gap = self._compare_policy_values(sens_masking_format, purpose_masking_format, is_algorithm=True)
+                    
+                    # Determine overall gap status
+                    if all(status == 'Meets Requirements' for status in [encryption_gap, encryption_algo_gap, masking_gap, masking_format_gap]):
+                        gap_status = 'Meets All Requirements'
+                    elif any(status == 'Exceeds Requirements' for status in [encryption_gap, encryption_algo_gap, masking_gap, masking_format_gap]):
+                        gap_status = 'Exceeds Some Requirements'
+                    else:
+                        gap_status = 'Falls Short of Requirements'
+                    
+                    # Generate details and recommendations
+                    details = []
+                    recommendations = []
+                    
+                    if encryption_gap != 'Meets Requirements':
+                        details.append(f"Encryption: {encryption_gap}")
+                        if encryption_gap == 'Falls Short of Requirements':
+                            recommendations.append(f"Enable encryption for this column with purpose '{purpose_name}'")
+                    
+                    if encryption_algo_gap != 'Meets Requirements' and sens_encryption == 'Yes':
+                        details.append(f"Encryption Algorithm: {encryption_algo_gap}")
+                        if encryption_algo_gap == 'Falls Short of Requirements':
+                            recommendations.append(f"Update encryption algorithm to match sensitivity requirements")
+                    
+                    if masking_gap != 'Meets Requirements':
+                        details.append(f"Masking: {masking_gap}")
+                        if masking_gap == 'Falls Short of Requirements':
+                            recommendations.append(f"Enable masking for this column with purpose '{purpose_name}'")
+                    
+                    if masking_format_gap != 'Meets Requirements' and sens_masking == 'Yes':
+                        details.append(f"Masking Format: {masking_format_gap}")
+                        if masking_format_gap == 'Falls Short of Requirements':
+                            recommendations.append(f"Update masking format to match sensitivity requirements")
+                    
+                    gap_analysis_data.append({
+                        'Schema': sens_row[sens_schema_col],
+                        'Table': sens_row[sens_table_col],
+                        'Column': sens_row[sens_column_col],
+                        'Data Element': data_element,
+                        'Sensitivity': sensitivity,
+                        'Purpose': purpose_name,
+                        'Role': role_name,
+                        'Has Purpose Policy': 'Yes',
+                        'Gap Status': gap_status,
+                        'Encryption Gap': encryption_gap,
+                        'Masking Gap': masking_gap,
+                        'Details': '; '.join(details) if details else 'All requirements met',
+                        'Recommendation': '; '.join(recommendations) if recommendations else 'No action needed'
+                    })
+        
+        # Check for purpose-based policies without corresponding sensitivity-based policies
+        for _, purpose_row in purpose_df.iterrows():
+            table_key = f"{purpose_row[purpose_schema_col]}.{purpose_row[purpose_table_col]}"
+            column_key = purpose_row[purpose_column_col]
+            
+            # Find matching sensitivity-based policies
+            matching_sens_rows = sensitivity_df[
+                (sensitivity_df[sens_schema_col] == purpose_row[purpose_schema_col]) & 
+                (sensitivity_df[sens_table_col] == purpose_row[purpose_table_col]) & 
+                (sensitivity_df[sens_column_col] == purpose_row[purpose_column_col])
+            ]
+            
+            if matching_sens_rows.empty:
+                # Purpose-based policy exists without sensitivity-based policy
+                purpose_data_element = purpose_row.get(purpose_data_element_col, 'Unknown') if purpose_data_element_col else 'Unknown'
+                purpose_name = purpose_row.get('Purpose', purpose_row.get('purpose_name', 'Unknown'))
+                role_name = purpose_row.get('Role', purpose_row.get('role_name', 'Unknown'))
+                
+                gap_analysis_data.append({
+                    'Schema': purpose_row[purpose_schema_col],
+                    'Table': purpose_row[purpose_table_col],
+                    'Column': purpose_row[purpose_column_col],
+                    'Data Element': purpose_data_element,
+                    'Sensitivity': 'Not Classified',
+                    'Purpose': purpose_name,
+                    'Role': role_name,
+                    'Has Purpose Policy': 'Yes',
+                    'Gap Status': 'Exceeds Requirements',
+                    'Encryption Gap': 'Exceeds Requirements',
+                    'Masking Gap': 'Exceeds Requirements',
+                    'Details': 'Purpose-based policy exists without sensitivity classification',
+                    'Recommendation': 'Consider classifying this column with appropriate sensitivity'
+                })
+        
+        # Create DataFrame from collected data
+        gap_df = pd.DataFrame(gap_analysis_data)
+        
+        # Display the gap analysis
+        if not gap_df.empty:
+            st.markdown(f"### Policy Gap Analysis for {selected_asset['name']}")
+            
+            # Add filters for the gap analysis
+            st.markdown("#### Filter Gap Analysis Results")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                gap_status_filter = st.multiselect(
+                    "Gap Status",
+                    options=['All'] + sorted(gap_df['Gap Status'].unique().tolist()),
+                    default=['All'],
+                    key="gap_status_filter"
+                )
+                
+                if 'All' in gap_status_filter:
+                    gap_status_filter = gap_df['Gap Status'].unique().tolist()
+            
+            with col2:
+                table_filter = st.multiselect(
+                    "Table",
+                    options=['All'] + sorted(gap_df['Table'].unique().tolist()),
+                    default=['All'],
+                    key="table_filter"
+                )
+                
+                if 'All' in table_filter:
+                    table_filter = gap_df['Table'].unique().tolist()
+            
+            with col3:
+                if 'Purpose' in gap_df.columns:
+                    purpose_filter = st.multiselect(
+                        "Purpose",
+                        options=['All'] + sorted(gap_df['Purpose'].unique().tolist()),
+                        default=['All'],
+                        key="purpose_filter"
+                    )
+                    
+                    if 'All' in purpose_filter:
+                        purpose_filter = gap_df['Purpose'].unique().tolist()
+                else:
+                    purpose_filter = None
+            
+            # Apply filters
+            filtered_gap_df = gap_df[
+                gap_df['Gap Status'].isin(gap_status_filter) &
+                gap_df['Table'].isin(table_filter)
+            ]
+            
+            if purpose_filter is not None and 'Purpose' in gap_df.columns:
+                filtered_gap_df = filtered_gap_df[filtered_gap_df['Purpose'].isin(purpose_filter)]
+            
+            # Display the filtered gap analysis
+            if not filtered_gap_df.empty:
+                # Add color coding based on gap status
+                def highlight_gap_status(val):
+                    if val == 'Meets All Requirements':
+                        return 'background-color: #d4edda; color: #155724'
+                    elif val == 'Exceeds Requirements' or val == 'Exceeds Some Requirements':
+                        return 'background-color: #cce5ff; color: #004085'
+                    elif val == 'Falls Short of Requirements':
+                        return 'background-color: #f8d7da; color: #721c24'
+                    elif val == 'Missing Purpose Policy':
+                        return 'background-color: #fff3cd; color: #856404'
+                    return ''
+                
+                # Apply styling
+                styled_gap_df = filtered_gap_df.style.applymap(
+                    highlight_gap_status, 
+                    subset=['Gap Status']
+                )
+                
+                # Display the styled DataFrame
+                st.dataframe(
+                    styled_gap_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Show summary statistics
+                st.markdown("#### Gap Analysis Summary")
+                
+                # Count by gap status
+                gap_counts = filtered_gap_df['Gap Status'].value_counts().reset_index()
+                gap_counts.columns = ['Gap Status', 'Count']
+                
+                # Create columns for the summary cards
+                summary_cols = st.columns(len(gap_counts))
+                
+                # Define colors for each status
+                status_colors = {
+                    'Meets All Requirements': '#28a745',
+                    'Exceeds Requirements': '#17a2b8',
+                    'Exceeds Some Requirements': '#17a2b8',
+                    'Falls Short of Requirements': '#dc3545',
+                    'Missing Purpose Policy': '#ffc107'
+                }
+                
+                # Create a summary card for each status
+                for i, (_, row) in enumerate(gap_counts.iterrows()):
+                    status = row['Gap Status']
+                    count = row['Count']
+                    color = status_colors.get(status, '#6c757d')
+                    
+                    with summary_cols[i % len(summary_cols)]:
+                        st.markdown(f"""
+                        <div style="padding: 15px; border-radius: 5px; background-color: {color}; color: white; text-align: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: white;">{count}</h4>
+                            <p style="margin: 0; font-size: 14px;">{status}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Show recommendations based on gap analysis
+                st.markdown("#### Recommendations")
+                
+                # Filter for items needing action
+                action_needed = filtered_gap_df[
+                    (filtered_gap_df['Gap Status'] == 'Falls Short of Requirements') | 
+                    (filtered_gap_df['Gap Status'] == 'Missing Purpose Policy')
+                ]
+                
+                if not action_needed.empty:
+                    for _, row in action_needed.iterrows():
+                        st.markdown(f"""
+                        <div style="padding: 15px; border-radius: 5px; background-color: #f8f9fa; margin-bottom: 10px; border-left: 5px solid #dc3545;">
+                            <p><strong>Table:</strong> {row['Schema']}.{row['Table']}</p>
+                            <p><strong>Column:</strong> {row['Column']} ({row['Data Element']})</p>
+                            <p><strong>Sensitivity:</strong> {row['Sensitivity']}</p>
+                            <p><strong>Status:</strong> {row['Gap Status']}</p>
+                            <p><strong>Details:</strong> {row['Details']}</p>
+                            <p><strong>Recommendation:</strong> {row['Recommendation']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.success("No immediate actions needed. All policies meet or exceed sensitivity requirements.")
+                
+                # Add explanation of the gap analysis
+                with st.expander("About Gap Analysis"):
+                    st.markdown("""
+                    ### Understanding the Gap Analysis
+                    
+                    This analysis compares sensitivity-based policies (derived from data element classifications) with purpose-based policies (applied based on data usage purposes). The comparison helps identify where purpose-based policies may not adequately protect sensitive data.
+                    
+                    #### Gap Status Definitions:
+                    
+                    - **Meets All Requirements**: The purpose-based policy provides exactly the protection required by the sensitivity classification.
+                    - **Exceeds Requirements**: The purpose-based policy provides more protection than required by the sensitivity classification.
+                    - **Falls Short of Requirements**: The purpose-based policy provides less protection than required by the sensitivity classification.
+                    - **Missing Purpose Policy**: No purpose-based policy exists for a column that has a sensitivity classification.
+                    
+                    #### How to Use This Analysis:
+                    
+                    1. Focus on items with "Falls Short of Requirements" or "Missing Purpose Policy" status
+                    2. Review the recommendations for each item
+                    3. Update your purpose-based policies to address the gaps
+                    4. Re-run the analysis to confirm improvements
+                    
+                    This analysis helps ensure that your data governance policies are consistent and provide appropriate protection based on data sensitivity.
+                    """)
+            else:
+                st.info("No results match the selected filters.")
+        else:
+            st.warning("No gap analysis results available. This could be because there are no overlapping policies to compare.")
+        
+        return gap_df
+    
+    def _compare_policy_values(self, sensitivity_value, purpose_value, is_algorithm=False):
+        """Compare policy values to determine if purpose-based policy meets sensitivity requirements.
+        
+        Args:
+            sensitivity_value: Value from sensitivity-based policy
+            purpose_value: Value from purpose-based policy
+            is_algorithm: Whether comparing algorithm/format values (True) or Yes/No values (False)
+            
+        Returns:
+            str: Status of comparison (Meets Requirements, Exceeds Requirements, Falls Short of Requirements)
+        """
+        # Handle None or NaN values
+        if sensitivity_value is None or (isinstance(sensitivity_value, float) and np.isnan(sensitivity_value)):
+            sensitivity_value = 'No' if not is_algorithm else 'None'
+        
+        if purpose_value is None or (isinstance(purpose_value, float) and np.isnan(purpose_value)):
+            purpose_value = 'No' if not is_algorithm else 'None'
+        
+        # Convert to strings for comparison
+        sensitivity_value = str(sensitivity_value)
+        purpose_value = str(purpose_value)
+        
+        # For Yes/No comparisons
+        if not is_algorithm:
+            if sensitivity_value.lower() in ['yes', 'true', '1'] and purpose_value.lower() in ['yes', 'true', '1']:
+                return 'Meets Requirements'
+            elif sensitivity_value.lower() in ['no', 'false', '0'] and purpose_value.lower() in ['yes', 'true', '1']:
+                return 'Exceeds Requirements'
+            elif sensitivity_value.lower() in ['yes', 'true', '1'] and purpose_value.lower() in ['no', 'false', '0']:
+                return 'Falls Short of Requirements'
+            else:
+                return 'Meets Requirements'  # Both are No
+        
+        # For algorithm/format comparisons
+        else:
+            if sensitivity_value.lower() in ['none', 'n/a', ''] and purpose_value.lower() not in ['none', 'n/a', '']:
+                return 'Exceeds Requirements'
+            elif sensitivity_value.lower() not in ['none', 'n/a', ''] and purpose_value.lower() in ['none', 'n/a', '']:
+                return 'Falls Short of Requirements'
+            elif sensitivity_value.lower() == purpose_value.lower() or (sensitivity_value.lower() in ['none', 'n/a', ''] and purpose_value.lower() in ['none', 'n/a', '']):
+                return 'Meets Requirements'
+            else:
+                # Different algorithms/formats - consider it meeting requirements as long as something is specified
+                return 'Meets Requirements'
+    
     def show_obligation_based_risks(self, obligations):
         """Show risks based on obligations.
         
