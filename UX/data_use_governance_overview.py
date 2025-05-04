@@ -278,10 +278,6 @@ class DataUseGovernanceOverview:
         # Introduction section with hero image/diagram
         self._render_hero_section()
         
-        # Use Case Overview
-        st.markdown("<h2 class='section-header'>Use Case Overview</h2>", unsafe_allow_html=True)
-        self._render_use_case_overview()
-        
         # User Journey
         st.markdown("<h2 class='section-header'>User Journey</h2>", unsafe_allow_html=True)
         self._render_user_journey()
@@ -310,7 +306,7 @@ class DataUseGovernanceOverview:
         with col1:
             st.markdown("""
             <div class="challenge-container">
-                <h4 class="blue-header">Purpose-Driven Policy Engine</h4>
+                <h4 class="blue-header">Purpose Driven Policy Inference Engine</h4>
                 <p>Infers policies based on customer-defined purpose-driven policy definitions for different roles and data elements.</p>
                 <ul>
                     <li>Based on data steward inputs</li>
@@ -326,7 +322,7 @@ class DataUseGovernanceOverview:
         with col2:
             st.markdown("""
             <div class="solution-container">
-                <h4 class="green-header">Regulatory Intelligence Engine</h4>
+                <h4 class="green-header">Regulatory Rules Driven Policy Inference Engine</h4>
                 <p>Infers policies based on regulatory intelligence built from core regulatory constructs and requirements.</p>
                 <ul>
                     <li>Built on regulatory frameworks (GDPR, CCPA, etc.)</li>
@@ -484,137 +480,35 @@ class DataUseGovernanceOverview:
             
             st.plotly_chart(fig, use_container_width=True)
         
-    def _render_use_case_overview(self):
-        """Render the Use Case Overview section with a modern design and nice background color."""
-        
-        # Add custom CSS for the containers
-        st.markdown("""
-        <style>
-        .overview-container {
-            background-color: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .challenge-container, .solution-container, .architecture-container {
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left-width: 6px;
-            border-left-style: solid;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s ease;
-        }
-        
-        .challenge-container:hover, .solution-container:hover, .architecture-container:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .challenge-container {
-            background-color: #e3f2fd;
-            border-left-color: #1565C0;
-        }
-        
-        .solution-container {
-            background-color: #e8f5e9;
-            border-left-color: #43A047;
-        }
-        
-        .architecture-container {
-            background-color: #f3e5f5;
-            border-left-color: #7B1FA2;
-        }
-        
-        .blue-header, .green-header, .purple-header {
-            color: #1565C0;
-            margin-top: 0;
-            margin-bottom: 1rem;
-            font-size: 1.2rem;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # The Challenge Section
-        challenge_html = '''
-        <div class="challenge-container">
-            <h4 class="blue-header">The Challenge</h4>
-            <p>Organizations today face increasing complexity in managing how data is used across their enterprise:</p>
-            <ul>
-                <li><strong>Regulatory Compliance</strong>: Meeting requirements from GDPR, CCPA, and other regulations</li>
-                <li><strong>Purpose Limitation</strong>: Ensuring data is only used for specified, legitimate purposes</li>
-                <li><strong>Role-Based Access</strong>: Implementing proper access controls based on user roles</li>
-                <li><strong>Data Masking</strong>: Protecting sensitive information while enabling business functions</li>
-            </ul>
-        </div>
-        '''
-        st.markdown(challenge_html, unsafe_allow_html=True)
-        
-        # Our Solution Section
-        solution_html = '''
-        <div class="solution-container">
-            <h4 class="green-header">Solution</h4>
-            <p>The Data Use Governance module provides a comprehensive framework for:</p>
-            <ul>
-                <li><strong>Purpose Definition</strong>: Define clear business purposes for data use</li>
-                <li><strong>Policy Creation</strong>: Create policies that govern how data can be used</li>
-                <li><strong>Role Management</strong>: Define and manage roles with appropriate access levels</li>
-                <li><strong>Purpose Determination</strong>: Automatically determine purposes through processing activities or user requests</li>
-                <li><strong>Security Policy Generation</strong>: Automatically generate security policies for any target system</li>
-            </ul>
-        </div>
-        '''
-        st.markdown(solution_html, unsafe_allow_html=True)
-        
-        # Control Plane Architecture section
-        architecture_html = '''
-        <div class="architecture-container">
-            <h4 class="purple-header">Control Plane Architecture</h4>
-            <p>This architecture serves as the control plane that governs data access across multiple external systems:</p>
-            <ul>
-                <li><strong>Centralized Policy Management</strong>: With distributed enforcement across systems</li>
-                <li><strong>Real-time Role Detection</strong>: And immediate policy application</li>
-                <li><strong>Hierarchical Policy Resolution</strong>: With dynamic security policy generation</li>
-                <li><strong>Automated Governance Workflows</strong>: With human oversight when needed</li>
-            </ul>
-        </div>
-        '''
-        st.markdown(architecture_html, unsafe_allow_html=True)
+    # _render_use_case_overview method has been removed as it's no longer needed
     
     def _render_user_journey(self):
         """Render the User Journey section with a modern design."""
         # Create a timeline of the user journey with modern styling
         journey_steps = [
             {
-                "step": "Define Assets",
-                "description": "Catalog data assets including tables, columns, and sensitivity",
+                "step": "Build or Import Catalog",
+                "description": "Import metadata about external systems with sensitive data, classify key tables/columns as data elements within assets",
                 "icon": "📊",
                 "color": "#1E88E5"
             },
             {
                 "step": "Define Purposes",
-                "description": "Create business purposes that justify data access",
+                "description": "Create business purposes that justify data access, including a default purpose for enforcing baseline policies",
                 "icon": "🎯",
                 "color": "#43A047"
             },
             {
                 "step": "Create Policies",
-                "description": "Define policies that govern how data can be used",
+                "description": "Define policies for all identified purposes, including the default purpose, to govern how data can be used",
                 "icon": "📋",
                 "color": "#8E24AA"
             },
             {
-                "step": "Manage Roles",
-                "description": "Define internal and external roles with appropriate access levels",
+                "step": "Manage External Roles",
+                "description": "Import external roles into the system and manage them via purposes, with policies enforced directly on these roles",
                 "icon": "👥",
                 "color": "#E53935"
-            },
-            {
-                "step": "Map Assets to Purposes",
-                "description": "Associate data assets with legitimate business purposes",
-                "icon": "🔄",
-                "color": "#FB8C00"
             },
             {
                 "step": "Map Purposes to Roles",
@@ -725,6 +619,8 @@ class DataUseGovernanceOverview:
             <ul>
                 <li><strong>Data Element Level</strong>: Policies specific to individual data elements</li>
                 <li><strong>Data Category Level</strong>: Policies for groups of data elements</li>
+                <li><strong>Purpose, Data Element Level</strong>: Purpose-specific policies for individual data elements</li>
+                <li><strong>Purpose, Data Category Level</strong>: Purpose-specific policies for groups of data elements</li>
                 <li><strong>Role, Purpose, and Data Category</strong>: Role-specific policies for data categories used for particular purposes</li>
                 <li><strong>Role, Purpose, and Data Element</strong>: The most granular level of policy definition</li>
             </ul>
@@ -739,7 +635,11 @@ class DataUseGovernanceOverview:
             <ul>
                 <li><strong>Role Detection Agent</strong>: Detects the creation or modification of roles in external systems and sends these events to the control plane, which persists them as external roles</li>
                 <li><strong>Policy Enforcement Agent</strong>: When a new external role is detected, this agent assigns it to the default purpose with baseline policies and implements them in source systems like Snowflake, Databricks, etc.</li>
-                <li><strong>Policy Inference Agent</strong>: Monitors changes in organizational data (assets, processing activities) and dynamically recommends policies for effective data governance</li>
+                <li><strong>Purpose Based Policy Inference Agent</strong>: This agent infers policies based on business-driven purposes attached to data sets or assets. Given a data set or asset, the policies will be inferred based on the purposes attached to those data sets or processing activities</li>
+                <li><strong>Regulatory Rules Driven Policy Inference Agent</strong>: This agent is primarily driven by regulatory requirements derived from the sensitivity of the information contained in a data set or asset and the processing activities that process this data</li>
+                <li><strong>Gap Analysis Agent</strong>: Based on the policies inferred by the two policy inference engines, this agent determines gaps and provides contextual feedback on where an organization stands regarding both compliance and security standards</li>
+                <li><strong>Gap Resolution Agent</strong>: This agent resolves the identified gaps by recommending exact policies that would need to be implemented to close the gap</li>
+                <li><strong>Control Implementation Agent</strong>: Maps policies to frameworks/controls, so when policies are implemented, several frameworks/controls are automatically implemented. This connects the dots between policy-based data governance and GRC controls</li>
                 <li><strong>Evidence Task Generation Agent</strong>: Verifies that enforced policies are effective in source systems by automatically testing them (e.g., confirming masking policies work as expected)</li>
             </ul>
         </div>
@@ -794,34 +694,34 @@ class DataUseGovernanceOverview:
         # Define the features
         features = [
             {
+                "icon": "📊",
+                "title": "Catalog Management",
+                "description": "Build or import metadata about external systems with sensitive data assets"
+            },
+            {
                 "icon": "🎯",
                 "title": "Purpose Management",
-                "description": "Define and manage business purposes for data use across the organization"
+                "description": "Define business purposes including default purpose for baseline policies"
             },
             {
                 "icon": "📋",
                 "title": "Policy Creation",
-                "description": "Create and maintain policies that govern data access and usage"
+                "description": "Create policies for all purposes including default purpose for baseline security"
             },
             {
                 "icon": "👥",
-                "title": "Role Management",
-                "description": "Define and manage roles with appropriate access levels"
-            },
-            {
-                "icon": "🔄",
-                "title": "Purpose Mapping",
-                "description": "Map data assets to legitimate business purposes"
+                "title": "External Role Management",
+                "description": "Import and manage external roles via purpose-based policies"
             },
             {
                 "icon": "🔗",
-                "title": "Role Mapping",
+                "title": "Purpose-Role Mapping",
                 "description": "Determine which roles can access data for specific purposes"
             },
             {
                 "icon": "🛡️",
                 "title": "Security Policies",
-                "description": "Automatically generate security policies for any target system"
+                "description": "Automatically generate security policies for external systems"
             },
             {
                 "icon": "✅",

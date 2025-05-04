@@ -157,23 +157,4 @@ def render_consent_row_filtering_section():
     </div>
     """, unsafe_allow_html=True)
     
-    # Benefits and Use Cases
-    st.markdown("""
-    <div class="challenge-container">
-        <h3 class="subsection-header">Benefits & Use Cases</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
-            <div style="flex: 1; min-width: 200px; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h4 style="color: #1565C0; margin-top: 0;">GDPR Compliance</h4>
-                <p>Enforce purpose-specific consent requirements and demonstrate compliance with data subject rights</p>
-            </div>
-            <div style="flex: 1; min-width: 200px; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h4 style="color: #1565C0; margin-top: 0;">Multi-tenant Systems</h4>
-                <p>Ensure data isolation between different customers or organizational units</p>
-            </div>
-            <div style="flex: 1; min-width: 200px; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h4 style="color: #1565C0; margin-top: 0;">Personalized Marketing</h4>
-                <p>Only target users who have explicitly consented to marketing communications</p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Benefits and Use Cases section has been removed
