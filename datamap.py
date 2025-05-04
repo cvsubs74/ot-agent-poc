@@ -10,6 +10,7 @@ from UX.legal_basis_inference_page import LegalBasisInferencePage
 from UX.transfer_mechanism_page import TransferMechanismPage
 from UX.policy_compliance_page import PolicyCompliancePage
 from UX.risk_inference_page import RiskInferencePage
+from core.asset_policy_inference import AssetPolicyInference
 from UX.data_use_governance_overview import DataUseGovernanceOverview
 from UX.core_constructs_pages import (
     LawPage,
@@ -72,7 +73,6 @@ from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
 from repositories.ConsentRepository import ConsentRepository
 from repositories.DataAccessRepository import DataAccessRepository
-from core.asset_policy_inference import AssetPolicyInference
 
 class DataMap:
     def __init__(self):
@@ -366,12 +366,12 @@ class DataMap:
     def assets_section(self):
         """Handle the Assets section with data elements."""
         from UX.assets_page import AssetsPage
+        
         AssetsPage(
             self.inventory_repository,
             self.glossary_repository,
-            self.obligation_repository,
-            self.sensitivity_inference,
             self.catalog_repository,
+            self.sensitivity_inference,
             self.regulatory_metadata_repository,
         ).render()
     
@@ -500,11 +500,6 @@ class DataMap:
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
             
             # Data Use Governance section description
-            st.markdown('''
-            <div style="padding: 0 10px; font-size: 0.8rem; color: #666;">
-                Configure purpose-based policies and access controls
-            </div>
-            ''', unsafe_allow_html=True)
             
             # Purposes menu item
             if st.button("🎯 Purposes", key="purposes_btn", use_container_width=True):

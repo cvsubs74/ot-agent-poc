@@ -6,17 +6,359 @@ from components.JSONGenerator import JSONGenerator
 from core.asset_policy_inference import AssetPolicyInference
 
 class AssetsPage:
-    def __init__(self, inventory_repository, glossary_repository, obligation_repository, sensitivity_inference, catalog_repository, regulatory_metadata_repository):
+    """Page for displaying and managing assets."""
+    def __init__(self, inventory_repository, glossary_repository, catalog_repository, sensitivity_inference, regulatory_metadata_repository):
+        """Initialize the Assets page with required repositories."""
         self.inventory_repository = inventory_repository
         self.glossary_repository = glossary_repository
-        self.obligation_repository = obligation_repository
-        self.sensitivity_inference = sensitivity_inference
         self.catalog_repository = catalog_repository
+        self.sensitivity_inference = sensitivity_inference
         self.regulatory_metadata_repository = regulatory_metadata_repository
+        # Initialize asset_policy_inference internally
+        from core.asset_policy_inference import AssetPolicyInference
         self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, inventory_repository)
         self.ddl_generator = DDLGenerator()
         self.identifier_matcher = SimpleIdentifierMatcher()
         self.json_generator = JSONGenerator(glossary_repository, catalog_repository)
+        
+    def run_sensitivity_based_policy_inference(self, selected_asset, data_elements, selected_policy_types=None, display_results=True):
+        """Run sensitivity-based policy inference for the selected asset.
+        
+        Args:
+            selected_asset (dict): The selected asset information
+            data_elements (list): List of data elements for the asset
+            display_results (bool): Whether to display the results in the UI
+            
+        Returns:
+            tuple: (list of result dictionaries, DataFrame of results) or ([], None) if no results
+        """
+        import streamlit as st
+        import pandas as pd
+        
+        # 1. Infer sensitivities
+        data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
+        if not data_element_sensitivities:
+            st.warning("Could not determine sensitivities for the data elements.")
+            return
+            
+        sens_data = {
+            "Data Element": [],
+            "Sensitivity": [],
+            "Source": []
+        }
+        for de_name, sensitivity_info in data_element_sensitivities.items():
+            sens_data["Data Element"].append(de_name)
+            sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
+            sens_data["Source"].append(sensitivity_info['source'])
+
+        # Get sensitivity-based policies for the asset
+        with st.spinner(f"Analyzing sensitivity-based policies for {selected_asset['name']}..."):
+            # Get applied policies based on sensitivity for the selected asset
+            df = self.asset_policy_inference.get_sensitivity_based_policies_for_asset(
+                asset_id=selected_asset['id']
+            )
+            
+            # Filter by policy types if specified
+            if selected_policy_types and 'all' not in selected_policy_types and 'policy_type' in df.columns:
+                # Convert policy_type column to lowercase for case-insensitive comparison
+                df['policy_type_lower'] = df['policy_type'].str.lower()
+                
+                # Create a list of lowercase policy types to filter by
+                policy_types_lower = [pt.lower() for pt in selected_policy_types]
+                
+                # Filter the DataFrame
+                df = df[df['policy_type_lower'].isin(policy_types_lower)]
+                
+                # Remove the temporary column
+                df = df.drop('policy_type_lower', axis=1)
+            
+            if not df.empty:
+                # Format boolean columns as checkboxes
+                formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
+                
+                # Rename columns for better display - only rename columns that exist
+                column_mapping = {
+                    "schema_name": "Schema",
+                    "table_name": "Table",
+                    "column_name": "Column",
+                    "data_type": "Data Type",
+                    "data_element_name": "Data Element",
+                    "sensitivity": "Sensitivity",
+                    "policy_name": "Policy",
+                    "policy_type": "Policy Type",
+                    "encryption_required": "Encryption Required",
+                    "encryption_algorithm": "Encryption Algorithm",
+                    "masking_required": "Masking Required",
+                    "masking_format": "Masking Format",
+                    "access_control_required": "Access Control Required",
+                    "access_control_type": "Access Control Type",
+                    "usage_operations": "Usage Operations",
+                    "usage_allowed": "Usage Allowed",
+                    "retention_period": "Retention Period",
+                    "retention_basis": "Retention Basis"
+                }
+                
+                # Create a new DataFrame with renamed columns to avoid duplicates
+                renamed_columns = {}
+                for col in df.columns:
+                    if col in column_mapping:
+                        new_name = column_mapping[col]
+                        # If the new name is already used, make it unique
+                        if new_name in renamed_columns.values():
+                            new_name = f"{new_name} (from {col})"
+                        renamed_columns[col] = new_name
+                    else:
+                        renamed_columns[col] = col
+                        
+                df = df.rename(columns=renamed_columns)
+                
+                # Format boolean columns as Yes/No
+                boolean_columns = ["Encryption Required", "Masking Required", "Access Control Required"]
+                for col in boolean_columns:
+                    if col in df.columns and col in formatted_df.columns:
+                        df[col] = df[col].map({True: "Yes", False: "No"})
+                        formatted_df[col] = formatted_df[col].map({True: "Yes", False: "No"})
+                    elif col in df.columns:
+                        df[col] = df[col].map({True: "Yes", False: "No"})
+                    elif col in formatted_df.columns:
+                        formatted_df[col] = formatted_df[col].map({True: "Yes", False: "No"})
+                
+                if display_results:
+                    st.markdown(f"<h4>Sensitivity-Based Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                    st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                return formatted_df.to_dict('records'), formatted_df
+            else:
+                if display_results:
+                    st.warning(f"No sensitivity-based policies found for {selected_asset['name']}. This could be because there are no data elements with significant sensitivity levels mapped to this asset.")
+                
+                # Show the sensitivity analysis anyway
+                st.markdown("<h5>Data Elements with Significant Sensitivity</h5>", unsafe_allow_html=True)
+                sensitivities_requiring_policies = ["Internal", "Confidential", "Restricted", "Special Category"]
+                
+                # Filter data elements based on their sensitivity
+                policy_required_elements = {}
+                for de_name, sensitivity_info in data_element_sensitivities.items():
+                    sensitivity = sensitivity_info['sensitivity']
+                    if sensitivity in sensitivities_requiring_policies:
+                        policy_required_elements[de_name] = sensitivity
+                
+                if not policy_required_elements:
+                    st.info("No data elements with sensitivities that require specific policies were found.")
+                else:
+                    # Show a summary table of data elements and their sensitivities
+                    summary_data = {
+                        "Data Element": [],
+                        "Sensitivity": [],
+                        "Source": []
+                    }
+                    
+                    for de_name, sensitivity in policy_required_elements.items():
+                        source = data_element_sensitivities[de_name]['source']
+                        summary_data["Data Element"].append(de_name)
+                        summary_data["Sensitivity"].append(sensitivity)
+                        summary_data["Source"].append(source)
+                    
+                    st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+    
+    def run_purpose_based_policy_inference(self, selected_asset, selected_purposes, selected_policy_types, selected_roles, purpose_options, policy_type_options, role_options, display_results=True):
+        """Run purpose-based policy inference for the selected asset.
+        
+        Args:
+            selected_asset (dict): The selected asset information
+            selected_purposes (list): List of selected purpose IDs
+            selected_policy_types (list): List of selected policy types
+            selected_roles (list): List of selected role IDs
+            purpose_options (dict): Mapping of purpose IDs to names
+            policy_type_options (dict): Mapping of policy type IDs to names
+            role_options (dict): Mapping of role IDs to names
+            
+        Returns:
+            pandas.DataFrame: DataFrame containing purpose-based policies or None if no policies found
+        """
+        import streamlit as st
+        import pandas as pd
+        
+        # Format display strings for selected options
+        if "all" in selected_purposes:
+            purpose_display = "All Purposes"
+        else:
+            purpose_names = [purpose_options.get(p, "") for p in selected_purposes]
+            purpose_display = ", ".join(purpose_names)
+        
+        if "all" in selected_policy_types:
+            policy_type_display = "All Policy Types"
+        else:
+            policy_type_names = [policy_type_options.get(pt, "") for pt in selected_policy_types]
+            policy_type_display = ", ".join(policy_type_names)
+        
+        if "all" in selected_roles:
+            role_display = "All Roles"
+        else:
+            role_names = [role_options.get(r, "") for r in selected_roles]
+            role_display = ", ".join(role_names)
+        
+        with st.spinner(f"Analyzing policy application for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
+            # Get applied policies for the selected asset, purpose, policy type, and role
+            df = self.asset_policy_inference.get_applied_policies_for_asset_purpose(
+                asset_id=selected_asset['id'],
+                purpose_id=selected_purposes,
+                policy_type=selected_policy_types,
+                role_id=selected_roles
+            )
+            
+            if not df.empty:
+                # Format boolean columns as checkboxes
+                formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
+                
+                # Rename columns for better display
+                column_mapping = {
+                    "schema_name": "Schema",
+                    "table_name": "Table",
+                    "column_name": "Column",
+                    "data_type": "Data Type",
+                    "data_element_name": "Data Element",
+                    "purpose_name": "Purpose",
+                    "role_name": "Role",
+                    "policy_name": "Policy",
+                    "encryption_required": "Encryption Required",
+                    "encryption_algorithm": "Encryption Algorithm",
+                    "masking_required": "Masking Required",
+                    "masking_format": "Masking Format",
+                    "is_override": "Is Override"
+                }
+                formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
+                
+                if display_results:
+                    # Add a note about encryption settings for non-Default Role Assignment purposes
+                    if "all" in selected_purposes or any(purpose_options.get(p) != "Default Role Assignment" for p in selected_purposes):
+                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
+                    # Display the DataFrame without filters
+                    st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+                return formatted_df.to_dict('records'), formatted_df
+                if display_results:
+                    st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")
+                return [], None
+                
+    def run_comprehensive_policy_inference(self, selected_asset, data_elements, selected_purposes, selected_policy_types, selected_roles, purpose_options, policy_type_options, role_options):
+        """Run comprehensive policy inference showing both sensitivity and purpose-based approaches in separate tables.
+        
+        Args:
+            selected_asset (dict): The selected asset information
+            data_elements (list): List of data elements for the asset
+            selected_purposes (list): List of selected purpose IDs
+            selected_policy_types (list): List of selected policy types
+            selected_roles (list): List of selected roles
+            purpose_options (dict): Dictionary of purpose options
+            policy_type_options (dict): Dictionary of policy type options
+            role_options (dict): Dictionary of role options
+            
+        Returns:
+            tuple: (sensitivity_results, purpose_results) containing both sets of policy results
+        """
+        import streamlit as st
+        import pandas as pd
+        
+        st.markdown(f"<h3>Comprehensive Policy Inference for {selected_asset['name']}</h3>", unsafe_allow_html=True)
+        
+        # Add a section explaining the dashboard
+        st.markdown("""
+        <div style="background-color: #f0f7fb; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <h4 style="margin-top: 0;">Understanding the Policy Inference Dashboard</h4>
+            <p>This dashboard shows policies inferred from two different approaches:</p>
+            <ul>
+                <li><strong>Sensitivity-based policies</strong> are derived from the sensitivity classification of data elements</li>
+                <li><strong>Purpose-based policies</strong> are derived from the intended use purposes of data elements</li>
+            </ul>
+            <p>Use the filters to narrow down results by schema, table, column, or data element.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Get policy results directly without session state
+        with st.spinner(f"Analyzing policies for {selected_asset['name']}..."):
+            # Get sensitivity-based policies
+            sensitivity_results, sensitivity_df = self.run_sensitivity_based_policy_inference(
+                selected_asset=selected_asset,
+                data_elements=data_elements,
+                selected_policy_types=selected_policy_types,  # Pass the selected policy types
+                display_results=False  # Don't display yet, we'll handle it here
+            )
+            
+            # Get purpose-based policies
+            purpose_display = ", ".join([purpose_options.get(p, p) for p in selected_purposes]) if selected_purposes else "All"
+            purpose_results, purpose_df = self.run_purpose_based_policy_inference(
+                selected_asset=selected_asset,
+                selected_purposes=selected_purposes,
+                selected_policy_types=selected_policy_types,
+                selected_roles=selected_roles,
+                purpose_options=purpose_options,
+                policy_type_options=policy_type_options,
+                role_options=role_options,
+                display_results=False  # Don't display yet, we'll handle it here
+            )
+        
+        # No filters - just show the tables directly
+        
+        
+        # Create two columns for the tables
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown(f"<h4>Sensitivity-Based Policies</h4>", unsafe_allow_html=True)
+            
+            if sensitivity_results:
+                # Display the DataFrame directly without filtering
+                st.dataframe(sensitivity_df, use_container_width=True, hide_index=True)
+                
+                # Show count of results
+                total_count = len(sensitivity_df)
+                st.write(f"Found {total_count} sensitivity-based policies")
+            else:
+                st.warning(f"No sensitivity-based policies found for {selected_asset['name']}.")
+        
+        with col2:
+            st.markdown(f"<h4>Purpose-Based Policies</h4>", unsafe_allow_html=True)
+            
+            if purpose_results:
+                # Display the DataFrame directly without filtering
+                st.dataframe(purpose_df, use_container_width=True, hide_index=True)
+                
+                # Show count of results
+                total_count = len(purpose_df)
+                st.write(f"Found {total_count} purpose-based policies for {purpose_display}")
+            else:
+                st.warning(f"No purpose-based policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}.")
+        
+        # Return both results for potential further processing
+        return sensitivity_results, purpose_results
+    def render_ddl_and_json(self, selected_asset, policy_analysis, purpose_display, policy_type_display, role_display):
+        """Render DDL and JSON for the selected asset based on policy analysis."""
+        import streamlit as st
+        
+        # Display the DataFrame
+        st.dataframe(policy_analysis, use_container_width=True, hide_index=True)
+        # Show policy statistics if needed
+        # This is a placeholder for future statistics display
+        # Add recommendations if needed
+        # This section has been removed as we're now showing two separate tables
+        
+    def show_recommendations(self):
+        """Show policy recommendations guidance."""
+        import streamlit as st
+        
+        st.markdown("<h4>Policy Recommendations</h4>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background-color: #eaf7ea; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
+            <p><strong>Recommended approach:</strong> Consider both sensitivity-based and purpose-based policies when implementing security controls.</p>
+            <p>For effective policy implementation:</p>
+            <ul>
+                <li><strong>Sensitivity-based policies</strong> should be considered for data protection and security requirements</li>
+                <li><strong>Purpose-based policies</strong> should be evaluated based on the specific business use cases</li>
+            </ul>
+            <p>Review any conflicts between the approaches and make decisions based on the higher security requirement.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
     # The _build_column_based_json_from_df method has been refactored to the JSONGenerator class
         
@@ -337,245 +679,30 @@ class AssetsPage:
                 
                 # Handle the Comprehensive Policy Inference button click
                 if run_comprehensive_inference:
-                    st.markdown(f"<h3>Comprehensive Policy Inference for {selected_asset['name']}</h3>", unsafe_allow_html=True)
+                    # Get data elements for this asset
+                    asset_data_elements = []
+                    asset_data_elements_raw = self.inventory_repository.get_asset_data_elements()
+                    for ade in asset_data_elements_raw:
+                        if ade['asset_id'] == selected_asset['id']:
+                            data_element = self.glossary_repository.get_data_element_by_id(ade['data_element_id'])
+                            if data_element:
+                                asset_data_elements.append(data_element)
                     
-                    with st.spinner(f"Performing comprehensive policy analysis for {selected_asset['name']}..."):
-                        # Get data elements for this asset
-                        asset_data_elements = []
-                        asset_data_elements_raw = self.inventory_repository.get_asset_data_elements()
-                        for ade in asset_data_elements_raw:
-                            if ade['asset_id'] == selected_asset['id']:
-                                data_element = self.glossary_repository.get_data_element_by_id(ade['data_element_id'])
-                                if data_element:
-                                    asset_data_elements.append(data_element)
-                        
-                        if not asset_data_elements:
-                            st.warning(f"No data elements found for {selected_asset['name']}.")
-                            return
-                        
-                        # Infer sensitivities for data elements
-                        data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(asset_data_elements)
-                        
-                        # Create a comprehensive results table
-                        comprehensive_results = []
-                        
-                        # Get catalog entries for this asset
-                        catalog_entries = self.catalog_repository.get_catalog_entries_by_asset(selected_asset['id'])
-                        
-                        # Process each catalog entry
-                        for entry in catalog_entries:
-                            if not entry.get('data_element_id'):
-                                continue
-                                
-                            data_element_id = entry.get('data_element_id')
-                            data_element = self.glossary_repository.get_data_element_by_id(data_element_id)
-                            
-                            if not data_element:
-                                continue
-                            
-                            # Get both sensitivity and purpose-based policies
-                            sensitivity_result = self.asset_policy_inference.infer_policies_by_data_element_sensitivity(data_element_id)
-                            purpose_policies = self.regulatory_metadata_repository.get_purpose_based_policies_for_data_element(data_element_id)
-                            
-                            # Skip if no policies found
-                            if (not sensitivity_result['policies'] and not purpose_policies):
-                                continue
-                                
-                            # Get sensitivity name
-                            sensitivity_name = "Unknown"
-                            if sensitivity_result['sensitivity']:
-                                sensitivity_name = sensitivity_result['sensitivity'].get('name', 'Unknown')
-                            
-                            # Get all unique policies from both approaches
-                            all_policy_ids = set()
-                            policy_id_to_details = {}
-                            
-                            # Add sensitivity-based policies
-                            for policy in sensitivity_result['policies']:
-                                all_policy_ids.add(policy['id'])
-                                policy_id_to_details[policy['id']] = {
-                                    'name': policy.get('name', ''),
-                                    'type': policy.get('policy_type', ''),
-                                    'sensitivity_based': True,
-                                    'purpose_based': False,
-                                    'details': policy
-                                }
-                            
-                            # Add purpose-based policies
-                            for policy in purpose_policies:
-                                all_policy_ids.add(policy['id'])
-                                if policy['id'] in policy_id_to_details:
-                                    policy_id_to_details[policy['id']]['purpose_based'] = True
-                                else:
-                                    policy_id_to_details[policy['id']] = {
-                                        'name': policy.get('name', ''),
-                                        'type': policy.get('type', ''),
-                                        'sensitivity_based': False,
-                                        'purpose_based': True,
-                                        'details': policy
-                                    }
-                            
-                            # Create a result entry for each policy
-                            for policy_id in all_policy_ids:
-                                policy_details = policy_id_to_details[policy_id]
-                                
-                                # Create a result entry
-                                result = {
-                                    'schema_name': entry.get('schema_name', ''),
-                                    'table_name': entry.get('table_name', ''),
-                                    'column_name': entry.get('column_name', ''),
-                                    'data_type': entry.get('data_type', ''),
-                                    'data_element_name': data_element.get('name', ''),
-                                    'sensitivity': sensitivity_name,
-                                    'policy_name': policy_details['name'],
-                                    'policy_type': policy_details['type'],
-                                    'sensitivity_based': policy_details['sensitivity_based'],
-                                    'purpose_based': policy_details['purpose_based'],
-                                    'recommended': policy_details['sensitivity_based'] and policy_details['purpose_based']
-                                }
-                                
-                                # Add security details if available
-                                if 'requires_encryption' in policy_details['details']:
-                                    result['encryption_required'] = policy_details['details'].get('requires_encryption', False)
-                                    result['encryption_algorithm'] = policy_details['details'].get('encryption_algorithm', '')
-                                    result['masking_required'] = policy_details['details'].get('requires_masking', False)
-                                    result['masking_format'] = policy_details['details'].get('masking_format', '')
-                                    result['access_control_required'] = policy_details['details'].get('requires_access_control', False)
-                                    result['access_control_type'] = policy_details['details'].get('access_control_type', '')
-                                
-                                # Add usage details if available
-                                if 'usage_operations' in policy_details['details']:
-                                    result['usage_operations'] = policy_details['details'].get('usage_operations', '')
-                                    result['usage_allowed'] = policy_details['details'].get('usage_allowed', '')
-                                
-                                # Add retention details if available
-                                if 'retention_period' in policy_details['details']:
-                                    result['retention_period'] = policy_details['details'].get('retention_period', '')
-                                    result['retention_basis'] = policy_details['details'].get('retention_basis', '')
-                                
-                                comprehensive_results.append(result)
-                        
-                        # Create a DataFrame from the results
-                        if comprehensive_results:
-                            # Convert any potential problematic fields to strings to avoid type conversion issues
-                            for result in comprehensive_results:
-                                # Check for role_id and convert to string if present
-                                if 'role_id' in result:
-                                    result['role_id'] = str(result['role_id'])
-                                    
-                            df = pd.DataFrame(comprehensive_results)
-                            
-                            # Add a section explaining the dashboard
-                            st.markdown("""
-                            <div style="background-color: #f0f7fb; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #3498db;">
-                                <h4 style="margin-top: 0;">Understanding the Policy Inference Dashboard</h4>
-                                <p>This dashboard combines policies inferred from both sensitivity-based and purpose-based approaches:</p>
-                                <ul>
-                                    <li><strong>Sensitivity-based policies</strong> are derived from the sensitivity classification of data elements</li>
-                                    <li><strong>Purpose-based policies</strong> are derived from the intended use purposes of data elements</li>
-                                    <li><strong>Recommended policies</strong> are those that appear in both approaches, indicating strong alignment</li>
-                                </ul>
-                                <p>The dashboard highlights where the approaches agree and disagree, helping you identify the most appropriate policies for each data element.</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # Rename columns for better display
-                            column_mapping = {
-                                "schema_name": "Schema",
-                                "table_name": "Table",
-                                "column_name": "Column",
-                                "data_type": "Data Type",
-                                "data_element_name": "Data Element",
-                                "sensitivity": "Sensitivity",
-                                "policy_name": "Policy",
-                                "policy_type": "Policy Type",
-                                "sensitivity_based": "Sensitivity-Based",
-                                "purpose_based": "Purpose-Based",
-                                "recommended": "Recommended",
-                                "encryption_required": "Encryption Required",
-                                "encryption_algorithm": "Encryption Algorithm",
-                                "masking_required": "Masking Required",
-                                "masking_format": "Masking Format",
-                                "access_control_required": "Access Control Required",
-                                "access_control_type": "Access Control Type",
-                                "usage_operations": "Usage Operations",
-                                "usage_allowed": "Usage Allowed",
-                                "retention_period": "Retention Period",
-                                "retention_basis": "Retention Basis"
-                            }
-                            # Only rename columns that exist in the DataFrame
-                            rename_cols = {k: v for k, v in column_mapping.items() if k in df.columns}
-                            df = df.rename(columns=rename_cols)
-                            
-                            # Format boolean columns as Yes/No
-                            boolean_columns = ["Sensitivity-Based", "Purpose-Based", "Recommended", 
-                                             "Encryption Required", "Masking Required", "Access Control Required"]
-                            for col in boolean_columns:
-                                if col in df.columns:
-                                    df[col] = df[col].map({True: "Yes", False: "No"})
-                            
-                            # Add filters
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                # Filter by recommendation status
-                                recommendation_filter = st.selectbox(
-                                    "Filter by Recommendation Status",
-                                    ["All", "Recommended Only", "Sensitivity-Based Only", "Purpose-Based Only"],
-                                    key="recommendation_filter"
-                                )
-                            
-                            with col2:
-                                # Filter by policy type
-                                policy_types = ["All"] + sorted(df["Policy Type"].unique().tolist())
-                                policy_type_filter = st.selectbox(
-                                    "Filter by Policy Type",
-                                    policy_types,
-                                    key="policy_type_filter"
-                                )
-                            
-                            # Apply filters
-                            filtered_df = df.copy()
-                            if recommendation_filter == "Recommended Only":
-                                filtered_df = filtered_df[filtered_df["Recommended"] == "Yes"]
-                            elif recommendation_filter == "Sensitivity-Based Only":
-                                filtered_df = filtered_df[(filtered_df["Sensitivity-Based"] == "Yes") & (filtered_df["Purpose-Based"] == "No")]
-                            elif recommendation_filter == "Purpose-Based Only":
-                                filtered_df = filtered_df[(filtered_df["Sensitivity-Based"] == "No") & (filtered_df["Purpose-Based"] == "Yes")]
-                            
-                            if policy_type_filter != "All":
-                                filtered_df = filtered_df[filtered_df["Policy Type"] == policy_type_filter]
-                            
-                            # Display the DataFrame
-                            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-                            
-                            # Show policy statistics
-                            st.markdown("<h4>Policy Statistics</h4>", unsafe_allow_html=True)
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                total_policies = len(df)
-                                recommended_policies = len(df[df["Recommended"] == "Yes"])
-                                st.metric("Total Policies", total_policies)
-                            with col2:
-                                st.metric("Recommended Policies", recommended_policies)
-                            with col3:
-                                agreement_percentage = round((recommended_policies / total_policies * 100) if total_policies > 0 else 0, 1)
-                                st.metric("Agreement Percentage", f"{agreement_percentage}%")
-                            
-                            # Show recommendations
-                            st.markdown("<h4>Policy Recommendations</h4>", unsafe_allow_html=True)
-                            st.markdown("""
-                            <div style="background-color: #eaf7ea; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #27ae60;">
-                                <p><strong>Recommended approach:</strong> Implement policies that appear in both sensitivity-based and purpose-based approaches first, as these have the strongest justification.</p>
-                                <p>For policies that only appear in one approach:</p>
-                                <ul>
-                                    <li><strong>Sensitivity-only policies</strong> should be considered for data protection and security requirements</li>
-                                    <li><strong>Purpose-only policies</strong> should be evaluated based on the specific business use cases</li>
-                                </ul>
-                                <p>Review any conflicts between the approaches and make decisions based on the higher security requirement.</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.warning(f"No policies found for {selected_asset['name']}.")
+                    if not asset_data_elements:
+                        st.warning(f"No data elements found for {selected_asset['name']}.")
+                        return
+                    
+                    # Call the comprehensive policy inference method
+                    self.run_comprehensive_policy_inference(
+                        selected_asset=selected_asset,
+                        data_elements=asset_data_elements,
+                        selected_purposes=selected_purposes,
+                        selected_policy_types=selected_policy_types,
+                        selected_roles=selected_roles,
+                        purpose_options=purpose_options,
+                        policy_type_options=policy_type_options,
+                        role_options=role_options
+                    )
                 
 
                 
@@ -936,162 +1063,23 @@ class AssetsPage:
                 # Show info box about analysis workflow after the results   
                 # No need to store unique data elements for filtering anymore
                 
-                # Handle the Run Policy Analysis button click
+                # Handle the Run Policy Analysis button click (Purpose-based policy inference)
                 if run_policy_analysis and self.asset_policy_inference:
-                    # Format display strings for selected options
-                    if "all" in selected_purposes:
-                        purpose_display = "All Purposes"
-                    else:
-                        purpose_names = [purpose_options.get(p, "") for p in selected_purposes]
-                        purpose_display = ", ".join(purpose_names)
-                    
-                    if "all" in selected_policy_types:
-                        policy_type_display = "All Policy Types"
-                    else:
-                        policy_type_names = [policy_type_options.get(pt, "") for pt in selected_policy_types]
-                        policy_type_display = ", ".join(policy_type_names)
-                    
-                    if "all" in selected_roles:
-                        role_display = "All Roles"
-                    else:
-                        role_names = [role_options.get(r, "") for r in selected_roles]
-                        role_display = ", ".join(role_names)
-                    
-                    with st.spinner(f"Analyzing policy application for {selected_asset['name']} with {purpose_display}, {policy_type_display}, and {role_display}..."):
-                        # Get applied policies for the selected asset, purpose, policy type, and role
-                        df = self.asset_policy_inference.get_applied_policies_for_asset_purpose(
-                            asset_id=selected_asset['id'],
-                            purpose_id=selected_purposes,
-                            policy_type=selected_policy_types,
-                            role_id=selected_roles
-                        )
-                        
-                        if not df.empty:
-                            # Format boolean columns as checkboxes
-                            formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
-                            
-                            # No need to store results in session state anymore
-                            
-                            # Rename columns for better display
-                            column_mapping = {
-                                "schema_name": "Schema",
-                                "table_name": "Table",
-                                "column_name": "Column",
-                                "data_type": "Data Type",
-                                "data_element_name": "Data Element",
-                                "purpose_name": "Purpose",
-                                "role_name": "Role",
-                                "policy_name": "Policy",
-                                "encryption_required": "Encryption Required",
-                                "encryption_algorithm": "Encryption Algorithm",
-                                "masking_required": "Masking Required",
-                                "masking_format": "Masking Format",
-                                "is_override": "Is Override"
-                            }
-                            formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
-                            
-                            # Add a note about encryption settings for non-Default Role Assignment purposes
-                            if "all" in selected_purposes or any(purpose_options.get(p) != "Default Role Assignment" for p in selected_purposes):
-                                st.markdown(f"<h4>Applied Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
-                            else:
-                                st.markdown(f"<h4>Applied Policies for {selected_asset['name']} with Purpose(s): {purpose_display}</h4>", unsafe_allow_html=True)
-                            
-                            # Display the DataFrame without filters
-                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                        else:
-                            # If no results were found
-                            st.warning(f"No policies found for {selected_asset['name']} with the selected purpose(s): {purpose_display}. This could be because there are no data elements mapped to this asset, or no policies defined for the selected purpose(s).")                
+                    self.run_purpose_based_policy_inference(
+                        selected_asset=selected_asset,
+                        selected_purposes=selected_purposes,
+                        selected_policy_types=selected_policy_types,
+                        selected_roles=selected_roles,
+                        purpose_options=purpose_options,
+                        policy_type_options=policy_type_options,
+                        role_options=role_options
+                    )
                         
                 # No longer need to handle previous policy analysis results from session state
 
-                # Handle the Run Asset Analysis button click
+                # Handle the Run Asset Analysis button click (Sensitivity-based policy inference)
                 if run_analysis:
-                    # 1. Infer sensitivities
-                    data_element_sensitivities = self.sensitivity_inference.infer_data_element_sensitivities(data_elements)
-                    if not data_element_sensitivities:
-                        st.warning("Could not determine sensitivities for the data elements.")
-                        return
-                    sens_data = {
-                        "Data Element": [],
-                        "Sensitivity": [],
-                        "Source": []
-                    }
-                    for de_name, sensitivity_info in data_element_sensitivities.items():
-                        sens_data["Data Element"].append(de_name)
-                        sens_data["Sensitivity"].append(sensitivity_info['sensitivity'])
-                        sens_data["Source"].append(sensitivity_info['source'])
-
-                    # Get sensitivity-based policies for the asset
-                    with st.spinner(f"Analyzing sensitivity-based policies for {selected_asset['name']}..."):
-                        # Get applied policies based on sensitivity for the selected asset
-                        df = self.asset_policy_inference.get_sensitivity_based_policies_for_asset(
-                            asset_id=selected_asset['id']
-                        )
-                        
-                        if not df.empty:
-                            # Format boolean columns as checkboxes
-                            formatted_df = self.asset_policy_inference.format_boolean_as_checkbox(df)
-                            
-                            # Rename columns for better display
-                            column_mapping = {
-                                "schema_name": "Schema",
-                                "table_name": "Table",
-                                "column_name": "Column",
-                                "data_type": "Data Type",
-                                "data_element_name": "Data Element",
-                                "sensitivity": "Sensitivity",
-                                "policy_name": "Policy",
-                                "policy_type": "Policy Type",
-                                "encryption_required": "Encryption Required",
-                                "encryption_algorithm": "Encryption Algorithm",
-                                "masking_required": "Masking Required",
-                                "masking_format": "Masking Format",
-                                "access_control_required": "Access Control Required",
-                                "access_control_type": "Access Control Type",
-                                "usage_operations": "Usage Operations",
-                                "usage_allowed": "Usage Allowed",
-                                "retention_period": "Retention Period",
-                                "retention_basis": "Retention Basis"
-                            }
-                            formatted_df.columns = [column_mapping.get(col, col) for col in formatted_df.columns]
-                            
-                            # Display header
-                            st.markdown(f"<h4>Sensitivity-Based Policies for {selected_asset['name']}</h4>", unsafe_allow_html=True)
-                            
-                            # Display the DataFrame
-                            st.dataframe(formatted_df, use_container_width=True, hide_index=True)
-                        else:
-                            # If no results were found
-                            st.warning(f"No sensitivity-based policies found for {selected_asset['name']}. This could be because there are no data elements with significant sensitivity levels mapped to this asset.")
-                            
-                            # Show the sensitivity analysis anyway
-                            st.markdown("<h5>Data Elements with Significant Sensitivity</h5>", unsafe_allow_html=True)
-                            sensitivities_requiring_policies = ["Internal", "Confidential", "Restricted", "Special Category"]
-                            
-                            # Filter data elements based on their sensitivity
-                            policy_required_elements = {}
-                            for de_name, sensitivity_info in data_element_sensitivities.items():
-                                sensitivity = sensitivity_info['sensitivity']
-                                if sensitivity in sensitivities_requiring_policies:
-                                    policy_required_elements[de_name] = sensitivity
-                            
-                            if not policy_required_elements:
-                                st.info("No data elements with sensitivities that require specific policies were found.")
-                            else:
-                                # Show a summary table of data elements and their sensitivities
-                                summary_data = {
-                                    "Data Element": [],
-                                    "Sensitivity": [],
-                                    "Source": []
-                                }
-                                
-                                for de_name, sensitivity in policy_required_elements.items():
-                                    source = data_element_sensitivities[de_name]['source']
-                                    summary_data["Data Element"].append(de_name)
-                                    summary_data["Sensitivity"].append(sensitivity)
-                                    summary_data["Source"].append(source)
-                                
-                                st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+                    self.run_sensitivity_based_policy_inference(selected_asset, data_elements)
                         
 
                 # 4. Derive risks section - commented out as it depends on obligations which were removed
