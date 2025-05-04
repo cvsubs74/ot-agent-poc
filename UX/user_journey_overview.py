@@ -95,7 +95,7 @@ class UserJourneyOverview:
         # Display the journey as a modern timeline with cards
         for i, step in enumerate(journey_steps):
             st.markdown(f"""
-            <div style="border-left: 4px solid {step['color']}; background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+            <div style="border-left: 4px solid {step['color']}; background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; position: relative; z-index: 1;" onmouseover="this.style.transform='translateY(-8px) translateX(5px)'; this.style.boxShadow='0 12px 20px rgba(0, 0, 0, 0.15)'; this.style.zIndex='2';" onmouseout="this.style.transform='translateY(0) translateX(0)'; this.style.boxShadow='0 2px 4px rgba(0, 0, 0, 0.05)'; this.style.zIndex='1';">
                 <div style="display: flex; align-items: center;">
                     <div style="background-color: {step['color']}; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px;">{i+1}</div>
                     <div>

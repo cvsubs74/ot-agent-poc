@@ -115,11 +115,14 @@ class DataUseGovernanceOverview:
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
         }
         
         .step-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-8px) translateX(5px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+            z-index: 2;
         }
         
         .step-number {
