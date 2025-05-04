@@ -430,14 +430,20 @@ class DataMap:
         # Create sidebar with navigation
         with st.sidebar:
             
-            # First section: Regulatory Intelligence
-            st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence    </div>", unsafe_allow_html=True)
+            # First section: User Journeys
+            st.markdown("<div class='sidebar-section-header'>User Journeys</div>", unsafe_allow_html=True)
             
-            # Create menu items with emoji icons directly in the button text
+            # Data Access Request Journey menu item
+            if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
+                st.session_state['current_section'] = 'User Journey Overview'
+            
+            # Second section: Regulatory Intelligence
+            st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence</div>", unsafe_allow_html=True)
+            
             # Core Constructs menu item
             if st.button("📚 Core Constructs", key="core_constructs_button", use_container_width=True):
                 st.session_state['current_section'] = 'Core'
-            
+                
             # Regulatory Metadata menu item
             if st.button("📋 Regulatory Metadata", key="regulatory_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Regulatory'
@@ -446,7 +452,7 @@ class DataMap:
             if st.button("🌳 Decision Tree", key="decision_tree_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Decision Tree'
             
-            # Second section: Inference APIs
+            # Third section: Inference APIs
             st.markdown("<div class='sidebar-section-header'>Inference APIs</div>", unsafe_allow_html=True)
             
             # Law Inference menu item
@@ -487,7 +493,7 @@ class DataMap:
             if st.button("⚠️ Control Inference", key="control_api_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Control API'                
             
-            # Third section: Data Use Governance
+            # Fourth section: Data Use Governance
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
             
             # Data Use Governance Overview menu item
@@ -517,6 +523,7 @@ class DataMap:
             # Governance menu item
             if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Compliance'
+            
             
             # Fourth section: Inventory
             st.markdown("<div class='sidebar-section-header'>Inventory</div>", unsafe_allow_html=True)
@@ -554,6 +561,7 @@ class DataMap:
             'Roles': self.roles_page,
             'Consent Management': self.consent_management_page,
             'Data Access Request': self.data_access_request_page,
+            'User Journey Overview': self.user_journey_overview,
             'Policy Compliance': self.policy_compliance,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
@@ -566,6 +574,18 @@ class DataMap:
         """Display the Data Use Governance Overview page with diagrams and explanations."""
         from UX.data_use_governance_overview import DataUseGovernanceOverview
         DataUseGovernanceOverview(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
+        
+    def user_journey_overview(self):
+        """Display the User Journey Overview page with data access request journey."""
+        from UX.user_journey_overview import UserJourneyOverview
+        UserJourneyOverview(
+            self.glossary_repository, 
+            self.regulatory_metadata_repository, 
+            self.policy_repository, 
+            self.data_access_repository,
+            self.catalog_repository,
+            self.asset_policy_inference
+        ).render()
         
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""

@@ -66,6 +66,20 @@ class DataAccessRequestPage:
         with tabs[1]:
             self._render_request_monitor()
     
+    def render_embedded(self):
+        """Render the Data Access Request page embedded within another page."""
+        # Create tabs for request creation and monitoring
+        tabs = st.tabs([
+            "Request Data Access",
+            "Access Requests Monitor"
+        ])
+        
+        with tabs[0]:
+            self._render_request_form()
+            
+        with tabs[1]:
+            self._render_request_monitor()
+    
     def _render_request_form(self):
         """Render the form for creating a new data access request."""
         st.markdown('''
