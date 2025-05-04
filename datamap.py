@@ -425,11 +425,18 @@ class DataMap:
         """Main function to run the Streamlit app."""
         self.configure_page()
         
-        # Always reset to the Data Use Governance Overview page when the app starts
-        # This ensures users see the purpose-based access control overview first
-        # The purpose-based approach is central to the data governance model, using
-        # purpose-based roles and masking policies with IS_ROLE_IN_SESSION()
-        st.session_state['current_section'] = 'DUG Overview'
+        # Clear session state and set default page to User Journey Overview
+        # This ensures we always start with the User Journey Overview page
+        if 'initialized' not in st.session_state:
+            # First time initialization - clear any existing state and set our page
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            
+            # Set the Data Use Governance Overview page as the default page
+            # This provides a high-level overview of purpose-based access controls
+            # using purpose-based roles and masking policies with IS_ROLE_IN_SESSION()
+            st.session_state['current_section'] = 'DUG Overview'
+            st.session_state['initialized'] = True
 
         self.divider(2)
         
