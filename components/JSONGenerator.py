@@ -9,7 +9,7 @@ class JSONGenerator:
     for use in various components of the application.
     """
     
-    def __init__(self, glossary_repository, catalog_repository):
+    def __init__(self, glossary_repository, catalog_repository, inventory_repository):
         """
         Initialize the JSONGenerator with required repositories.
         
@@ -19,6 +19,7 @@ class JSONGenerator:
         """
         self.glossary_repository = glossary_repository
         self.catalog_repository = catalog_repository
+        self.inventory_repository = inventory_repository
     
     def build_column_based_json_from_df(self, df, asset_id):
         """
@@ -40,10 +41,10 @@ class JSONGenerator:
         }
         
         # Get asset name
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset[0] == asset_id:
-                result["asset_name"] = asset[1]
+            if asset['id'] == asset_id:
+                result["asset_name"] = asset['name']
                 break
         
         # Track unique purposes for each table to add to row filtering
@@ -190,10 +191,10 @@ class JSONGenerator:
         }
         
         # Get asset name
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset[0] == asset_id:
-                result["asset_name"] = asset[1]
+            if asset['id'] == asset_id:
+                result["asset_name"] = asset['name']
                 break
         
         # Get all catalog entries for this asset to include ALL columns

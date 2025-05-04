@@ -1405,31 +1405,6 @@ class GlossaryRepository:
         finally:
             cursor.close()
             
-    def get_assets(self):
-        """Get all assets from the database."""
-        # Handle test mode when connection is None
-        if self.connection is None:
-            # Return sample data for testing
-            return [
-                (1, "CRM System", "Customer Relationship Management system"),
-                (2, "ERP System", "Enterprise Resource Planning system"),
-                (3, "HR Portal", "Human Resources portal"),
-                (4, "Marketing Database", "Marketing database"),
-                (5, "Financial System", "Financial system"),
-                (6, "Snowflake", "Snowflake data warehouse")
-            ]
-            
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute("SELECT id, name, description FROM asset;")
-            assets = cursor.fetchall()
-            return assets
-        except Exception as e:
-            print(f"Error fetching assets: {e}")
-            return []
-        finally:
-            cursor.close()
-
     def seed_policies(self):
         """Seed the database with initial policy data."""
         policies = [

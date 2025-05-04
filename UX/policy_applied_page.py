@@ -6,7 +6,7 @@ class PolicyAppliedPage:
     Page to display policies applied at the table column level for a given asset and purpose.
     """
     
-    def __init__(self, glossary_repository, regulatory_metadata_repository, catalog_repository, policy_applied_repository):
+    def __init__(self, glossary_repository, regulatory_metadata_repository, catalog_repository, policy_applied_repository, inventory_repository=None):
         """
         Initialize the PolicyAppliedPage with required repositories.
         
@@ -15,11 +15,13 @@ class PolicyAppliedPage:
             regulatory_metadata_repository: Repository for accessing policy metadata
             catalog_repository: Repository for accessing catalog data
             policy_applied_repository: Repository for accessing applied policy data
+            inventory_repository: Repository for accessing inventory data (optional)
         """
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.catalog_repository = catalog_repository
         self.policy_applied_repository = policy_applied_repository
+        self.inventory_repository = inventory_repository or glossary_repository
     
     def render(self):
         """Display the Policy Applied page."""
@@ -36,11 +38,10 @@ class PolicyAppliedPage:
         </div>''', unsafe_allow_html=True)
         
         # Get assets for dropdown
-        assets = self.glossary_repository.get_assets()
+        assets = self.inventory_repository.get_assets()
         asset_options = {}
         for asset in assets:
-            asset_id, asset_name, _ = asset
-            asset_options[asset_id] = asset_name
+            asset_options[asset['id']] = asset['name']
         
         # Get purposes for dropdown
         purposes = self.glossary_repository.get_purposes()

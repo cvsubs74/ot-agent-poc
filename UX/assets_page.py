@@ -16,10 +16,10 @@ class AssetsPage:
         self.regulatory_metadata_repository = regulatory_metadata_repository
         # Initialize asset_policy_inference internally
         from core.asset_policy_inference import AssetPolicyInference
-        self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, inventory_repository)
+        self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository)
         self.ddl_generator = DDLGenerator()
         self.identifier_matcher = SimpleIdentifierMatcher()
-        self.json_generator = JSONGenerator(glossary_repository, catalog_repository)
+        self.json_generator = JSONGenerator(glossary_repository, catalog_repository, inventory_repository)
         
     def run_sensitivity_based_policy_inference(self, selected_asset, data_elements, selected_policy_types=None, display_results=True):
         """Run sensitivity-based policy inference for the selected asset.

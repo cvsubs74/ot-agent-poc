@@ -89,7 +89,8 @@ class DataMap:
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
-            self.glossary_repository
+            self.glossary_repository,
+            self.inventory_repository
         )
         
         # Initialize inference classes
@@ -400,13 +401,14 @@ class DataMap:
             self.glossary_repository,
             self.regulatory_metadata_repository,
             self.catalog_repository,
-            self.policy_applied_repository
+            self.policy_applied_repository,
+            self.inventory_repository
         ).render()
         
     def roles_page(self):
         """Display the External Roles page with information about imported roles."""
         from UX.roles_page import RolesPage
-        RolesPage(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
+        RolesPage(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository, self.inventory_repository).render()
     def run(self):
         """Main function to run the Streamlit app."""
         self.configure_page()
@@ -582,6 +584,7 @@ class DataMap:
         UserJourneyOverview(
             self.glossary_repository, 
             self.regulatory_metadata_repository, 
+            self.inventory_repository,
             self.policy_repository, 
             self.data_access_repository,
             self.catalog_repository,
@@ -680,6 +683,7 @@ class DataMap:
         page = DataAccessRequestPage(
             glossary_repository=self.glossary_repository,
             catalog_repository=self.catalog_repository,
+            inventory_repository=self.inventory_repository,
             asset_policy_inference=self.asset_policy_inference,
             data_access_repository=self.data_access_repository
         )

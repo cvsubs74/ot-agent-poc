@@ -4,10 +4,11 @@ import random
 import time
 
 class RolesPage:
-    def __init__(self, glossary_repository, regulatory_metadata_repository, policy_repository):
+    def __init__(self, glossary_repository, regulatory_metadata_repository, policy_repository, inventory_repository=None):
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.policy_repository = policy_repository
+        self.inventory_repository = inventory_repository or glossary_repository
         
     def format_boolean_as_checkbox(self, df, boolean_columns):
         """Format boolean columns in a dataframe as checkboxes.
@@ -103,16 +104,15 @@ class RolesPage:
             st.markdown("Filter external roles by the asset they belong to.")
             
             # Get all assets for the dropdown
-            assets = self.glossary_repository.get_assets()
-            
+            assets = self.inventory_repository.get_assets()
+        
             # Create a dictionary mapping asset names to IDs for the selectbox
             asset_dict = {}
             for asset in assets:
-                asset_id, asset_name, _ = asset
-                asset_dict[asset_name] = asset_id
-            
+                asset_dict[asset['name']] = asset['id']
+        
             # Create the asset filter dropdown
-            asset_options = ["All Assets"] + [name for _, name, _ in assets]
+            asset_options = ["All Assets"] + [asset['name'] for asset in assets]
             selected_asset = st.selectbox(
                 "Filter by Asset:",
                 options=asset_options,
@@ -241,16 +241,15 @@ class RolesPage:
                     purpose_options[purpose_name] = purpose_id
                 
                 # Get all assets for the dropdown
-                assets = self.glossary_repository.get_assets()
+                assets = self.inventory_repository.get_assets()
                 
                 # Create a dictionary mapping asset names to IDs for the selectbox
                 asset_dict = {}
                 for asset in assets:
-                    asset_id, asset_name, _ = asset
-                    asset_dict[asset_name] = asset_id
+                    asset_dict[asset['name']] = asset['id']
                 
                 # Add "All Assets" option
-                asset_options = ["All Assets"] + [name for _, name, _ in assets]
+                asset_options = ["All Assets"] + [asset['name'] for asset in assets]
                 
                 # Add asset filter dropdown outside the form so it updates immediately
                 st.markdown("<h6>Filter Roles by Asset</h6>", unsafe_allow_html=True)

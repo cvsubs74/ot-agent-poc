@@ -5,10 +5,11 @@ from UX.data_access_request_page import DataAccessRequestPage
 class UserJourneyOverview:
     """Class to render the User Journey Overview page."""
     
-    def __init__(self, glossary_repository, regulatory_metadata_repository, policy_repository, data_access_repository, catalog_repository=None, asset_policy_inference=None):
+    def __init__(self, glossary_repository, regulatory_metadata_repository, inventory_repository, policy_repository, data_access_repository, catalog_repository=None, asset_policy_inference=None):
         """Initialize with repositories."""
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
+        self.inventory_repository = inventory_repository
         self.policy_repository = policy_repository
         self.data_access_repository = data_access_repository
         self.catalog_repository = catalog_repository
@@ -45,6 +46,7 @@ class UserJourneyOverview:
                 DataAccessRequestPage(
                     self.glossary_repository,
                     self.catalog_repository,
+                    self.inventory_repository,
                     self.asset_policy_inference,
                     self.data_access_repository
                 ).render_embedded()

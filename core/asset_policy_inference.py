@@ -8,7 +8,7 @@ class AssetPolicyInference:
     for a given asset and purpose, including all policy types (security, usage, retention).
     """
     
-    def __init__(self, catalog_repository, regulatory_metadata_repository, inventory_repository):
+    def __init__(self, catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository):
         """
         Initialize the AssetPolicyInference with required repositories.
         
@@ -21,7 +21,7 @@ class AssetPolicyInference:
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.inventory_repository = inventory_repository
         # Initialize the glossary repository with the same connection as the regulatory metadata repository
-        self.glossary_repository = GlossaryRepository(regulatory_metadata_repository.connection)
+        self.glossary_repository = glossary_repository
         self.sensitivity_inference = SensitivityInference(self.glossary_repository, regulatory_metadata_repository)
     
     def get_applied_policies_for_asset_purpose(self, asset_id, purpose_id, policy_type='all', role_id='all'):
@@ -48,9 +48,20 @@ class AssetPolicyInference:
         asset_name = None
         assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset['id'] == asset_id:
-                asset_name = asset['name']
-                break
+            try:
+                # Try dictionary access first
+                if asset['id'] == asset_id:
+                    asset_name = asset['name']
+                    break
+            except (TypeError, KeyError):
+                # Fall back to tuple access if dictionary access fails
+                try:
+                    if isinstance(asset, tuple) and len(asset) >= 2 and asset[0] == asset_id:
+                        asset_name = asset[1]  # Assuming second element is name
+                        break
+                except Exception as e:
+                    logger.warning(f"Error accessing asset data: {e}")
+                    continue
         logger.info(f"Asset: {asset_name} (ID: {asset_id})")
         
         # Get all catalog entries for the asset
@@ -117,9 +128,13 @@ class AssetPolicyInference:
         else:
             # Process a single specific purpose
             current_purpose_id = purpose_id
-            purpose_obj = next((p for p in self.glossary_repository.get_purposes() if p["id"] == current_purpose_id), None)
+            purposes = self.glossary_repository.get_purposes()
+            purpose_obj = next((p for p in purposes if p["id"] == current_purpose_id), None)
+            
             if purpose_obj:
                 current_purpose_name = purpose_obj["name"]
+                    
+            if purpose_obj:
                 logger.info(f"Processing single purpose: {current_purpose_name} (ID: {current_purpose_id})")
                 
                 # Process each catalog entry for this purpose
@@ -928,9 +943,20 @@ class AssetPolicyInference:
         asset_name = None
         assets = self.inventory_repository.get_assets()
         for asset in assets:
-            if asset['id'] == asset_id:
-                asset_name = asset['name']
-                break
+            try:
+                # Try dictionary access first
+                if asset['id'] == asset_id:
+                    asset_name = asset['name']
+                    break
+            except (TypeError, KeyError):
+                # Fall back to tuple access if dictionary access fails
+                try:
+                    if isinstance(asset, tuple) and len(asset) >= 2 and asset[0] == asset_id:
+                        asset_name = asset[1]  # Assuming second element is name
+                        break
+                except Exception as e:
+                    logger.warning(f"Error accessing asset data: {e}")
+                    continue
         logger.info(f"Asset: {asset_name} (ID: {asset_id})")
         
         # Get all catalog entries for the asset

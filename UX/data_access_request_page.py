@@ -6,14 +6,15 @@ from components.DDLGenerator import DDLGenerator
 from components.JSONGenerator import JSONGenerator
 
 class DataAccessRequestPage:
-    def __init__(self, glossary_repository, catalog_repository, asset_policy_inference, data_access_repository=None):
+    def __init__(self, glossary_repository, catalog_repository, inventory_repository, asset_policy_inference, data_access_repository=None):
         """Initialize the Data Access Request page with required repositories."""
         self.glossary_repository = glossary_repository
         self.catalog_repository = catalog_repository
+        self.inventory_repository = inventory_repository
         self.asset_policy_inference = asset_policy_inference
         self.data_access_repository = data_access_repository
         self.ddl_generator = DDLGenerator()
-        self.json_generator = JSONGenerator(glossary_repository, catalog_repository)
+        self.json_generator = JSONGenerator(glossary_repository, catalog_repository, inventory_repository)
     
     def render(self):
         """Render the Data Access Request page with tabs for request creation and monitoring."""
@@ -103,8 +104,8 @@ class DataAccessRequestPage:
         st.markdown("#### Request Details")
         with st.container(border=True):
             # Get assets for selection
-            assets = self.glossary_repository.get_assets()
-            asset_options = {asset[0]: asset[1] for asset in assets}
+            assets = self.inventory_repository.get_assets()
+            asset_options = {asset['id']: asset['name'] for asset in assets}
             
             # Asset selection
             selected_asset_id = st.selectbox(
