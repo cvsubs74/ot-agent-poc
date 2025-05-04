@@ -433,6 +433,10 @@ class DataMap:
             # First section: User Journeys
             st.markdown("<div class='sidebar-section-header'>User Journeys</div>", unsafe_allow_html=True)
             
+            # Data Use Governance Overview menu item
+            if st.button("📊 Overview", key="journey_overview_btn", use_container_width=True):
+                st.session_state['current_section'] = 'DUG Overview'
+            
             # Data Access Request Journey menu item
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
@@ -496,9 +500,12 @@ class DataMap:
             # Fourth section: Data Use Governance
             st.markdown("<div class='sidebar-section-header'>Data Use Governance</div>", unsafe_allow_html=True)
             
-            # Data Use Governance Overview menu item
-            if st.button("📊 Overview", key="dug_overview_btn", use_container_width=True):
-                st.session_state['current_section'] = 'DUG Overview'
+            # Data Use Governance section description
+            st.markdown('''
+            <div style="padding: 0 10px; font-size: 0.8rem; color: #666;">
+                Configure purpose-based policies and access controls
+            </div>
+            ''', unsafe_allow_html=True)
             
             # Purposes menu item
             if st.button("🎯 Purposes", key="purposes_btn", use_container_width=True):
