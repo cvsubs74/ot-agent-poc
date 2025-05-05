@@ -434,7 +434,14 @@ class DataMap:
         # Create sidebar with navigation
         with st.sidebar:
             
-            # First section: User Journeys
+            # First section: Knowledge Base
+            st.markdown("<div class='sidebar-section-header'>Knowledge Base</div>", unsafe_allow_html=True)
+            
+            # Knowledge Base FAQ menu item
+            if st.button("❓ Knowledge Base FAQ", key="faq_btn", use_container_width=True):
+                st.session_state['current_section'] = 'FAQ'
+            
+            # Second section: User Journeys
             st.markdown("<div class='sidebar-section-header'>User Journeys</div>", unsafe_allow_html=True)
             
             # Data Use Governance Overview menu item
@@ -444,10 +451,6 @@ class DataMap:
             # Data Access Request Journey menu item
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
-                
-            # Knowledge Base FAQ menu item
-            if st.button("❓ Knowledge Base FAQ", key="faq_btn", use_container_width=True):
-                st.session_state['current_section'] = 'FAQ'
             
             # Second section: Regulatory Intelligence
             st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence</div>", unsafe_allow_html=True)
