@@ -12,6 +12,7 @@ from UX.policy_compliance_page import PolicyCompliancePage
 from UX.risk_inference_page import RiskInferencePage
 from core.asset_policy_inference import AssetPolicyInference
 from UX.data_use_governance_overview import DataUseGovernanceOverview
+from UX.faq_page import FAQPage
 from UX.core_constructs_pages import (
     LawPage,
     JurisdictionsPage,
@@ -73,6 +74,7 @@ from repositories.ObligationRepository import ObligationRepository
 from repositories.CatalogRepository import CatalogRepository
 from repositories.ConsentRepository import ConsentRepository
 from repositories.DataAccessRepository import DataAccessRepository
+from repositories.KnowledgeRepository import KnowledgeRepository
 
 class DataMap:
     def __init__(self):
@@ -86,6 +88,7 @@ class DataMap:
         self.policy_repository = PolicyRepository(self.database_manager.connection)
         self.consent_repository = ConsentRepository(self.database_manager.connection)
         self.data_access_repository = DataAccessRepository(self.database_manager.connection)
+        self.knowledge_repository = KnowledgeRepository(self.database_manager.connection)
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
@@ -441,6 +444,10 @@ class DataMap:
             # Data Access Request Journey menu item
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
+                
+            # Knowledge Base FAQ menu item
+            if st.button("❓ Knowledge Base FAQ", key="faq_btn", use_container_width=True):
+                st.session_state['current_section'] = 'FAQ'
             
             # Second section: Regulatory Intelligence
             st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence</div>", unsafe_allow_html=True)
@@ -565,6 +572,7 @@ class DataMap:
             'Consent Management': self.consent_management_page,
             'Data Access Request': self.data_access_request_page,
             'User Journey Overview': self.user_journey_overview,
+            'FAQ': self.faq_page,
             'Policy Compliance': self.policy_compliance,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
@@ -590,6 +598,11 @@ class DataMap:
             self.catalog_repository,
             self.asset_policy_inference
         ).render()
+        
+    def faq_page(self):
+        """Display the Knowledge Base FAQ page."""
+        from UX.faq_page import FAQPage
+        FAQPage(self.knowledge_repository).render()
         
     def control_inference_page(self):
         """Display the Control Inference page to recommend controls based on frameworks, policies, or risks."""
