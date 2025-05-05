@@ -655,27 +655,16 @@ class AssetsPage:
                 selected_roles = ["all"]
                 
                 # Create columns for the buttons (now with 6 buttons)
-                col1, col2, col3 = st.columns(3)
-                col4, col5, col6 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    # Run analysis button
-                    run_analysis = st.button("Policy Inference by Sensitivity", key=f"run_analysis_{selected_asset['id']}", use_container_width=True)
+                    run_comprehensive_inference = st.button("Infer Policies", key=f"run_comprehensive_inference_{selected_asset['id']}", use_container_width=True)
                 with col2:
-                    # Run policy analysis button
-                    run_policy_analysis = st.button("Policy Inference by Purpose", key=f"run_policy_analysis_{selected_asset['id']}", use_container_width=True)
+                    run_gap_analysis = st.button("Gap Analysis", key=f"run_gap_analysis_{selected_asset['id']}", use_container_width=True)                    
                 with col3:
-                    # Comprehensive policy inference button
-                    run_comprehensive_inference = st.button("Policy Inference by Purpose and Sensitivity", key=f"run_comprehensive_inference_{selected_asset['id']}", use_container_width=True)
+                    generate_json = st.button("Generate Target Policy Specification", key=f"generate_json_{selected_asset['id']}", use_container_width=True)
                 with col4:
-                    # Gap Analysis button
-                    run_gap_analysis = st.button("Gap Analysis", key=f"run_gap_analysis_{selected_asset['id']}", use_container_width=True)
-                with col5:
-                    # Generate JSON policy specification button
-                    generate_json = st.button("Generate Target Policy JSON", key=f"generate_json_{selected_asset['id']}", use_container_width=True)
-                with col6:
-                    # Generate DDL button
-                    generate_ddl = st.button("Generate Snowflake DDL", key=f"generate_ddl_{selected_asset['id']}", use_container_width=True)                 # Removed the explanation section from here - it will be shown after the results                    
+                    generate_ddl = st.button("Generate Target Policy Commands", key=f"generate_ddl_{selected_asset['id']}", use_container_width=True)                 # Removed the explanation section from here - it will be shown after the results                    
                 
                 # Variables to store policy analysis results
                 policy_analysis = None
@@ -741,8 +730,6 @@ class AssetsPage:
                         policy_type_options=policy_type_options,
                         role_options=role_options
                     )
-                
-
                 
                 # Handle the Generate JSON Policy Spec button click or DDL generation
                 if (generate_json or generate_ddl) and self.asset_policy_inference:
@@ -1098,72 +1085,6 @@ class AssetsPage:
                         </div>
                         ''', unsafe_allow_html=True) 
 
-                # Show info box about analysis workflow after the results   
-                # No need to store unique data elements for filtering anymore
-                
-                # Handle the Run Policy Analysis button click (Purpose-based policy inference)
-                if run_policy_analysis and self.asset_policy_inference:
-                    self.run_purpose_based_policy_inference(
-                        selected_asset=selected_asset,
-                        selected_purposes=selected_purposes,
-                        selected_policy_types=selected_policy_types,
-                        selected_roles=selected_roles,
-                        purpose_options=purpose_options,
-                        policy_type_options=policy_type_options,
-                        role_options=role_options
-                    )
-                        
-                # No longer need to handle previous policy analysis results from session state
-
-                # Handle the Run Asset Analysis button click (Sensitivity-based policy inference)
-                if run_analysis:
-                    self.run_sensitivity_based_policy_inference(selected_asset, data_elements)
-                        
-
-                # 4. Derive risks section - commented out as it depends on obligations which were removed
-                # st.markdown("<h5>Potential Risks (by Data Element)</h5>", unsafe_allow_html=True)
-                # st.info("The risk analysis section has been removed as part of the simplification of the Run Asset Analysis feature.")
-                # all_risks = []
-                # for de_name, de_obligations in obligations_by_de.items():
-                # The following code for risk analysis has been commented out as it depends on obligations
-                # which were removed as part of the simplification of the Run Asset Analysis feature
-                #
-                # for de_name, de_obligations in obligations_by_de.items():
-                #     for obligation in de_obligations:
-                #         obligation_id = obligation["id"]
-                #         obligation_name = obligation["name"]
-                #         risks = self.obligation_repository.get_risks_for_obligation(obligation_id)
-                #         for risk in risks:
-                #             all_risks.append({
-                #                 "Data Element": de_name,
-                #                 "Obligation": obligation_name,
-                #                 "Risk": risk["name"],
-                #                 "Risk Category": risk["category"],
-                #                 "Likelihood": risk["likelihood"],
-                #                 "Impact": risk["impact"]
-                #             })
-                # 
-                # if all_risks:
-                #     df = pd.DataFrame(all_risks)
-                #     # Add risk rating
-                #     def get_risk_rating(row):
-                #         likelihood = row['Likelihood']
-                #         impact = row['Impact']
-                #
-                #         if likelihood == 'High' and impact == 'High':
-                #             return 'Critical'
-                #         elif (likelihood == 'High' and impact == 'Medium') or (likelihood == 'Medium' and impact == 'High'):
-                #             return 'High'
-                #         elif (likelihood == 'Medium' and impact == 'Medium') or (likelihood == 'High' and impact == 'Low') or (likelihood == 'Low' and impact == 'High'):
-                #             return 'Medium'
-                #         else:
-                #             return 'Low'
-                #
-                #     df["Risk Rating"] = df.apply(get_risk_rating, axis=1)
-                #     display_columns = ["Data Element", "Obligation", "Risk", "Risk Category", "Likelihood", "Impact", "Risk Rating"]
-                #     st.dataframe(df[display_columns], use_container_width=True)
-                # else:
-                #     st.info("No risks identified for the obligations.")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     def show_sensitivity_based_obligations(self, data_element_sensitivities):
