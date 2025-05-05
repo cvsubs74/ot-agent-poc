@@ -62,11 +62,22 @@ class FAQPage:
                     placeholder="Examples:\n- How do decision trees work?\n- What is purpose-based access control?\n- How do I implement data use governance?\n- What are the key components of a policy?",
                     label_visibility="collapsed"
                 )
+                # Use columns for the buttons
                 col1, col2, col3 = st.columns([1, 1, 1])
                 with col1:
-                    submit_button = st.form_submit_button("Send", use_container_width=True)
+                    submit_button = st.form_submit_button(
+                        "Send", 
+                        use_container_width=True,
+                        type="primary",  # Use primary button type
+                        help="Send your question to the chatbot"
+                    )
                 with col3:
-                    if st.form_submit_button("Clear Chat", use_container_width=True):
+                    if st.form_submit_button(
+                        "Clear Chat", 
+                        use_container_width=True,
+                        type="primary",  # Use primary button type
+                        help="Clear the chat history"
+                    ):
                         st.session_state.chat_history = []
                         st.rerun()
             
@@ -86,38 +97,40 @@ class FAQPage:
                     vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
                     model = GenerativeModel(os.environ["MODEL"])
                     
-                    # Get relevant knowledge base items
-                    relevant_items = self.knowledge_repository.search_knowledge_base(user_input)
+                    # Get all knowledge base items
+                    all_items = self.knowledge_repository.get_all_knowledge_items()
                     
-                    # Format context for the prompt
-                    context_text = ""
-                    if relevant_items:
-                        context_text = "Here are some relevant knowledge base entries:\n\n"
-                        for i, item in enumerate(relevant_items[:5]):
-                            context_text += f"Entry {i+1}:\n"
-                            context_text += f"Category: {item['category']}\n"
-                            context_text += f"Subcategory: {item['subcategory']}\n"
-                            context_text += f"Question: {item['question']}\n"
-                            context_text += f"Answer: {item['answer']}\n\n"
+                    # Format context for the prompt - simply include all knowledge base items
+                    context_text = "Complete Knowledge Base Content:\n\n"
+                    
+                    # Add all knowledge base items to the context
+                    for i, item in enumerate(all_items):
+                        context_text += f"Entry {i+1}:\n"
+                        context_text += f"Category: {item['category']}\n"
+                        context_text += f"Subcategory: {item['subcategory'] or 'General'}\n"
+                        context_text += f"Question: {item['question']}\n"
+                        context_text += f"Answer: {item['answer']}\n\n"
                     
                     # Generate prompt
                     prompt = f"""
                     You are a helpful assistant for a Data Use Governance platform. Your task is to answer questions about data governance, 
-                    privacy, compliance, and related topics based on the provided knowledge base information.
+                    privacy, compliance, and related topics based ONLY on the provided knowledge base information.
                     
                     {context_text}
                     
                     User Question: {user_input}
                     
-                    Please provide a clear, concise, and accurate answer based on the knowledge base information provided above. 
-                    If the knowledge base doesn't contain information directly relevant to the question, provide a general answer 
-                    based on your understanding of data governance and privacy best practices, but clearly indicate that this is 
-                    general information rather than specific to the platform.
+                    IMPORTANT INSTRUCTIONS:
+                    1. ONLY answer based on the knowledge base context provided above. Do not make up or hallucinate information.
+                    2. If the knowledge base doesn't contain information directly relevant to the question, say "I don't have specific information about that in my knowledge base" rather than making up an answer.
+                    3. Do not reference external sources, websites, or documentation that isn't mentioned in the knowledge base context.
+                    4. If you're unsure about any details, acknowledge the limitations of your knowledge rather than guessing.
+                    5. Focus on the specific implementation details of this application as described in the knowledge base.
                     
                     Your answer should:
                     1. Be direct and to the point
                     2. Use bullet points or numbered lists for complex explanations
-                    3. Include examples where appropriate
+                    3. Include examples from the knowledge base where appropriate
                     4. Avoid technical jargon unless necessary
                     5. Not include any references to the "knowledge base entries" or the format of the context
                     6. Be formatted in a way that's easy to read
