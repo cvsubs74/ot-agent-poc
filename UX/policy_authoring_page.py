@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
+import json
+import vertexai
+from vertexai.generative_models import GenerativeModel
 from components.JSONGenerator import JSONGenerator
 from core.asset_policy_inference import AssetPolicyInference
 
@@ -225,9 +229,21 @@ class PolicyAuthoringPage:
                 context_info['data_subject_type'] = data_subject_type['name'] if data_subject_type else 'Unknown'
                 context_info['data_subject_type_id'] = selected_data_subject_type
             
+            # Initialize session state for storing dataframes if not already present
+            if 'sensitivity_df' not in st.session_state:
+                st.session_state.sensitivity_df = None
+            if 'purpose_df' not in st.session_state:
+                st.session_state.purpose_df = None
+            if 'context_info' not in st.session_state:
+                st.session_state.context_info = None
+            if 'selected_data_elements' not in st.session_state:
+                st.session_state.selected_data_elements = None
+            if 'selected_purposes' not in st.session_state:
+                st.session_state.selected_purposes = None
+            
             # Check which inference method to use
             if inference_method in ["Sensitivity-based", "Both"]:
-                self.generate_sensitivity_based_policies(
+                st.session_state.sensitivity_df = self.generate_sensitivity_based_policies(
                     selected_data_elements, 
                     selected_policy_types,
                     selected_jurisdiction,
@@ -236,7 +252,7 @@ class PolicyAuthoringPage:
                 )
             
             if inference_method in ["Purpose-based", "Both"] and selected_purposes:
-                self.generate_purpose_based_policies(
+                st.session_state.purpose_df = self.generate_purpose_based_policies(
                     selected_data_elements, 
                     selected_purposes, 
                     selected_policy_types, 
@@ -245,11 +261,56 @@ class PolicyAuthoringPage:
                 )
             elif inference_method == "Purpose-based" and not selected_purposes:
                 st.warning("Please select at least one purpose for purpose-based inference.")
+            
+            # Store context and selection data in session state
+            st.session_state.context_info = context_info
+            st.session_state.selected_data_elements = selected_data_elements
+            st.session_state.selected_purposes = selected_purposes
+            
+            # Automatically generate PDF if we have policies from either method
+            has_policies = ((st.session_state.sensitivity_df is not None and not st.session_state.sensitivity_df.empty) or 
+                           (st.session_state.purpose_df is not None and not st.session_state.purpose_df.empty))
+            
+            # Generate policy document using VertexAI if we have policies
+            if has_policies:
+                st.markdown("<hr style='margin-top: 30px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+                st.markdown("<h3 style='color: #3498db; text-align: center;'><i class='fas fa-file-alt'></i> Policy Document</h3>", unsafe_allow_html=True)
                 
+                with st.spinner("Generating comprehensive policy document..."):
+                    # Generate the policy document using VertexAI
+                    policy_document = self.generate_policy_document(
+                        sensitivity_policies_df=st.session_state.sensitivity_df,
+                        purpose_policies_df=st.session_state.purpose_df,
+                        context_info=st.session_state.context_info,
+                        selected_data_elements=st.session_state.selected_data_elements,
+                        selected_purposes=st.session_state.selected_purposes
+                    )
+                    
+                    # Display the policy document in an expander
+                    with st.expander("View Complete Policy Document", expanded=True):
+                        st.markdown(policy_document, unsafe_allow_html=True)
+                        
+                        # Add a download button for the document as markdown
+                        filename = "comprehensive_data_governance_policy"
+                        if st.session_state.context_info and 'jurisdiction' in st.session_state.context_info:
+                            filename += f"_{st.session_state.context_info['jurisdiction'].replace(' ', '_')}"
+                        
+                        st.download_button(
+                            label="📥 Download Policy Document",
+                            data=policy_document,
+                            file_name=f"{filename}.md",
+                            mime="text/markdown",
+                            key="policy_document_download"
+                        )
+            
             # Policy Implementation section removed as requested
     
     def generate_sensitivity_based_policies(self, selected_data_elements, selected_policy_types, jurisdiction_id=None, data_subject_type_id=None, context_info=None):
-        """Generate sensitivity-based policies for the selected data elements."""
+        """Generate sensitivity-based policies for the selected data elements.
+        
+        Returns:
+            DataFrame: The dataframe containing sensitivity-based policies
+        """
         st.markdown("<div class='results-container'><h3 style='color: #3498db;'><i class='fas fa-shield-alt'></i> Sensitivity-Based Policies</h3>", unsafe_allow_html=True)
         
         with st.spinner("Analyzing sensitivity-based policies..."):
@@ -270,7 +331,7 @@ class PolicyAuthoringPage:
             if df.empty:
                 st.info("No sensitivity-based policies found for the selected data elements.")
                 st.markdown("</div>", unsafe_allow_html=True)
-                return
+                return df
             
             # Display context information if available
             if context_info:
@@ -312,10 +373,16 @@ class PolicyAuthoringPage:
             # Policy Distribution section removed as requested
         
         st.markdown("</div>", unsafe_allow_html=True)
+        # Return the dataframe for use in the consolidated PDF
+        return df
     
     def generate_purpose_based_policies(self, selected_data_elements, selected_purposes, selected_policy_types, 
                                        purpose_options, policy_type_options):
-        """Generate purpose-based policies for the selected data elements and purposes."""
+        """Generate purpose-based policies for the selected data elements and purposes.
+        
+        Returns:
+            DataFrame: The dataframe containing purpose-based policies
+        """
         st.markdown("<div class='results-container'><h3 style='color: #3498db;'><i class='fas fa-bullseye'></i> Purpose-Based Policies</h3>", unsafe_allow_html=True)
         
         with st.spinner("Analyzing purpose-based policies..."):
@@ -330,7 +397,7 @@ class PolicyAuthoringPage:
             if df.empty:
                 st.info("No purpose-based policies found for the selected data elements and purposes.")
                 st.markdown("</div>", unsafe_allow_html=True)
-                return
+                return df
             
             # Format boolean columns as checkboxes
             df = self.asset_policy_inference.format_boolean_as_checkbox(df)
@@ -360,7 +427,119 @@ class PolicyAuthoringPage:
             st.dataframe(df, use_container_width=True, height=400)
             
             # Policy Distribution section removed as requested
+        # Return the dataframe for use in the consolidated PDF
+        return df
         
         st.markdown("</div>", unsafe_allow_html=True)
+    
+    def __init__(self, inventory_repository, glossary_repository, catalog_repository, sensitivity_inference, regulatory_metadata_repository, policy_repository):
+        """Initialize the Policy Authoring page with required repositories."""
+        self.inventory_repository = inventory_repository
+        self.glossary_repository = glossary_repository
+        self.catalog_repository = catalog_repository
+        self.sensitivity_inference = sensitivity_inference
+        self.regulatory_metadata_repository = regulatory_metadata_repository
+        # Initialize asset_policy_inference with policy_repository
+        self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository, policy_repository=policy_repository)
+        self.json_generator = JSONGenerator(glossary_repository, catalog_repository, inventory_repository)
+        
+        # Initialize VertexAI for policy document generation
+        try:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
+            vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
+            self.model = GenerativeModel(os.environ["MODEL"])
+        except Exception as e:
+            st.warning(f"VertexAI initialization failed: {e}. Policy document generation may not work.")
+            self.model = None
+    
+    def generate_policy_document(self, sensitivity_policies_df=None, purpose_policies_df=None, context_info=None, selected_data_elements=None, selected_purposes=None):
+        """Generate a professional policy document using VertexAI containing the data governance policies."""
+        if self.model is None:
+            return "**Error: VertexAI model not initialized. Policy document generation is unavailable.**"
+        
+        # Prepare data for the prompt
+        policy_data = {}
+        
+        # Add context information
+        if context_info:
+            policy_data["context"] = context_info
+        
+        # Add data elements
+        if selected_data_elements:
+            policy_data["data_elements"] = []
+            for de_id in selected_data_elements:
+                data_element = self.glossary_repository.get_data_element_by_id(de_id)
+                if data_element:
+                    policy_data["data_elements"].append(data_element)
+        
+        # Add purposes
+        if selected_purposes:
+            policy_data["purposes"] = []
+            for p_id in selected_purposes:
+                purpose = self.glossary_repository.get_purpose_by_id(p_id)
+                if purpose:
+                    policy_data["purposes"].append(purpose)
+        
+        # Add sensitivity-based policies
+        if sensitivity_policies_df is not None and not sensitivity_policies_df.empty:
+            policy_data["sensitivity_policies"] = sensitivity_policies_df.to_dict(orient="records")
+        
+        # Add purpose-based policies
+        if purpose_policies_df is not None and not purpose_policies_df.empty:
+            policy_data["purpose_policies"] = purpose_policies_df.to_dict(orient="records")
+        
+        # Convert to JSON string
+        policy_json = json.dumps(policy_data, indent=2)
+        
+        # Create prompt for VertexAI
+        prompt = f"""
+        Generate a comprehensive data governance policy document in markdown format based on the following policy data:
+        
+        {policy_json}
+        
+        The document should follow this structure:
+        
+        1. Title and Date (current date)
+        2. Policy Context (if available)
+        3. Introduction
+        4. Scope (listing all data elements and purposes)
+        5. Data Governance Policies
+           5.1 Sensitivity-Based Policies (organized by data element)
+           5.2 Purpose-Based Policies (organized by purpose and data element)
+        6. Compliance and Enforcement
+        7. Policy Review
+        
+        Format the document with proper markdown headings, bullet points, and tables where appropriate.
+        Make it professional, comprehensive, and ready for business use.
+        
+        The document should be well-structured, clear, and follow data governance best practices.
+        
+        Please format the policy document in a way that makes it easy to read and understand, using appropriate
+        markdown formatting for headings, lists, tables, and emphasis.
+        """
+        
+        try:
+            # Generate the document using VertexAI
+            response = self.model.generate_content(prompt)
+            
+            if response and hasattr(response, 'text'):
+                # Extract the markdown content from the response
+                document_text = response.text.strip()
+                
+                # Clean up the response if it contains markdown code blocks
+                if document_text.startswith("```markdown"):
+                    document_text = document_text.replace("```markdown", "", 1)
+                elif document_text.startswith("```md"):
+                    document_text = document_text.replace("```md", "", 1)
+                elif document_text.startswith("```"):
+                    document_text = document_text.replace("```", "", 1)
+                if document_text.endswith("```"):
+                    document_text = document_text.replace("```", "", 1)
+                
+                return document_text.strip()
+            else:
+                return "**Error: Failed to generate policy document. No valid response from the AI model.**"
+        except Exception as e:
+            return f"**Error generating policy document: {e}**"
     
     # Policy Implementation Section removed as requested
