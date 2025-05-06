@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 from UX.data_access_request_page import DataAccessRequestPage
+from UX.policy_authoring_journey import PolicyAuthoringJourney
 
 class UserJourneyOverview:
     """Class to render the User Journey Overview page."""
     
-    def __init__(self, glossary_repository, regulatory_metadata_repository, inventory_repository, policy_repository, data_access_repository, catalog_repository=None, asset_policy_inference=None):
+    def __init__(self, glossary_repository, regulatory_metadata_repository, inventory_repository, policy_repository, data_access_repository, catalog_repository=None, asset_policy_inference=None, sensitivity_inference=None):
         """Initialize with repositories."""
         self.glossary_repository = glossary_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
@@ -14,6 +15,7 @@ class UserJourneyOverview:
         self.data_access_repository = data_access_repository
         self.catalog_repository = catalog_repository
         self.asset_policy_inference = asset_policy_inference
+        self.sensitivity_inference = sensitivity_inference
         
     def render(self):
         """Render the Data Access Request Journey page."""
@@ -53,11 +55,28 @@ class UserJourneyOverview:
             else:
                 st.warning("Data Access Request functionality requires catalog repository and asset policy inference. Please navigate to the main Data Access Request page.")
                 st.button("Go to Data Access Request", on_click=lambda: st.session_state.update({"current_section": "Data Access Request"}))
+        
+    # This method has been merged into the render method
+    
+    def _render_policy_authoring_journey(self):
+        """Render the Policy Authoring Journey page."""
+        if self.catalog_repository and self.sensitivity_inference:
+            PolicyAuthoringJourney(
+                self.glossary_repository,
+                self.regulatory_metadata_repository,
+                self.inventory_repository,
+                self.policy_repository,
+                self.catalog_repository,
+                self.sensitivity_inference
+            ).render_embedded()
+        else:
+            st.warning("Policy Authoring Journey requires catalog repository and sensitivity inference. Please navigate to the main Policy Authoring page.")
+            st.button("Go to Policy Authoring", on_click=lambda: st.session_state.update({"current_section": "Policy Authoring"}))
     
     def _render_overview(self):
         """Render the overview of user journeys."""
         st.markdown("""
-        <h3 style="color: #1565C0;">Data Access Request Journey</h3>
+        <h3 style="color: #1565C0;">Overview</h3>
         """, unsafe_allow_html=True)
         
         # Journey steps

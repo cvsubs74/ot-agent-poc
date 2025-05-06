@@ -22,6 +22,16 @@ class PolicyAuthoringPage:
         # Initialize asset_policy_inference with policy_repository
         self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository, policy_repository=policy_repository)
         self.json_generator = JSONGenerator(glossary_repository, catalog_repository, inventory_repository)
+
+        # Initialize VertexAI for policy document generation
+        try:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
+            vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
+            self.model = GenerativeModel(os.environ["MODEL"])
+        except Exception as e:
+            st.warning(f"VertexAI initialization failed: {e}. Policy document generation may not work.")
+            self.model = None
+
     
     def render(self):
         """Render the Policy Authoring page with selection controls and policy generation."""
@@ -303,8 +313,6 @@ class PolicyAuthoringPage:
                             key="policy_document_download"
                         )
             
-            # Policy Implementation section removed as requested
-    
     def generate_sensitivity_based_policies(self, selected_data_elements, selected_policy_types, jurisdiction_id=None, data_subject_type_id=None, context_info=None):
         """Generate sensitivity-based policies for the selected data elements.
         
@@ -426,31 +434,8 @@ class PolicyAuthoringPage:
             st.markdown("<h4 style='color: #2c3e50;'><i class='fas fa-table'></i> Policy Details</h4>", unsafe_allow_html=True)
             st.dataframe(df, use_container_width=True, height=400)
             
-            # Policy Distribution section removed as requested
         # Return the dataframe for use in the consolidated PDF
         return df
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    def __init__(self, inventory_repository, glossary_repository, catalog_repository, sensitivity_inference, regulatory_metadata_repository, policy_repository):
-        """Initialize the Policy Authoring page with required repositories."""
-        self.inventory_repository = inventory_repository
-        self.glossary_repository = glossary_repository
-        self.catalog_repository = catalog_repository
-        self.sensitivity_inference = sensitivity_inference
-        self.regulatory_metadata_repository = regulatory_metadata_repository
-        # Initialize asset_policy_inference with policy_repository
-        self.asset_policy_inference = AssetPolicyInference(catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository, policy_repository=policy_repository)
-        self.json_generator = JSONGenerator(glossary_repository, catalog_repository, inventory_repository)
-        
-        # Initialize VertexAI for policy document generation
-        try:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ["GC_CRED"]
-            vertexai.init(project=os.environ["PROJECT_ID"], location=os.environ["LOCATION"])
-            self.model = GenerativeModel(os.environ["MODEL"])
-        except Exception as e:
-            st.warning(f"VertexAI initialization failed: {e}. Policy document generation may not work.")
-            self.model = None
     
     def generate_policy_document(self, sensitivity_policies_df=None, purpose_policies_df=None, context_info=None, selected_data_elements=None, selected_purposes=None):
         """Generate a professional policy document using VertexAI containing the data governance policies."""

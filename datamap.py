@@ -466,6 +466,10 @@ class DataMap:
             # Data Access Request Journey menu item
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
+                
+            # Policy Authoring Journey menu item
+            if st.button("📝 Policy Authoring Journey", key="policy_journey_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Authoring Journey'
             
             # Second section: Regulatory Intelligence
             st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence</div>", unsafe_allow_html=True)
@@ -594,6 +598,7 @@ class DataMap:
             'Consent Management': self.consent_management_page,
             'Data Access Request': self.data_access_request_page,
             'User Journey Overview': self.user_journey_overview,
+            'Policy Authoring Journey': self.policy_authoring_journey,
             'FAQ': self.faq_page,
             'Policy Compliance': self.policy_compliance,
             'Policy Authoring': self.policy_authoring_page,
@@ -610,7 +615,7 @@ class DataMap:
         DataUseGovernanceOverview(self.glossary_repository, self.regulatory_metadata_repository, self.policy_repository).render()
         
     def user_journey_overview(self):
-        """Display the User Journey Overview page with data access request journey."""
+        """Display the Data Access Request Journey page."""
         from UX.user_journey_overview import UserJourneyOverview
         UserJourneyOverview(
             self.glossary_repository, 
@@ -620,6 +625,18 @@ class DataMap:
             self.data_access_repository,
             self.catalog_repository,
             self.asset_policy_inference
+        ).render()
+        
+    def policy_authoring_journey(self):
+        """Display the Policy Authoring Journey page."""
+        from UX.policy_authoring_journey import PolicyAuthoringJourney
+        PolicyAuthoringJourney(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.inventory_repository,
+            self.policy_repository,
+            self.catalog_repository,
+            self.sensitivity_inference
         ).render()
         
     def faq_page(self):
