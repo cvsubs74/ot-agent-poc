@@ -7,6 +7,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from components.JSONGenerator import JSONGenerator
 from core.asset_policy_inference import AssetPolicyInference
+from datetime import date, datetime, timedelta
 
 
 class PolicyAuthoringPage:
@@ -322,12 +323,34 @@ class PolicyAuthoringPage:
         with st.spinner("Analyzing sensitivity-based policies..."):
             # Get policies based on data elements and sensitivity
             if jurisdiction_id or data_subject_type_id:
-                df = self.asset_policy_inference.infer_policies_by_jurisdiction_data_subject_type_data_element(
-                    selected_data_elements,
-                    selected_policy_types if selected_policy_types else 'all',
-                    jurisdiction_id,
-                    data_subject_type_id
-                )
+                # Process each data element individually since the method only accepts one data element at a time
+                results = []
+                for data_element_id in selected_data_elements:
+                    result = self.asset_policy_inference.infer_policies_by_jurisdiction_data_subject_type_data_element(
+                        data_element_id,
+                        jurisdiction_id,
+                        data_subject_type_id
+                    )
+                    if result and 'policies' in result and result['policies']:
+                        # Filter policies by selected policy types if specified
+                        if selected_policy_types and selected_policy_types != 'all':
+                            result['policies'] = [p for p in result['policies'] if p.get('policy_type', '').lower() in [pt.lower() for pt in selected_policy_types]]
+                        results.append(result)
+                
+                # Convert results to DataFrame
+                if results:
+                    import pandas as pd
+                    policies = []
+                    for result in results:
+                        for policy in result['policies']:
+                            policy_data = dict(policy)
+                            policy_data['data_element_id'] = result['data_element_id']
+                            policy_data['data_element_name'] = self.glossary_repository.get_data_element_by_id(result['data_element_id'])['name']
+                            policy_data['sensitivity'] = result.get('sensitivity', {}).get('name', 'Unknown')
+                            policies.append(policy_data)
+                    df = pd.DataFrame(policies) if policies else pd.DataFrame()
+                else:
+                    df = pd.DataFrame()
             else:
                 # This method only takes data_element_ids as a parameter
                 df = self.asset_policy_inference.get_policies_by_data_elements_sensitivity(
@@ -471,14 +494,20 @@ class PolicyAuthoringPage:
         if purpose_policies_df is not None and not purpose_policies_df.empty:
             policy_data["purpose_policies"] = purpose_policies_df.to_dict(orient="records")
         
-        # Convert to JSON string
-        policy_json = json.dumps(policy_data, indent=2)
-        
         # Get current date information for the document
-        from datetime import datetime, timedelta
         current_date = datetime.now().strftime("%Y-%m-%d")
         current_year = datetime.now().year
         one_year_from_now = (datetime.now() + timedelta(days=365)).strftime("%Y-%m-%d")
+        
+        # Create a custom JSON encoder to handle date objects
+        class DateTimeEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, (date, datetime)):
+                    return obj.isoformat()
+                return super().default(obj)
+        
+        # Convert to JSON string with custom encoder
+        policy_json = json.dumps(policy_data, indent=2, cls=DateTimeEncoder)
         
         # Create prompt for VertexAI
         prompt = f"""
