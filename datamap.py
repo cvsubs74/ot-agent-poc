@@ -13,6 +13,7 @@ from UX.risk_inference_page import RiskInferencePage
 from core.asset_policy_inference import AssetPolicyInference
 from UX.data_use_governance_overview import DataUseGovernanceOverview
 from UX.faq_page import FAQPage
+from UX.policy_authoring_page import PolicyAuthoringPage
 from UX.core_constructs_pages import (
     LawPage,
     JurisdictionsPage,
@@ -75,6 +76,7 @@ from repositories.CatalogRepository import CatalogRepository
 from repositories.ConsentRepository import ConsentRepository
 from repositories.DataAccessRepository import DataAccessRepository
 from repositories.KnowledgeRepository import KnowledgeRepository
+from repositories.PolicyRepository import PolicyRepository
 
 class DataMap:
     def __init__(self):
@@ -89,11 +91,13 @@ class DataMap:
         self.consent_repository = ConsentRepository(self.database_manager.connection)
         self.data_access_repository = DataAccessRepository(self.database_manager.connection)
         self.knowledge_repository = KnowledgeRepository(self.database_manager.connection)
+        self.policy_repository = PolicyRepository(self.database_manager.connection)
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
             self.glossary_repository,
-            self.inventory_repository
+            self.inventory_repository,
+            self.policy_repository
         )
         
         # Initialize inference classes
@@ -395,8 +399,19 @@ class DataMap:
         PoliciesPage(self.glossary_repository, self.regulatory_metadata_repository).render()
 
     def policy_compliance(self):
-        """Display the Policy Compliance page with the policy compliance analysis tool."""        
-        self.policy_compliance_page.render()
+        """Display the Policy Compliance page with the policy compliance analysis tool."""
+        PolicyCompliancePage(self.glossary_repository, self.regulatory_metadata_repository).render()
+        
+    def policy_authoring_page(self):
+        """Display the Policy Authoring page for creating and managing data governance policies."""
+        PolicyAuthoringPage(
+            self.inventory_repository,
+            self.glossary_repository,
+            self.catalog_repository,
+            SensitivityInference(self.glossary_repository, self.regulatory_metadata_repository),
+            self.regulatory_metadata_repository,
+            self.policy_repository
+        ).render()
         
     def policy_applied_page(self):
         """Display the Policy Applied page showing how policies are applied at the table column level."""
@@ -533,6 +548,10 @@ class DataMap:
             if st.button("🔑 Request Data Access", key="data_access_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Data Access Request'
             
+            # Policy Authoring menu item
+            if st.button("✏️ Policy Authoring", key="policy_authoring_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Authoring'
+            
             # Governance menu item
             if st.button("⚖️ Policy Compliance", key="governance_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Compliance'
@@ -577,6 +596,7 @@ class DataMap:
             'User Journey Overview': self.user_journey_overview,
             'FAQ': self.faq_page,
             'Policy Compliance': self.policy_compliance,
+            'Policy Authoring': self.policy_authoring_page,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
         }

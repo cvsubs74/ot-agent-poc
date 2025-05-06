@@ -8,20 +8,22 @@ class AssetPolicyInference:
     for a given asset and purpose, including all policy types (security, usage, retention).
     """
     
-    def __init__(self, catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository):
+    def __init__(self, catalog_repository, regulatory_metadata_repository, glossary_repository, inventory_repository, policy_repository=None):
         """
         Initialize the AssetPolicyInference with required repositories.
         
         Args:
             catalog_repository: Repository for accessing catalog data
             regulatory_metadata_repository: Repository for accessing policy metadata
+            glossary_repository: Repository for accessing glossary data
             inventory_repository: Repository for accessing inventory data
+            policy_repository: Repository for accessing policy data (optional)
         """
         self.catalog_repository = catalog_repository
         self.regulatory_metadata_repository = regulatory_metadata_repository
         self.inventory_repository = inventory_repository
-        # Initialize the glossary repository with the same connection as the regulatory metadata repository
         self.glossary_repository = glossary_repository
+        self.policy_repository = policy_repository if policy_repository else glossary_repository
         self.sensitivity_inference = SensitivityInference(self.glossary_repository, regulatory_metadata_repository)
     
     def get_applied_policies_for_asset_purpose(self, asset_id, purpose_id, policy_type='all', role_id='all'):
@@ -1188,6 +1190,586 @@ class AssetPolicyInference:
             "sensitivity": sensitivity,
             "policies": enhanced_policies
         }
+        
+    def infer_policies_by_jurisdiction_data_subject_type_data_element(self, data_element_id, jurisdiction_id, data_subject_type_id):
+        """
+        Infer policies for a data element based on jurisdiction, data subject type, and sensitivity level.
+        
+        Args:
+            data_element_id: The ID of the data element
+            jurisdiction_id: The ID of the jurisdiction
+            data_subject_type_id: The ID of the data subject type
+            
+        Returns:
+            Dictionary containing inferred policies and sensitivity information
+        """
+        # Get the data element details
+        data_element = self.get_data_element_by_id(data_element_id)
+        if not data_element:
+            return {
+                "data_element_id": data_element_id,
+                "jurisdiction_id": jurisdiction_id,
+                "data_subject_type_id": data_subject_type_id,
+                "sensitivity": None,
+                "policies": []
+            }
+        
+        # Use sensitivity inference to get the sensitivity based on jurisdiction and data subject type
+        data_elements = [data_element]
+        sensitivities = self.sensitivity_inference.infer_jurisdiction_data_subject_type_data_element_sensitivities(
+            data_elements, jurisdiction_id, data_subject_type_id
+        )
+        
+        if data_element['name'] not in sensitivities:
+            return {
+                "data_element_id": data_element_id,
+                "jurisdiction_id": jurisdiction_id,
+                "data_subject_type_id": data_subject_type_id,
+                "sensitivity": None,
+                "policies": []
+            }
+        
+        sensitivity_info = sensitivities[data_element['name']]
+        sensitivity_name = sensitivity_info['sensitivity']
+        
+        # If sensitivity is unknown, return empty result
+        if sensitivity_name == 'Unknown':
+            return {
+                "data_element_id": data_element_id,
+                "jurisdiction_id": jurisdiction_id,
+                "data_subject_type_id": data_subject_type_id,
+                "sensitivity": {
+                    "name": "Unknown",
+                    "source": sensitivity_info['source']
+                },
+                "policies": []
+            }
+        
+        # Get sensitivity details
+        sensitivity = self.regulatory_metadata_repository.get_sensitivity_by_name(sensitivity_name)
+        if not sensitivity:
+            return {
+                "data_element_id": data_element_id,
+                "jurisdiction_id": jurisdiction_id,
+                "data_subject_type_id": data_subject_type_id,
+                "sensitivity": {
+                    "name": sensitivity_name,
+                    "source": sensitivity_info['source']
+                },
+                "policies": []
+            }
+        
+        # Add source information to sensitivity
+        sensitivity["source"] = sensitivity_info['source']
+        sensitivity["jurisdiction_id"] = jurisdiction_id
+        sensitivity["data_subject_type_id"] = data_subject_type_id
+        
+        # Get basic policies for this sensitivity
+        basic_policies = self.regulatory_metadata_repository.get_policies_by_sensitivity(sensitivity["id"])
+        
+        # Enhance policies with security, usage, and retention details
+        enhanced_policies = []
+        for policy in basic_policies:
+            policy_id = policy['id']
+            enhanced_policy = dict(policy)
+            
+            # Get security policies for this data element
+            security_policies = self.regulatory_metadata_repository.get_policy_data_element_security(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Get usage policies for this data element
+            usage_policies = self.regulatory_metadata_repository.get_policy_data_element_usage(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Get retention policies for this data element
+            retention_policies = self.regulatory_metadata_repository.get_policy_data_element_retention(
+                policy_id=policy_id, data_element_id=data_element_id)
+            
+            # Add security details
+            if security_policies:
+                enhanced_policy['requires_encryption'] = any(p['requires_encryption'] for p in security_policies)
+                encryption_algos = [p['encryption_algorithm'] for p in security_policies if p['encryption_algorithm']]
+                enhanced_policy['encryption_algorithm'] = encryption_algos[0] if encryption_algos else None
+                
+                enhanced_policy['requires_masking'] = any(p['requires_masking'] for p in security_policies)
+                masking_formats = [p['masking_format'] for p in security_policies if p['masking_format']]
+                enhanced_policy['masking_format'] = masking_formats[0] if masking_formats else None
+                
+                enhanced_policy['requires_access_control'] = any(p['requires_access_control'] for p in security_policies)
+                access_types = [p['access_control_type'] for p in security_policies if p['access_control_type']]
+                enhanced_policy['access_control_type'] = access_types[0] if access_types else None
+            
+            # Add usage details
+            if usage_policies:
+                operations = [p['operation'] for p in usage_policies]
+                allowed = [p['allowed'] for p in usage_policies]
+                enhanced_policy['usage_operations'] = ', '.join(operations)
+                enhanced_policy['usage_allowed'] = 'Yes' if all(allowed) else 'No' if not any(allowed) else 'Partial'
+            
+            # Add retention details
+            if retention_policies:
+                retention_periods = [p['retention_period'] for p in retention_policies if p['retention_period']]
+                enhanced_policy['retention_period'] = retention_periods[0] if retention_periods else None
+                
+                retention_bases = [p['retention_basis'] for p in retention_policies if p['retention_basis']]
+                enhanced_policy['retention_basis'] = retention_bases[0] if retention_bases else None
+            
+            enhanced_policies.append(enhanced_policy)
+        
+        return {
+            "data_element_id": data_element_id,
+            "jurisdiction_id": jurisdiction_id,
+            "data_subject_type_id": data_subject_type_id,
+            "sensitivity": sensitivity,
+            "policies": enhanced_policies
+        }
+    
+    def get_policies_by_jurisdiction_data_subject_type_data_elements_sensitivity(self, data_element_ids, jurisdiction_id=None, data_subject_type_id=None):
+        """
+        Get sensitivity-based policies for a list of data elements, optionally filtered by jurisdiction and data subject type.
+        
+        Args:
+            data_element_ids: List of data element IDs
+            jurisdiction_id: Optional ID of the jurisdiction to consider
+            data_subject_type_id: Optional ID of the data subject type to consider
+            
+        Returns:
+            DataFrame containing sensitivity-based policies for the data elements
+        """
+        import logging
+        import pandas as pd
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger('AssetPolicyInference')
+        
+        logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS FOR DATA ELEMENTS STARTED =====")
+        logger.info(f"Parameters: data_element_ids={data_element_ids}, jurisdiction_id={jurisdiction_id}, data_subject_type_id={data_subject_type_id}")
+        
+        # Initialize results list
+        results = []
+        
+        # Process each data element
+        for data_element_id in data_element_ids:
+            logger.info(f"Processing data element ID: {data_element_id}")
+            
+            data_element = self.get_data_element_by_id(data_element_id)
+            
+            if not data_element:
+                logger.info(f"Data element not found for ID: {data_element_id}")
+                continue
+                
+            logger.info(f"Found data element: {data_element.get('name')}")
+            
+            # Get sensitivity-based policies for this data element
+            if jurisdiction_id and data_subject_type_id:
+                # Use the jurisdiction and data subject type specific method
+                sensitivity_result = self.infer_policies_by_jurisdiction_data_subject_type_data_element(
+                    data_element_id, jurisdiction_id, data_subject_type_id
+                )
+                logger.info(f"Using jurisdiction and data subject type specific inference")
+            else:
+                # Use the standard method without jurisdiction and data subject type
+                sensitivity_result = self.infer_policies_by_data_element_sensitivity(data_element_id)
+                logger.info(f"Using standard sensitivity inference")
+            
+            # Skip if no sensitivity or policies found
+            if not sensitivity_result['sensitivity'] or not sensitivity_result['policies']:
+                logger.info(f"No sensitivity or policies found for data element: {data_element.get('name')}")
+                continue
+                
+            sensitivity_name = sensitivity_result['sensitivity'].get('name', 'Unknown')
+            logger.info(f"Sensitivity: {sensitivity_name}")
+            
+            # Add each policy to results
+            for policy in sensitivity_result['policies']:
+                result = {
+                    'data_element_name': data_element.get('name', ''),
+                    'sensitivity': sensitivity_name,
+                    'policy_name': policy.get('name', ''),
+                    'policy_type': policy.get('policy_type', '')
+                }
+                
+                # Add jurisdiction and data subject type if provided
+                if jurisdiction_id:
+                    jurisdiction = self.glossary_repository.get_jurisdiction_by_id(jurisdiction_id)
+                    result['jurisdiction_name'] = jurisdiction.get('name', '') if jurisdiction else ''
+                    result['jurisdiction_id'] = jurisdiction_id
+                
+                if data_subject_type_id:
+                    data_subject_type = self.glossary_repository.get_data_subject_type_by_id(data_subject_type_id)
+                    result['data_subject_type_name'] = data_subject_type.get('name', '') if data_subject_type else ''
+                    result['data_subject_type_id'] = data_subject_type_id
+                
+                # Add security policy details
+                if 'requires_encryption' in policy:
+                    result['encryption_required'] = policy.get('requires_encryption', False)
+                    result['encryption_algorithm'] = policy.get('encryption_algorithm', '')
+                    result['masking_required'] = policy.get('requires_masking', False)
+                    result['masking_format'] = policy.get('masking_format', '')
+                    result['access_control_required'] = policy.get('requires_access_control', False)
+                    result['access_control_type'] = policy.get('access_control_type', '')
+                
+                # Add usage policy details
+                if 'usage_operations' in policy:
+                    result['usage_operations'] = policy.get('usage_operations', '')
+                    result['usage_allowed'] = policy.get('usage_allowed', '')
+                
+                # Add retention policy details
+                if 'retention_period' in policy:
+                    result['retention_period'] = policy.get('retention_period', '')
+                    result['retention_basis'] = policy.get('retention_basis', '')
+                
+                results.append(result)
+        
+        # Create a DataFrame from the results
+        if results:
+            df = pd.DataFrame(results)
+            logger.info(f"Created DataFrame with {len(df)} rows")
+            logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS FOR DATA ELEMENTS COMPLETED =====")
+            return df
+        else:
+            logger.info("No sensitivity-based policies found")
+            logger.info(f"===== SENSITIVITY-BASED POLICY ANALYSIS FOR DATA ELEMENTS COMPLETED =====")
+            return pd.DataFrame()
+    
+    # Keep the old method for backward compatibility, but have it call the new method
+    def get_policies_by_data_elements_sensitivity(self, data_element_ids):
+        """
+        Get sensitivity-based policies for a list of data elements.
+        This method is maintained for backward compatibility and calls the new method.
+        
+        Args:
+            data_element_ids: List of data element IDs
+            
+        Returns:
+            DataFrame containing sensitivity-based policies for the data elements
+        """
+        return self.get_policies_by_jurisdiction_data_subject_type_data_elements_sensitivity(data_element_ids)
+            
+    def get_policies_by_data_elements_purpose(self, data_element_ids, purpose_id, policy_type='all', role_id='all'):
+        """
+        Get purpose-based policies for a list of data elements.
+        
+        Args:
+            data_element_ids: List of data element IDs
+            purpose_id: ID of the purpose, 'all' for all purposes, or a list of purpose IDs
+            policy_type: Type of policy to filter by ('security', 'usage', 'retention', or 'all'), or a list of policy types
+            role_id: ID of the external role to filter by, 'all' for all roles, or a list of role IDs
+            
+        Returns:
+            DataFrame containing filtered policies applied to the data elements
+        """
+        import logging
+        import pandas as pd
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger('AssetPolicyInference')
+        
+        logger.info(f"===== PURPOSE-BASED POLICY ANALYSIS FOR DATA ELEMENTS STARTED =====")
+        logger.info(f"Parameters: data_element_ids={data_element_ids}, purpose_id={purpose_id}, policy_type={policy_type}, role_id={role_id}")
+        
+        # Initialize results list
+        results = []
+        
+        # Handle purpose_id parameter (could be 'all', a single ID, or a list of IDs)
+        if isinstance(purpose_id, list):
+            if 'all' in purpose_id:
+                logger.info("Processing ALL purposes (from list containing 'all')")
+                purpose_id = 'all'
+            else:
+                logger.info(f"Processing multiple purposes: {purpose_id}")
+        
+        # Handle policy_type parameter (could be 'all', a single type, or a list of types)
+        if isinstance(policy_type, list):
+            if 'all' in policy_type:
+                logger.info("Processing ALL policy types (from list containing 'all')")
+                policy_type = 'all'
+            else:
+                logger.info(f"Processing multiple policy types: {policy_type}")
+        
+        # Handle role_id parameter (could be 'all', a single ID, or a list of IDs)
+        if isinstance(role_id, list):
+            if 'all' in role_id:
+                logger.info("Processing ALL roles (from list containing 'all')")
+                role_id = 'all'
+            else:
+                logger.info(f"Processing multiple roles: {role_id}")
+        
+        # Process each data element
+        for data_element_id in data_element_ids:
+            data_element = self.get_data_element_by_id(data_element_id)
+            if not data_element:
+                logger.info(f"Data element not found for ID: {data_element_id}")
+                continue
+                
+            logger.info(f"Processing data element: {data_element.get('name')} (ID: {data_element_id})")
+            
+            # Handle purposes (either 'all', a single ID, or a list of IDs)
+            if purpose_id == 'all':
+                logger.info("Processing ALL purposes")
+                # Get all purposes
+                purposes = self.glossary_repository.get_purposes()
+                logger.info(f"Retrieved {len(purposes)} purposes to process")
+                
+                # Process each purpose for this data element
+                for purpose in purposes:
+                    current_purpose_id = purpose["id"]
+                    current_purpose_name = purpose["name"]
+                    logger.info(f"Processing purpose: {current_purpose_name} (ID: {current_purpose_id})")
+                    
+                    # Process each policy type
+                    self._process_purpose_data_element(data_element, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+            elif isinstance(purpose_id, list):
+                # Process multiple specific purposes
+                logger.info(f"Processing {len(purpose_id)} specific purposes")
+                purposes = self.glossary_repository.get_purposes()
+                filtered_purposes = [p for p in purposes if p["id"] in purpose_id]
+                logger.info(f"Found {len(filtered_purposes)} matching purposes")
+                
+                # Process each purpose in the list for this data element
+                for purpose in filtered_purposes:
+                    current_purpose_id = purpose["id"]
+                    current_purpose_name = purpose["name"]
+                    logger.info(f"Processing purpose: {current_purpose_name} (ID: {current_purpose_id})")
+                    
+                    # Process each policy type
+                    self._process_purpose_data_element(data_element, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+            else:
+                # Process a single specific purpose
+                current_purpose_id = purpose_id
+                purposes = self.glossary_repository.get_purposes()
+                purpose_obj = next((p for p in purposes if p["id"] == current_purpose_id), None)
+                if not purpose_obj:
+                    logger.warning(f"Purpose not found for ID: {current_purpose_id}")
+                    continue
+                    
+                current_purpose_name = purpose_obj["name"]
+                logger.info(f"Processing purpose: {current_purpose_name} (ID: {current_purpose_id})")
+                
+                # Process each policy type
+                self._process_purpose_data_element(data_element, current_purpose_id, current_purpose_name, policy_type, role_id, results, logger)
+        
+        # Create a DataFrame from the results
+        if results:
+            df = pd.DataFrame(results)
+            logger.info(f"Created DataFrame with {len(df)} rows")
+            logger.info(f"===== PURPOSE-BASED POLICY ANALYSIS FOR DATA ELEMENTS COMPLETED =====")
+            return df
+        else:
+            logger.info("No purpose-based policies found")
+            logger.info(f"===== PURPOSE-BASED POLICY ANALYSIS FOR DATA ELEMENTS COMPLETED =====")
+            return pd.DataFrame()
+    
+    def _process_purpose_data_element(self, data_element, purpose_id, purpose_name, policy_type, role_id, results, logger):
+        """
+        Helper method to process a data element for a specific purpose.
+        """
+        # Process security policies
+        if policy_type == 'all' or policy_type == 'security' or (isinstance(policy_type, list) and 'security' in policy_type):
+            logger.info(f"Processing security policies for data element: {data_element.get('name')} and purpose: {purpose_name}")
+            self._process_security_policies_for_data_element(data_element, purpose_id, purpose_name, results, role_id)
+        
+        # Process usage policies
+        if policy_type == 'all' or policy_type == 'usage' or (isinstance(policy_type, list) and 'usage' in policy_type):
+            logger.info(f"Processing usage policies for data element: {data_element.get('name')} and purpose: {purpose_name}")
+            self._process_usage_policies_for_data_element(data_element, purpose_id, purpose_name, results, role_id)
+        
+        # Process retention policies
+        if policy_type == 'all' or policy_type == 'retention' or (isinstance(policy_type, list) and 'retention' in policy_type):
+            logger.info(f"Processing retention policies for data element: {data_element.get('name')} and purpose: {purpose_name}")
+            self._process_retention_policies_for_data_element(data_element, purpose_id, purpose_name, results, role_id)
+    
+    def _process_security_policies_for_data_element(self, data_element, purpose_id, purpose_name, results, role_id='all'):
+        """
+        Process security policies for a data element and add them to results.
+        """
+        # Get policy-purpose-data-element entries for this purpose
+        ppde_entries = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+            purpose_id=purpose_id)
+        
+        # Filter entries for the current data element
+        data_element_id = data_element['id']
+        filtered_entries = [entry for entry in ppde_entries if entry.get('data_element_id') == data_element_id]
+        
+        for ppde in filtered_entries:
+            # Get security policy details for this policy
+            policy_id = ppde.get('policy_id')
+            if not policy_id:
+                continue
+                
+            security_details = self.regulatory_metadata_repository.get_policy_security_details(policy_id)
+            if not security_details:
+                continue
+                
+            # Skip if no security policy details
+            if not security_details.get('encryption_required') and not security_details.get('masking_required'):
+                continue
+                
+            # Get policy details
+            policy = self.glossary_repository.get_policy_by_id(ppde['policy_id'])
+            if not policy:
+                continue
+                
+            # Check role filter
+            if role_id != 'all':
+                # Get roles for this purpose
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                purpose_role_ids = [pr[0] for pr in purpose_roles]
+                
+                # Skip if role filter doesn't match
+                if isinstance(role_id, list):
+                    if not any(r in purpose_role_ids for r in role_id):
+                        continue
+                elif role_id not in purpose_role_ids:
+                    continue
+            
+            # Get role information
+            role_name = None
+            role_id_value = None
+            if purpose_id:
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                if purpose_roles:
+                    role_id_value = purpose_roles[0][0]  # Use the first role associated with this purpose
+                    role_name = purpose_roles[0][1]  # Assuming the second element is the role name
+            
+            # Add to results
+            results.append({
+                'data_element_name': data_element.get('name', ''),
+                'purpose_name': purpose_name,
+                'policy_name': policy.get('name', ''),
+                'policy_type': 'security',
+                'role_name': role_name,
+                'encryption_required': security_details.get('encryption_required', False),
+                'encryption_algorithm': security_details.get('encryption_algorithm', ''),
+                'masking_required': security_details.get('masking_required', False),
+                'masking_format': security_details.get('masking_format', '')
+            })
+    
+    def _process_usage_policies_for_data_element(self, data_element, purpose_id, purpose_name, results, role_id='all'):
+        """
+        Process usage policies for a data element and add them to results.
+        """
+        # Get policy-purpose-data-element entries for this purpose
+        ppde_entries = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+            purpose_id=purpose_id)
+        
+        # Filter entries for the current data element
+        data_element_id = data_element['id']
+        filtered_entries = [entry for entry in ppde_entries if entry.get('data_element_id') == data_element_id]
+        
+        for ppde in filtered_entries:
+            # Get usage policies for this policy and data element
+            policy_id = ppde.get('policy_id')
+            if not policy_id:
+                continue
+                
+            usage_policies = self.regulatory_metadata_repository.get_policy_purpose_data_usages(
+                policy_id=policy_id, purpose_id=purpose_id, data_element_id=data_element_id)
+            
+            if not usage_policies:
+                continue
+                
+            # Get policy details
+            policy = self.glossary_repository.get_policy_by_id(ppde['policy_id'])
+            if not policy:
+                continue
+                
+            # Check role filter
+            if role_id != 'all':
+                # Get roles for this purpose
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                purpose_role_ids = [pr[0] for pr in purpose_roles]
+                
+                # Skip if role filter doesn't match
+                if isinstance(role_id, list):
+                    if not any(r in purpose_role_ids for r in role_id):
+                        continue
+                elif role_id not in purpose_role_ids:
+                    continue
+            
+            # Get role information
+            role_name = None
+            role_id_value = None
+            if purpose_id:
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                if purpose_roles:
+                    role_id_value = purpose_roles[0][0]  # Use the first role associated with this purpose
+                    role_name = purpose_roles[0][1]  # Assuming the second element is the role name
+            
+            # Add each usage policy to results
+            for usage in usage_policies:
+                results.append({
+                    'data_element_name': data_element.get('name', ''),
+                    'purpose_name': purpose_name,
+                    'policy_name': policy.get('name', ''),
+                    'policy_type': 'usage',
+                    'role_name': role_name,
+                    'operation': usage.get('operation', ''),
+                    'allowed': usage.get('allowed', False),
+                    'restrictions': usage.get('restrictions', '')
+                })
+    
+    def _process_retention_policies_for_data_element(self, data_element, purpose_id, purpose_name, results, role_id='all'):
+        """
+        Process retention policies for a data element and add them to results.
+        """
+        # Get policy-purpose-data-element entries for this purpose
+        ppde_entries = self.regulatory_metadata_repository.get_policy_purpose_data_elements(
+            purpose_id=purpose_id)
+        
+        # Filter entries for the current data element
+        data_element_id = data_element['id']
+        filtered_entries = [entry for entry in ppde_entries if entry.get('data_element_id') == data_element_id]
+        
+        for ppde in filtered_entries:
+            # Get retention policies for this policy and data element
+            policy_id = ppde.get('policy_id')
+            if not policy_id:
+                continue
+                
+            retention_policies = self.regulatory_metadata_repository.get_policy_purpose_data_retentions(
+                policy_id=policy_id, purpose_id=purpose_id, data_element_id=data_element_id)
+            
+            if not retention_policies:
+                continue
+                
+            # Get policy details
+            policy = self.glossary_repository.get_policy_by_id(ppde['policy_id'])
+            if not policy:
+                continue
+                
+            # Check role filter
+            if role_id != 'all':
+                # Get roles for this purpose
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                purpose_role_ids = [pr[0] for pr in purpose_roles]
+                
+                # Skip if role filter doesn't match
+                if isinstance(role_id, list):
+                    if not any(r in purpose_role_ids for r in role_id):
+                        continue
+                elif role_id not in purpose_role_ids:
+                    continue
+            
+            # Get role information
+            role_name = None
+            role_id_value = None
+            if purpose_id:
+                purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id)
+                if purpose_roles:
+                    role_id_value = purpose_roles[0][0]  # Use the first role associated with this purpose
+                    role_name = purpose_roles[0][1]  # Assuming the second element is the role name
+            
+            # Add each retention policy to results
+            for retention in retention_policies:
+                results.append({
+                    'data_element_name': data_element.get('name', ''),
+                    'purpose_name': purpose_name,
+                    'policy_name': policy.get('name', ''),
+                    'policy_type': 'retention',
+                    'role_name': role_name,
+                    'retention_period': retention.get('retention_period', ''),
+                    'retention_basis': retention.get('retention_basis', '')
+                })
+
     
     def compare_purpose_and_sensitivity_policies(self, data_element_id):
         """
@@ -1456,7 +2038,7 @@ class AssetPolicyInference:
                 # If not available in the row, look up the default role for this purpose
                 if not role_id_value or not role_name_value:
                     # Get the default role for this purpose from the repository
-                    purpose_roles = self.glossary_repository.get_purpose_roles(purpose_id_value) if purpose_id_value else []
+                    purpose_roles = self.policy_repository.get_purpose_roles_by_purpose(purpose_id_value) if purpose_id_value else []
                     if purpose_roles:
                         role_id_value = purpose_roles[0][0]  # Use the first role associated with this purpose
                         role_name_value = role_map.get(role_id_value, "Unknown Role")

@@ -55,6 +55,61 @@ class SensitivityInference:
                     'source': 'No sensitivity mapping found'
                 }
         
+        return sensitivities
+    
+    def infer_jurisdiction_data_subject_type_data_element_sensitivities(self, data_elements, jurisdiction_id, data_subject_type_id):
+        """Infer sensitivity levels for a list of data elements based on jurisdiction and data subject type.
+        
+        Args:
+            data_elements: List of data element dictionaries with 'id', 'name', and 'description' keys
+            jurisdiction_id: ID of the jurisdiction to consider
+            data_subject_type_id: ID of the data subject type to consider
+            
+        Returns:
+            Dictionary mapping data element names to sensitivity levels and sources
+        """
+        # Initialize result dictionary
+        sensitivities = {}
+        
+        # Get all data elements from the database to map names to IDs if needed
+        all_data_elements = self.glossary_repository.get_data_elements()
+        name_to_id_map = {de['name']: de['id'] for de in all_data_elements}
+        
+        # Process each data element
+        for data_element in data_elements:
+            # If we have an ID, use it directly
+            if 'id' in data_element and data_element['id']:
+                data_element_id = data_element['id']
+            # Otherwise, try to find the ID by name
+            elif data_element['name'] in name_to_id_map:
+                data_element_id = name_to_id_map[data_element['name']]
+            else:
+                # Skip if we can't find the data element
+                continue
+            
+            # Use the _infer_sensitivity method with all parameters to get the sensitivity
+            sensitivity_result = self._infer_sensitivity(
+                data_element_id=data_element_id,
+                data_subject_type_id=data_subject_type_id,
+                jurisdiction_id=jurisdiction_id
+            )
+            
+            if sensitivity_result:
+                sensitivities[data_element['name']] = {
+                    'sensitivity': sensitivity_result['sensitivity_name'],
+                    'source': sensitivity_result['source'],
+                    'jurisdiction_id': jurisdiction_id,
+                    'data_subject_type_id': data_subject_type_id
+                }
+            else:
+                # If no sensitivity found, mark as 'Unknown'
+                sensitivities[data_element['name']] = {
+                    'sensitivity': 'Unknown',
+                    'source': 'No sensitivity mapping found for this jurisdiction and data subject type',
+                    'jurisdiction_id': jurisdiction_id,
+                    'data_subject_type_id': data_subject_type_id
+                }
+        
         return sensitivities  
 
     def _infer_sensitivity(self, data_element_id=None, data_category_id=None, data_subject_type_id=None, law_id=None, jurisdiction_id=None):
