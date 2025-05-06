@@ -183,37 +183,35 @@ class PolicyAuthoringPage:
                 )
             
             with col2:
-                # Add styled container for context selection
+                # Add styled container for policy context selection
                 st.markdown("<h4 style='color: #2c3e50;'><i class='fas fa-globe'></i> Policy Context</h4>", unsafe_allow_html=True)
                 
-                # Add tabs for different policy contexts with custom styling
-                context_tab, purpose_tab = st.tabs(["📋 Regulatory Context", "🎯 Purpose Context"])
+                # Jurisdictions
+                st.markdown("<h5 style='color: #2c3e50;'><i class='fas fa-map-marker-alt'></i> Jurisdictions</h5>", unsafe_allow_html=True)
+                selected_jurisdiction = st.selectbox(
+                    "Select Jurisdiction",
+                    options=[None] + list(jurisdiction_options.keys()),
+                    format_func=lambda x: "All Jurisdictions" if x is None else jurisdiction_options.get(x, ""),
+                    help="Select a specific jurisdiction for regulatory context"
+                )
                 
-                with context_tab:
-                    st.markdown("<h5 style='color: #2c3e50;'>Jurisdictions</h5>", unsafe_allow_html=True)
-                    selected_jurisdiction = st.selectbox(
-                        "Select Jurisdiction",
-                        options=[None] + list(jurisdiction_options.keys()),
-                        format_func=lambda x: "All Jurisdictions" if x is None else jurisdiction_options.get(x, ""),
-                        help="Select a specific jurisdiction for regulatory context"
-                    )
-                    
-                    st.markdown("<h5 style='color: #2c3e50;'>Data Subject Types</h5>", unsafe_allow_html=True)
-                    selected_data_subject_type = st.selectbox(
-                        "Select Data Subject Type",
-                        options=[None] + list(data_subject_type_options.keys()),
-                        format_func=lambda x: "All Data Subject Types" if x is None else data_subject_type_options.get(x, ""),
-                        help="Select a specific data subject type for regulatory context"
-                    )
+                # Data Subject Types
+                st.markdown("<h5 style='color: #2c3e50;'><i class='fas fa-user-shield'></i> Data Subject Types</h5>", unsafe_allow_html=True)
+                selected_data_subject_type = st.selectbox(
+                    "Select Data Subject Type",
+                    options=[None] + list(data_subject_type_options.keys()),
+                    format_func=lambda x: "All Data Subject Types" if x is None else data_subject_type_options.get(x, ""),
+                    help="Select a specific data subject type for regulatory context"
+                )
                 
-                with purpose_tab:
-                    st.markdown("<h5 style='color: #2c3e50;'>Purposes</h5>", unsafe_allow_html=True)
-                    selected_purposes = st.multiselect(
-                        "Select Purposes",
-                        options=list(purpose_options.keys()),
-                        format_func=lambda x: purpose_options[x],
-                        help="Select the business purposes for which you need policies"
-                    )
+                # Purposes
+                st.markdown("<h5 style='color: #2c3e50;'><i class='fas fa-bullseye'></i> Purposes</h5>", unsafe_allow_html=True)
+                selected_purposes = st.multiselect(
+                    "Select Purposes",
+                    options=list(purpose_options.keys()),
+                    format_func=lambda x: purpose_options[x],
+                    help="Select the business purposes for which you need policies"
+                )
             
             # Submit button - make it prominent
             st.markdown("")
@@ -476,31 +474,118 @@ class PolicyAuthoringPage:
         # Convert to JSON string
         policy_json = json.dumps(policy_data, indent=2)
         
+        # Get current date information for the document
+        from datetime import datetime, timedelta
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_year = datetime.now().year
+        one_year_from_now = (datetime.now() + timedelta(days=365)).strftime("%Y-%m-%d")
+        
         # Create prompt for VertexAI
         prompt = f"""
         Generate a comprehensive data governance policy document in markdown format based on the following policy data:
         
         {policy_json}
         
-        The document should follow this structure:
+        The document should follow this professional enterprise structure:
         
-        1. Title and Date (current date)
-        2. Policy Context (if available)
-        3. Introduction
-        4. Scope (listing all data elements and purposes)
-        5. Data Governance Policies
-           5.1 Sensitivity-Based Policies (organized by data element)
-           5.2 Purpose-Based Policies (organized by purpose and data element)
-        6. Compliance and Enforcement
-        7. Policy Review
+        # Data Governance Policy
         
-        Format the document with proper markdown headings, bullet points, and tables where appropriate.
-        Make it professional, comprehensive, and ready for business use.
+        ## Document Control Information
+        | Document Information | Details |
+        |---------------------|--------|
+        | **Document ID** | DG-POL-{current_year}-001 |
+        | **Version** | 1.0 |
+        | **Classification** | Internal |
+        | **Effective Date** | {current_date} |
+        | **Next Review Date** | {one_year_from_now} |
+        | **Document Owner** | Chief Data Officer |
+        | **Approved By** | Data Governance Committee |
+        
+        ## Executive Summary
+        A concise 2-3 sentence overview of the policy's purpose, scope, and importance to the organization.
+        
+        ## 1. Policy Context
+        Include jurisdiction, data subject type, and regulatory framework information. Explain why this policy exists and its importance to the organization's data governance program.
+        
+        ## 2. Purpose and Objectives
+        Clearly state the purpose of the policy and list 3-5 specific objectives it aims to achieve. Include references to relevant regulations where applicable.
+        
+        ## 3. Scope and Applicability
+        ### 3.1 In Scope
+        * List all data elements covered by this policy
+        * Specify which systems, processes, and environments are covered
+        
+        ### 3.2 Applicable To
+        * Specify which roles, departments, and third parties must comply with this policy
+        * Include any geographical or jurisdictional limitations
+        
+        ### 3.3 Business Purposes
+        * List all business purposes covered by this policy and their definitions
+        
+        ## 4. Policy Statements
+        
+        ### 4.1 Sensitivity-Based Policies
+        Create a separate section for each data element, with professional tables for each policy:
+        
+        #### [Data Element Name]
+        | Policy ID | Policy Type | Policy Name | Description | Controls |
+        |-----------|-------------|-------------|-------------|----------|
+        | SEN-[ID]-001 | Security/Usage/Retention | [Policy Name] | [Description] | [Specific controls] |
+        
+        ### 4.2 Purpose-Based Policies
+        Organize by business purpose, then by data element, with professional tables:
+        
+        #### [Purpose Name]
+        ##### [Data Element Name]
+        | Policy ID | Policy Type | Policy Name | Description | Controls |
+        |-----------|-------------|-------------|-------------|----------|
+        | PUR-[ID]-001 | Security/Usage/Retention | [Policy Name] | [Description] | [Specific controls] |
+        
+        ## 5. Roles and Responsibilities
+        | Role | Responsibilities |
+        |------|------------------|
+        | Data Owner | [List specific responsibilities] |
+        | Data Steward | [List specific responsibilities] |
+        | Data User | [List specific responsibilities] |
+        | IT Security | [List specific responsibilities] |
+        
+        ## 6. Compliance and Enforcement
+        ### 6.1 Monitoring and Auditing
+        Describe how compliance with this policy will be monitored and audited.
+        
+        ### 6.2 Non-Compliance
+        Clearly state the consequences of non-compliance with this policy.
+        
+        ### 6.3 Exceptions
+        Outline the process for requesting exceptions to this policy.
+        
+        ## 7. Policy Review and Maintenance
+        Specify the frequency of review, the review process, and who is responsible for maintaining this policy.
+        
+        ## 8. Related Documents
+        * Data Classification Policy
+        * Data Security Policy
+        * Data Retention Policy
+        * [Other relevant policies]
+        
+        ## 9. Definitions and Terminology
+        | Term | Definition |
+        |------|------------|
+        | [Key Term] | [Definition] |
+        | [Key Term] | [Definition] |
+        
+        ## 10. Appendices
+        Any additional information, examples, or references that support this policy.
+        
+        ---
+        
+        Format the document with proper markdown headings, bullet points, and tables as shown above.
+        Make it professional, comprehensive, and ready for enterprise business use.
+        Use tables for structured information and bullet points for lists.
+        Include specific policy IDs for each policy to enable easy reference.
+        Use bold text for emphasis on important points.
         
         The document should be well-structured, clear, and follow data governance best practices.
-        
-        Please format the policy document in a way that makes it easy to read and understand, using appropriate
-        markdown formatting for headings, lists, tables, and emphasis.
         """
         
         try:
