@@ -14,6 +14,7 @@ from core.asset_policy_inference import AssetPolicyInference
 from UX.data_use_governance_overview import DataUseGovernanceOverview
 from UX.faq_page import FAQPage
 from UX.policy_authoring_page import PolicyAuthoringPage
+from UX.policy_definition_journey import PolicyDefinitionJourney
 from UX.core_constructs_pages import (
     LawPage,
     JurisdictionsPage,
@@ -467,6 +468,10 @@ class DataMap:
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
                 
+            # Policy Definition Journey menu item
+            if st.button("📝 Policy Definition Journey", key="policy_definition_journey_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Definition Journey'
+                
             # Policy Authoring Journey menu item
             if st.button("📝 Policy Authoring Journey", key="policy_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Authoring Journey'
@@ -598,6 +603,7 @@ class DataMap:
             'Consent Management': self.consent_management_page,
             'Data Access Request': self.data_access_request_page,
             'User Journey Overview': self.user_journey_overview,
+            'Policy Definition Journey': self.policy_definition_journey,
             'Policy Authoring Journey': self.policy_authoring_journey,
             'FAQ': self.faq_page,
             'Policy Compliance': self.policy_compliance,
@@ -639,6 +645,15 @@ class DataMap:
             self.sensitivity_inference
         ).render()
         
+    def policy_definition_journey(self):
+        """Display the Policy Definition Journey page."""
+        PolicyDefinitionJourney(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.policy_repository,
+            self.inventory_repository
+        ).render()
+    
     def faq_page(self):
         """Display the Knowledge Base FAQ page."""
         from UX.faq_page import FAQPage

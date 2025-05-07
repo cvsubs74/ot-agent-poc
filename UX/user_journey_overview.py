@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from UX.data_access_request_page import DataAccessRequestPage
 from UX.policy_authoring_journey import PolicyAuthoringJourney
+from UX.policy_definition_journey import PolicyDefinitionJourney
 
 class UserJourneyOverview:
     """Class to render the User Journey Overview page."""
@@ -30,6 +31,7 @@ class UserJourneyOverview:
         # Create tabs for different user journeys
         tabs = st.tabs([
             "Overview",
+            "Define Policies",
             "Manage Policies",
             "Request Data Access"
         ])
@@ -38,12 +40,16 @@ class UserJourneyOverview:
         with tabs[0]:
             self._render_overview()
             
-        # View Policies by Purpose tab
+        # Define Policies tab
         with tabs[1]:
+            self._render_policy_definition_journey()
+            
+        # Manage Policies by Purpose tab
+        with tabs[2]:
             self._render_policies_by_purpose()
             
         # Request Data Access tab
-        with tabs[2]:
+        with tabs[3]:
             if self.catalog_repository and self.asset_policy_inference:
                 DataAccessRequestPage(
                     self.glossary_repository,
@@ -56,7 +62,14 @@ class UserJourneyOverview:
                 st.warning("Data Access Request functionality requires catalog repository and asset policy inference. Please navigate to the main Data Access Request page.")
                 st.button("Go to Data Access Request", on_click=lambda: st.session_state.update({"current_section": "Data Access Request"}))
         
-    # This method has been merged into the render method
+    def _render_policy_definition_journey(self):
+        """Render the Policy Definition Journey page."""
+        PolicyDefinitionJourney(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.policy_repository,
+            self.inventory_repository
+        ).render()
     
     def _render_policy_authoring_journey(self):
         """Render the Policy Authoring Journey page."""

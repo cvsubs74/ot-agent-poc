@@ -127,4 +127,214 @@ class PolicyRepository:
             print(f"Error deleting purpose-role mapping: {e}")
             return False
     
+    # Policy Management Methods
+    
+    def create_policy(self, name, description, policy_type, status, effective_date=None, expiration_date=None):
+        """Create a new policy."""
+        cursor = self.connection.cursor()
+        try:
+            if effective_date and expiration_date:
+                cursor.execute('''
+                    INSERT INTO policy (name, description, policy_type, status, effective_date, expiration_date)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (name, description, policy_type, status, effective_date, expiration_date))
+            else:
+                cursor.execute('''
+                    INSERT INTO policy (name, description, policy_type, status)
+                    VALUES (%s, %s, %s, %s)
+                ''', (name, description, policy_type, status))
+            
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error creating policy: {e}")
+            return None
+    
+    def get_policies(self, policy_type=None, status=None):
+        """Get all policies with optional filtering."""
+        cursor = self.connection.cursor()
+        try:
+            query = "SELECT * FROM policy"
+            params = []
+            
+            if policy_type or status:
+                query += " WHERE"
+                
+                if policy_type:
+                    query += " policy_type = %s"
+                    params.append(policy_type)
+                    
+                    if status:
+                        query += " AND status = %s"
+                        params.append(status)
+                elif status:
+                    query += " status = %s"
+                    params.append(status)
+            
+            query += " ORDER BY created_at DESC"
+            
+            cursor.execute(query, tuple(params) if params else None)
+            policies = cursor.fetchall()
+            return policies
+        except Exception as e:
+            print(f"Error getting policies: {e}")
+            return []
+    
+    def get_policy(self, policy_id):
+        """Get a specific policy by ID."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("SELECT * FROM policy WHERE id = %s", (policy_id,))
+            policy = cursor.fetchone()
+            return policy
+        except Exception as e:
+            print(f"Error getting policy {policy_id}: {e}")
+            return None
+    
+    def update_policy(self, policy_id, name=None, description=None, policy_type=None, status=None, 
+                     effective_date=None, expiration_date=None):
+        """Update an existing policy."""
+        cursor = self.connection.cursor()
+        try:
+            # Build the update query dynamically based on provided parameters
+            query = "UPDATE policy SET "
+            params = []
+            updates = []
+            
+            if name is not None:
+                updates.append("name = %s")
+                params.append(name)
+            if description is not None:
+                updates.append("description = %s")
+                params.append(description)
+            if policy_type is not None:
+                updates.append("policy_type = %s")
+                params.append(policy_type)
+            if status is not None:
+                updates.append("status = %s")
+                params.append(status)
+            if effective_date is not None:
+                updates.append("effective_date = %s")
+                params.append(effective_date)
+            if expiration_date is not None:
+                updates.append("expiration_date = %s")
+                params.append(expiration_date)
+            
+            if not updates:
+                return False  # Nothing to update
+            
+            query += ", ".join(updates)
+            query += " WHERE id = %s"
+            params.append(policy_id)
+            
+            cursor.execute(query, tuple(params))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating policy {policy_id}: {e}")
+            return False
+    
+    def delete_policy(self, policy_id):
+        """Delete a policy."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("DELETE FROM policy WHERE id = %s", (policy_id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error deleting policy {policy_id}: {e}")
+            return False
+    
+    # Policy Purpose Mappings
+    
+    def add_policy_purpose(self, policy_id, purpose_id):
+        """Add a policy-purpose mapping."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO policy_purpose (policy_id, purpose_id)
+                VALUES (%s, %s)
+            ''', (policy_id, purpose_id))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding policy-purpose mapping: {e}")
+            return None
+    
+    # Policy Data Element Mappings
+    
+    def add_policy_data_element(self, policy_purpose_id, data_element_id):
+        """Add a policy-data element mapping."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO policy_purpose_data_element (policy_purpose_id, data_element_id)
+                VALUES (%s, %s)
+            ''', (policy_purpose_id, data_element_id))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding policy-data element mapping: {e}")
+            return None
+    
+    # Policy Type-Specific Methods
+    
+    def add_policy_data_usage(self, policy_purpose_data_element_id, operations):
+        """Add access control policy details."""
+        cursor = self.connection.cursor()
+        try:
+            # First, ensure the policy data element has access control enabled
+            cursor.execute('''
+                UPDATE policy_purpose_data_element 
+                SET requires_access_control = TRUE, access_control_type = 'standard'
+                WHERE id = %s
+            ''', (policy_purpose_data_element_id,))
+            
+            # Then add the operations
+            for operation in operations:
+                cursor.execute('''
+                    INSERT INTO policy_purpose_data_usage (policy_purpose_data_element_id, operation)
+                    VALUES (%s, %s)
+                ''', (policy_purpose_data_element_id, operation))
+                
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy data usage: {e}")
+            return False
+    
+    def add_policy_data_retention(self, policy_purpose_data_element_id, retention_period, retention_trigger, 
+                                 retention_basis, auto_delete=True):
+        """Add retention policy details."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO policy_purpose_data_retention 
+                (policy_purpose_data_element_id, retention_period, retention_trigger, retention_basis, auto_delete)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (policy_purpose_data_element_id, retention_period, retention_trigger, retention_basis, auto_delete))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy data retention: {e}")
+            return False
+    
+    def add_policy_data_security(self, policy_purpose_data_element_id, encryption_required, encryption_algorithm=None, 
+                               masking_required=False, masking_format=None, logging_enabled=True):
+        """Add security policy details."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO policy_purpose_data_security 
+                (policy_purpose_data_element_id, encryption_required, encryption_algorithm, 
+                masking_required, masking_format, logging_enabled)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (policy_purpose_data_element_id, encryption_required, encryption_algorithm, 
+                  masking_required, masking_format, logging_enabled))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error adding policy data security: {e}")
+            return False
+    
 
