@@ -15,6 +15,8 @@ from UX.data_use_governance_overview import DataUseGovernanceOverview
 from UX.faq_page import FAQPage
 from UX.policy_authoring_page import PolicyAuthoringPage
 from UX.policy_definition_journey import PolicyDefinitionJourney
+from UX.genai_governance_page import AIGovernancePage
+from UX.genai_governance_journey import AIGovernanceJourney
 from UX.core_constructs_pages import (
     LawPage,
     JurisdictionsPage,
@@ -475,6 +477,10 @@ class DataMap:
             # Policy Authoring Journey menu item
             if st.button("📝 Policy Authoring Journey", key="policy_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Authoring Journey'
+                
+            # GenAI Governance Journey menu item
+            if st.button("🤖 GenAI Governance Journey", key="genai_governance_journey_btn", use_container_width=True):
+                st.session_state['current_section'] = 'GenAI Governance Journey'
             
             # Second section: Regulatory Intelligence
             st.markdown("<div class='sidebar-section-header'>Regulatory Intelligence</div>", unsafe_allow_html=True)
@@ -605,11 +611,13 @@ class DataMap:
             'User Journey Overview': self.user_journey_overview,
             'Policy Definition Journey': self.policy_definition_journey,
             'Policy Authoring Journey': self.policy_authoring_journey,
+            'GenAI Governance Journey': self.genai_governance_journey,
             'FAQ': self.faq_page,
             'Policy Compliance': self.policy_compliance,
             'Policy Authoring': self.policy_authoring_page,
             'Applied Policies': self.policy_applied_page,
             'Control API': self.control_inference_page,
+            'GenAI Governance': self.genai_governance_page,
         }
         handler = section_handlers.get(st.session_state['current_section'])
         if handler:
@@ -756,6 +764,25 @@ class DataMap:
             data_access_repository=self.data_access_repository
         )
         page.render()
+        
+    def genai_governance_page(self):
+        """Render the GenAI Governance page to demonstrate policy-based redaction of AI-generated responses."""
+        GenAIGovernancePage(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.policy_repository
+        ).render()
+        
+    def genai_governance_journey(self):
+        """Render the AI Governance Journey page to explain the concept and demonstrate the implementation."""
+        AIGovernanceJourney(
+            self.glossary_repository,
+            self.regulatory_metadata_repository,
+            self.policy_repository,
+            asset_policy_inference=self.asset_policy_inference,
+            catalog_repository=self.catalog_repository,
+            inventory_repository=self.inventory_repository
+        ).render()
 
 if __name__ == "__main__":
     app = DataMap()
