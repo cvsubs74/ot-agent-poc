@@ -302,6 +302,60 @@ class PolicyRepository:
         except Exception as e:
             print(f"Error adding policy data usage: {e}")
             return False
+            
+    def update_policy_data_usage(self, policy_purpose_data_element_id, operations=None, allowed=None):
+        """Update access control policy details.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy-purpose-data element relationship
+            operations (list, optional): List of operations to update (e.g., ['read', 'write', 'share'])
+            allowed (bool, optional): Whether the operations are allowed
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            if operations is None and allowed is None:
+                return False  # Nothing to update
+                
+            success = True
+            
+            # If allowed status is provided, update all existing operations
+            if allowed is not None:
+                cursor.execute('''
+                    UPDATE policy_purpose_data_usage
+                    SET allowed = %s
+                    WHERE policy_purpose_data_element_id = %s
+                ''', (allowed, policy_purpose_data_element_id))
+                success = success and cursor.rowcount > 0
+            
+            # If operations are provided, handle them
+            if operations:
+                # First, get existing operations
+                cursor.execute('''
+                    SELECT operation FROM policy_purpose_data_usage
+                    WHERE policy_purpose_data_element_id = %s
+                ''', (policy_purpose_data_element_id,))
+                existing_operations = [row[0] for row in cursor.fetchall()]
+                
+                # Add new operations that don't exist yet
+                for operation in operations:
+                    if operation not in existing_operations:
+                        cursor.execute('''
+                            INSERT INTO policy_purpose_data_usage (policy_purpose_data_element_id, operation, allowed)
+                            VALUES (%s, %s, %s)
+                        ''', (policy_purpose_data_element_id, operation, allowed if allowed is not None else True))
+                        success = success and cursor.lastrowid is not None
+            
+            self.connection.commit()
+            return success
+        except Exception as e:
+            print(f"Error updating policy data usage: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
     
     def add_policy_data_retention(self, policy_purpose_data_element_id, retention_period, retention_trigger, 
                                  retention_basis, auto_delete=True):
@@ -318,6 +372,62 @@ class PolicyRepository:
         except Exception as e:
             print(f"Error adding policy data retention: {e}")
             return False
+            
+    def update_policy_data_retention(self, policy_purpose_data_element_id, retention_period=None, retention_trigger=None, 
+                                    retention_basis=None, auto_delete=None):
+        """Update retention policy details.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy-purpose-data element relationship
+            retention_period (str, optional): The retention period (e.g., '7 years', '30 days')
+            retention_trigger (str, optional): What triggers the retention period (e.g., 'creation', 'last_access')
+            retention_basis (str, optional): The basis for retention (e.g., 'legal', 'business', 'regulatory')
+            auto_delete (bool, optional): Whether to automatically delete data after retention period
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            # Build update query dynamically based on provided parameters
+            update_parts = []
+            params = []
+            
+            if retention_period is not None:
+                update_parts.append("retention_period = %s")
+                params.append(retention_period)
+                
+            if retention_trigger is not None:
+                update_parts.append("retention_trigger = %s")
+                params.append(retention_trigger)
+                
+            if retention_basis is not None:
+                update_parts.append("retention_basis = %s")
+                params.append(retention_basis)
+                
+            if auto_delete is not None:
+                update_parts.append("auto_delete = %s")
+                params.append(auto_delete)
+                
+            if not update_parts:
+                return False  # Nothing to update
+                
+            # Add the policy_purpose_data_element_id to params
+            params.append(policy_purpose_data_element_id)
+            
+            query = f"""UPDATE policy_purpose_data_retention 
+                      SET {', '.join(update_parts)} 
+                      WHERE policy_purpose_data_element_id = %s;"""
+                      
+            cursor.execute(query, params)
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating policy data retention: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
     
     def add_policy_data_security(self, policy_purpose_data_element_id, encryption_required, encryption_algorithm=None, 
                                masking_required=False, masking_format=None, logging_enabled=True):
@@ -336,5 +446,66 @@ class PolicyRepository:
         except Exception as e:
             print(f"Error adding policy data security: {e}")
             return False
+    
+    def update_policy_data_security(self, policy_purpose_data_element_id, encryption_required=None, encryption_algorithm=None, 
+                                  masking_required=None, masking_format=None, logging_enabled=None):
+        """Update security policy details.
+        
+        Args:
+            policy_purpose_data_element_id (int): The ID of the policy-purpose-data element relationship
+            encryption_required (bool, optional): Whether encryption is required
+            encryption_algorithm (str, optional): The encryption algorithm to use
+            masking_required (bool, optional): Whether masking is required
+            masking_format (str, optional): The masking format to use
+            logging_enabled (bool, optional): Whether logging is enabled
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        cursor = self.connection.cursor()
+        try:
+            # Build update query dynamically based on provided parameters
+            update_parts = []
+            params = []
+            
+            if encryption_required is not None:
+                update_parts.append("encryption_required = %s")
+                params.append(encryption_required)
+                
+            if encryption_algorithm is not None:
+                update_parts.append("encryption_algorithm = %s")
+                params.append(encryption_algorithm)
+                
+            if masking_required is not None:
+                update_parts.append("masking_required = %s")
+                params.append(masking_required)
+                
+            if masking_format is not None:
+                update_parts.append("masking_format = %s")
+                params.append(masking_format)
+                
+            if logging_enabled is not None:
+                update_parts.append("logging_enabled = %s")
+                params.append(logging_enabled)
+                
+            if not update_parts:
+                return False  # Nothing to update
+                
+            # Add the policy_purpose_data_element_id to params
+            params.append(policy_purpose_data_element_id)
+            
+            query = f"""UPDATE policy_purpose_data_security 
+                      SET {', '.join(update_parts)} 
+                      WHERE policy_purpose_data_element_id = %s;"""
+                      
+            cursor.execute(query, params)
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating policy data security: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
     
 
