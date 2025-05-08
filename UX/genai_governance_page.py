@@ -283,13 +283,127 @@ class AIGovernancePage:
                 5. **Response Delivery**: The governed response is delivered to the user.
                 """)
                 
-                # Display the policies used for governance
+                # Display a clear explanation of how policies were applied
                 st.markdown("### Policies Applied")
                 policies_json = self._get_policies_for_purpose(selected_purpose_id)
+                
                 if policies_json:
-                    st.json(policies_json)
+                    # Parse the policies JSON
+                    try:
+                        policies = json.loads(policies_json)
+                        
+                        # Group policies by type for better organization
+                        usage_policies = [p for p in policies if p.get('policy_type') == 'Usage']
+                        security_policies = [p for p in policies if p.get('policy_type') == 'Security']
+                        retention_policies = [p for p in policies if p.get('policy_type') == 'Retention']
+                        
+                        # Create a step-by-step explanation of how policies were applied
+                        st.markdown("#### Step-by-Step Policy Application Process")
+                        
+                        # Step 1: Data Element Identification
+                        st.markdown("**Step 1: Data Element Identification**")
+                        data_elements = [p.get('data_element_name', 'Unknown') for p in policies]
+                        data_elements = list(set(data_elements))  # Remove duplicates
+                        st.markdown(f"The system identified the following data elements in the response that are subject to governance policies:")
+                        for element in data_elements:
+                            st.markdown(f"- {element}")
+                        
+                        # Step 2: Policy Retrieval
+                        st.markdown("**Step 2: Policy Retrieval**")
+                        st.markdown(f"For each data element, the system retrieved relevant policies based on the selected purpose '{selected_purpose_name}':")
+                        
+                        # Create expandable sections for each policy type
+                        if usage_policies:
+                            with st.expander("Usage Policies", expanded=True):
+                                st.markdown("*Usage policies determine whether data elements can be accessed for specific purposes.*")
+                                for policy in usage_policies:
+                                    allowed = policy.get('allowed', False)
+                                    status = "✅ Allowed" if allowed else "❌ Not Allowed"
+                                    color = "green" if allowed else "red"
+                                    element = policy.get('data_element_name', 'Unknown')
+                                    restrictions = policy.get('restrictions', 'None')
+                                    
+                                    st.markdown(f"- **{element}**: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
+                                    if restrictions and restrictions != 'None':
+                                        st.markdown(f"  - Restrictions: {restrictions}")
+                        
+                        if security_policies:
+                            with st.expander("Security Policies", expanded=True):
+                                st.markdown("*Security policies determine how sensitive data should be protected.*")
+                                for policy in security_policies:
+                                    element = policy.get('data_element_name', 'Unknown')
+                                    requires_masking = policy.get('requires_masking', False)
+                                    requires_encryption = policy.get('requires_encryption', False)
+                                    masking_format = policy.get('masking_format', 'Default')
+                                    
+                                    security_measures = []
+                                    if requires_masking:
+                                        security_measures.append(f"Masking ({masking_format})")
+                                    if requires_encryption:
+                                        security_measures.append(f"Encryption")
+                                    
+                                    st.markdown(f"- **{element}**: {', '.join(security_measures) if security_measures else 'No security measures required'}")
+                        
+                        # Step 3: Redaction Decision
+                        st.markdown("**Step 3: Redaction Decision**")
+                        st.markdown("Based on the policies, the system made the following redaction decisions:")
+                        
+                        # Explain redaction decisions for each data element
+                        for element in data_elements:
+                            # Find relevant policies for this element
+                            element_usage_policies = [p for p in usage_policies if p.get('data_element_name') == element]
+                            element_security_policies = [p for p in security_policies if p.get('data_element_name') == element]
+                            
+                            # Determine redaction type
+                            redaction_type = "None"
+                            explanation = ""
+                            
+                            # Check if any usage policy disallows this element
+                            if any(not p.get('allowed', True) for p in element_usage_policies):
+                                redaction_type = "Complete Redaction"
+                                explanation = "This data is not allowed for the selected purpose and was completely redacted."
+                            # Check if any security policy requires masking
+                            elif any(p.get('requires_masking', False) for p in element_security_policies):
+                                redaction_type = "Generalization"
+                                explanation = "This data requires masking and was generalized to protect sensitive details."
+                            # Check if any usage policy has restrictions
+                            elif any(p.get('restrictions', 'None') != 'None' for p in element_usage_policies):
+                                redaction_type = "Conditional Access"
+                                explanation = "This data has usage restrictions and was conditionally redacted."
+                            else:
+                                redaction_type = "No Redaction"
+                                explanation = "This data is allowed for the selected purpose and was not redacted."
+                            
+                            # Display the decision
+                            if redaction_type == "Complete Redaction":
+                                st.markdown(f"- **{element}**: <span class='redacted'>REDACTED</span> - {explanation}", unsafe_allow_html=True)
+                            elif redaction_type == "Generalization":
+                                st.markdown(f"- **{element}**: <span class='generalized'>Generalized</span> - {explanation}", unsafe_allow_html=True)
+                            elif redaction_type == "Conditional Access":
+                                st.markdown(f"- **{element}**: <span class='conditional'>Conditional</span> - {explanation}", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"- **{element}**: No redaction - {explanation}")
+                        
+                        # Step 4: Response Transformation
+                        st.markdown("**Step 4: Response Transformation**")
+                        st.markdown("The system applied the redaction decisions to transform the raw response into a governed response, preserving the overall structure and flow of the content while protecting sensitive information.")
+                        
+                        # Step 5: Visual Marking
+                        st.markdown("**Step 5: Visual Marking**")
+                        st.markdown("The system applied visual markings to indicate different types of redactions:")
+                        st.markdown("- <span class='redacted'>REDACTED</span>: Information that is not allowed for the selected purpose", unsafe_allow_html=True)
+                        st.markdown("- <span class='generalized'>Generalized information</span>: Specific details that have been replaced with more general information", unsafe_allow_html=True)
+                        st.markdown("- <span class='conditional'>Conditional information</span>: Information that is provided with specific conditions or restrictions", unsafe_allow_html=True)
+                        
+                    except json.JSONDecodeError:
+                        st.error("Error parsing policy data. Please try again.")
                 else:
                     st.info("No specific policies were applied for this purpose.")
+                    
+                # Add a note about the purpose of governance
+                st.markdown("### Why This Matters")
+                st.markdown(f"The governance process ensures that AI-generated responses comply with data governance policies for the **{selected_purpose_name}** purpose, protecting sensitive information while still providing valuable insights.")
+                st.markdown("This approach allows organizations to leverage AI while maintaining compliance with privacy regulations and internal data governance standards.")
     
     def _get_suggested_questions(self, document_name):
         """Get suggested questions based on the selected document."""
