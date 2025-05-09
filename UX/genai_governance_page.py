@@ -276,10 +276,10 @@ class AIGovernancePage:
                 
                 st.markdown("### Policy Evaluation Process")
                 st.markdown("""
-                1. **Content Generation**: The AI generates a response based on the document and question.
-                2. **Policy Retrieval**: Policies associated with the selected purpose are retrieved.
-                3. **Content Analysis**: The response is analyzed for sensitive information based on policies.
-                4. **Policy Application**: Appropriate redaction techniques are applied based on policy requirements.
+                1. **Content Generation**: The AI generates a raw response based on the document and question.
+                2. **Data Element Detection**: The system scans the raw response to identify sensitive data elements.
+                3. **Policy Retrieval**: Policies associated with the selected purpose are retrieved for each identified data element.
+                4. **Policy Application**: Appropriate redaction techniques are applied to each data element based on policy requirements.
                 5. **Response Delivery**: The governed response is delivered to the user.
                 """)
                 
@@ -302,11 +302,15 @@ class AIGovernancePage:
                         
                         # Step 1: Data Element Identification
                         st.markdown("**Step 1: Data Element Identification**")
+                        st.markdown("The system scans the raw AI response to identify sensitive data elements. In a real implementation, this would use NLP, pattern matching, or other detection methods to find sensitive information in the raw text.")
+                        
+                        # Note: In this demo, we're showing the data elements that have policies, not necessarily what was found
+                        st.markdown("**Note:** The following data elements are governed by policies for the selected purpose:")
                         data_elements = [p.get('data_element_name', 'Unknown') for p in policies]
                         data_elements = list(set(data_elements))  # Remove duplicates
-                        st.markdown(f"The system identified the following data elements in the response that are subject to governance policies:")
                         for element in data_elements:
                             st.markdown(f"- {element}")
+                        st.markdown("*In a production system, only data elements actually found in the raw response would be listed here.*")
                         
                         # Step 2: Policy Retrieval
                         st.markdown("**Step 2: Policy Retrieval**")

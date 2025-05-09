@@ -479,7 +479,7 @@ class DataMap:
                 st.session_state['current_section'] = 'Policy Authoring Journey'
                 
             # GenAI Governance Journey menu item
-            if st.button("🤖 GenAI Governance Journey", key="genai_governance_journey_btn", use_container_width=True):
+            if st.button("🤖 AI Governance Journey", key="genai_governance_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'GenAI Governance Journey'
             
             # Second section: Regulatory Intelligence
