@@ -34,37 +34,269 @@ class PolicyManagementJourney:
     
     def _render_overview(self):
         """Render the overview of policy management."""
+        # Header with custom styling - light blue background
         st.markdown("""
-        <h3 style="color: #1565C0;">Policy Management Overview</h3>
+        <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #1565C0;">
+            <h2 style="color: #1565C0; text-align: center; margin: 0;">Policy Management Journey</h2>
+            <p style="color: #1565C0; text-align: center; margin-top: 10px;">A comprehensive approach to data governance and protection</p>
+        </div>
         """, unsafe_allow_html=True)
         
-        # Overview content
-        st.write("""
-        Policy management is a critical component of data governance, allowing organizations to define and enforce rules 
-        for how data can be accessed, used, and retained. This journey demonstrates how to:
-        """)
+        # Introduction with custom styling
+        st.markdown("""
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 5px solid #1565C0; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 16px;">Policy management is a critical component of data governance, allowing organizations to define and enforce rules 
+            for how data can be accessed, used, and retained. This journey provides a comprehensive approach to managing policies 
+            with a focus on purpose-based access control and data protection.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # Step-by-step guide with visual header
+        st.markdown("""
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <div style="background-color: #1565C0; color: white; padding: 10px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                <span style="font-size: 20px;">📋</span>
+            </div>
+            <h3 style="margin: 0; color: #1565C0;">Policy Management Step-by-Step Guide</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Define steps with rich styling
+        steps = [
+            {
+                "title": "Understand Policy Types",
+                "description": """
+                <div style="padding: 10px; border-radius: 5px;">
+                    <p>Start by understanding the different types of policies available:</p>
+                    <ul>
+                        <li><span style="color: #1565C0; font-weight: bold;">Access Control Policies</span>: Define who can access what data and under what conditions</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Security Policies</span>: Specify how data should be protected through masking, encryption, and other security measures</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Retention Policies</span>: Determine how long data should be kept and when it should be deleted</li>
+                    </ul>
+                    <p>Each policy type serves a specific purpose in your data governance framework.</p>
+                </div>
+                """,
+                "icon": "🔍",
+                "color": "#E3F2FD"
+            },
+            {
+                "title": "Create Data-Element Specific Policies",
+                "description": """
+                <div style="padding: 10px; border-radius: 5px;">
+                    <p>Create policies for specific data elements, categories, or sensitivity levels:</p>
+                    <ul>
+                        <li><span style="color: #1565C0; font-weight: bold;">Target Selection</span>: Choose whether the policy applies to a specific data element, category, or sensitivity level</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Configuration</span>: Set up policy-specific settings such as access permissions, masking rules, or retention periods</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Per-Element Settings</span>: Configure detailed settings for each data element to ensure appropriate protection</li>
+                    </ul>
+                    <p>This granular approach ensures that each piece of data is governed according to its specific requirements.</p>
+                </div>
+                """,
+                "icon": "✏️",
+                "color": "#E8F5E9"
+            },
+            {
+                "title": "Organize Policies into Groups",
+                "description": """
+                <div style="padding: 10px; border-radius: 5px;">
+                    <p>Group related policies together for easier management:</p>
+                    <ul>
+                        <li><span style="color: #1565C0; font-weight: bold;">Create Policy Groups</span>: Organize policies that serve a common purpose or apply to related data</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Add Multiple Policies</span>: Select multiple policies to add to a group in a single operation</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">View Group Contents</span>: Use the dropdown to see which policies are included in each group</li>
+                    </ul>
+                    <p>Policy groups simplify management and provide a foundation for context-based application.</p>
+                </div>
+                """,
+                "icon": "📋",
+                "color": "#FFF8E1"
+            },
+            {
+                "title": "Define Context Overrides",
+                "description": """
+                <div style="padding: 10px; border-radius: 5px;">
+                    <p>Create context-specific overrides to apply policies based on business context:</p>
+                    <ul>
+                        <li><span style="color: #1565C0; font-weight: bold;">Select Policy Group</span>: Choose which policy group to apply in a specific context</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Define Context</span>: Specify the purpose, role, region, or other context factors</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Set Priority</span>: Determine the priority of this override relative to others</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Set Effective Dates</span>: Specify when the override should take effect and expire</li>
+                    </ul>
+                    <p>Context overrides ensure that policies are applied appropriately based on legitimate business purposes.</p>
+                </div>
+                """,
+                "icon": "🔄",
+                "color": "#F3E5F5"
+            },
+            {
+                "title": "Implementation and Enforcement",
+                "description": """
+                <div style="padding: 10px; border-radius: 5px;">
+                    <p>The final step is implementing and enforcing the policies:</p>
+                    <ul>
+                        <li><span style="color: #1565C0; font-weight: bold;">Generate DDL</span>: Convert policies into database-specific code (e.g., Snowflake DDL)</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Deploy Policies</span>: Apply the policies to your data infrastructure</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Monitor Compliance</span>: Track policy application and effectiveness</li>
+                        <li><span style="color: #1565C0; font-weight: bold;">Iterate and Improve</span>: Refine policies based on feedback and changing requirements</li>
+                    </ul>
+                    <p>This ensures that your governance rules are effectively protecting your data in production environments.</p>
+                </div>
+                """,
+                "icon": "🚀",
+                "color": "#FFEBEE"
+            }
+        ]
+        
+        # Display steps in an interactive way with custom styling
+        for i, step in enumerate(steps):
+            with st.expander(f"{step['icon']} Step {i+1}: {step['title']}", expanded=i==0):
+                st.markdown(f"""
+                <div style="background-color: {step['color']}; border-radius: 10px; padding: 15px; border-left: 5px solid #1565C0;">
+                    {step['description']}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Key components and benefits with visual header
+        st.markdown("""
+        <div style="display: flex; align-items: center; margin: 30px 0 20px 0;">
+            <div style="background-color: #1565C0; color: white; padding: 10px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                <span style="font-size: 20px;">🔑</span>
+            </div>
+            <h3 style="margin: 0; color: #1565C0;">Key Components and Benefits</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Components and benefits in styled cards
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("#### Key Components")
             st.markdown("""
-            - **Policy Types**: Define categories of policies (Access Control, Security, Retention)
-            - **Policies**: Create specific rules targeting data elements, categories, or sensitivity levels
-            - **Policy Groups**: Organize related policies for easier management
-            - **Context Overrides**: Apply different policies based on purpose, role, or region
-            """)
+            <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; height: 100%; border-left: 5px solid #1565C0;">
+                <h4 style="color: #1565C0; margin-top: 0;">Key Components</h4>
+                <ul style="margin-bottom: 0;">
+                    <li><span style="font-weight: bold;">Policy Types</span>: Define categories of policies (Access Control, Security, Retention)</li>
+                    <li><span style="font-weight: bold;">Policies</span>: Create specific rules targeting data elements, categories, or sensitivity levels</li>
+                    <li><span style="font-weight: bold;">Policy Groups</span>: Organize related policies for easier management</li>
+                    <li><span style="font-weight: bold;">Context Overrides</span>: Apply different policies based on purpose, role, or region</li>
+                    <li><span style="font-weight: bold;">Per-Element Settings</span>: Configure specific protections for each data element</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            st.markdown("#### Benefits")
             st.markdown("""
-            - **Consistent Governance**: Apply standardized rules across your data landscape
-            - **Purpose-Based Access**: Ensure data is only used for legitimate purposes
-            - **Compliance**: Meet regulatory requirements for data protection
-            - **Flexibility**: Adapt policies to different contexts and requirements
-            """)
+            <div style="background-color: #E8F5E9; padding: 20px; border-radius: 10px; height: 100%; border-left: 5px solid #2E7D32;">
+                <h4 style="color: #2E7D32; margin-top: 0;">Benefits</h4>
+                <ul style="margin-bottom: 0;">
+                    <li><span style="font-weight: bold;">Consistent Governance</span>: Apply standardized rules across your data landscape</li>
+                    <li><span style="font-weight: bold;">Purpose-Based Access</span>: Ensure data is only used for legitimate purposes</li>
+                    <li><span style="font-weight: bold;">Compliance</span>: Meet regulatory requirements for data protection</li>
+                    <li><span style="font-weight: bold;">Flexibility</span>: Adapt policies to different contexts and requirements</li>
+                    <li><span style="font-weight: bold;">Granular Control</span>: Apply appropriate protections based on data sensitivity</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
         
-        st.info("Navigate through the tabs above to explore different aspects of policy management.")
+        # Best practices with visual header
+        st.markdown("""
+        <div style="display: flex; align-items: center; margin: 30px 0 20px 0;">
+            <div style="background-color: #1565C0; color: white; padding: 10px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                <span style="font-size: 20px;">⭐</span>
+            </div>
+            <h3 style="margin: 0; color: #1565C0;">Best Practices</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Best practices in a styled card
+        st.markdown("""
+        <div style="background-color: #FFF8E1; padding: 20px; border-radius: 10px; border-left: 5px solid #FF8F00;">
+            <ol style="margin-bottom: 0;">
+                <li><span style="font-weight: bold;">Start with Data Classification</span>: Understand your data elements and their sensitivity before creating policies</li>
+                <li><span style="font-weight: bold;">Use Purpose-Based Roles</span>: Organize access around business purposes rather than individual roles</li>
+                <li><span style="font-weight: bold;">Standardize Naming Conventions</span>: Use consistent naming for policies to improve maintainability</li>
+                <li><span style="font-weight: bold;">Document Policy Decisions</span>: Keep track of why certain policy choices were made</li>
+                <li><span style="font-weight: bold;">Regular Review</span>: Periodically review and update policies to ensure they remain effective</li>
+                <li><span style="font-weight: bold;">Layer Your Defenses</span>: Use multiple policy types together for comprehensive protection</li>
+                <li><span style="font-weight: bold;">Test Before Deployment</span>: Validate policies in a test environment before applying them to production</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Navigation info
+        st.markdown("""
+        <div style="background-color: #E3F2FD; padding: 15px; border-radius: 10px; margin: 30px 0; text-align: center; border: 1px solid #1565C0;">
+            <p style="margin: 0; color: #1565C0;"><i>Navigate through the tabs above to explore and implement each aspect of policy management.</i></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Visual diagram header
+        st.markdown("""
+        <div style="display: flex; align-items: center; margin: 30px 0 20px 0;">
+            <div style="background-color: #1565C0; color: white; padding: 10px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                <span style="font-size: 20px;">📊</span>
+            </div>
+            <h3 style="margin: 0; color: #1565C0;">Policy Management Flow</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Simplified visual flow with styled cards
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.markdown("""
+            <div style="background-color: #E3F2FD; padding: 15px; border-radius: 10px; text-align: center; height: 100%; border-top: 4px solid #1565C0;">
+                <div style="font-size: 24px; margin-bottom: 10px;">1️⃣</div>
+                <div style="font-weight: bold; color: #1565C0;">Define Policy Types</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; text-align: center; height: 100%; border-top: 4px solid #2E7D32;">
+                <div style="font-size: 24px; margin-bottom: 10px;">2️⃣</div>
+                <div style="font-weight: bold; color: #2E7D32;">Create Policies</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; text-align: center; height: 100%; border-top: 4px solid #FF8F00;">
+                <div style="font-size: 24px; margin-bottom: 10px;">3️⃣</div>
+                <div style="font-weight: bold; color: #FF8F00;">Organize into Groups</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown("""
+            <div style="background-color: #F3E5F5; padding: 15px; border-radius: 10px; text-align: center; height: 100%; border-top: 4px solid #7B1FA2;">
+                <div style="font-size: 24px; margin-bottom: 10px;">4️⃣</div>
+                <div style="font-weight: bold; color: #7B1FA2;">Define Context Overrides</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col5:
+            st.markdown("""
+            <div style="background-color: #FFEBEE; padding: 15px; border-radius: 10px; text-align: center; height: 100%; border-top: 4px solid #C62828;">
+                <div style="font-size: 24px; margin-bottom: 10px;">5️⃣</div>
+                <div style="font-weight: bold; color: #C62828;">Deploy & Monitor</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Flow arrows
+        st.markdown("""
+        <div style="text-align: center; margin: 10px 0 20px 0;">
+            <span style="font-size: 24px; color: #1565C0;">➡️ ➡️ ➡️ ➡️</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Call to action
+        st.markdown("""
+        <div style="background-color: #E8F5E9; padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center; border: 1px solid #2E7D32;">
+            <h4 style="color: #2E7D32; margin: 0;">Ready to start?</h4>
+            <p style="margin: 10px 0 0 0;">Begin by exploring the Policy Types tab and then proceed through the journey step by step.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
     
     def _render_policy_types(self):
         """Render the policy types section."""

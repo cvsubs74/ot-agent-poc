@@ -80,6 +80,7 @@ from repositories.ConsentRepository import ConsentRepository
 from repositories.DataAccessRepository import DataAccessRepository
 from repositories.KnowledgeRepository import KnowledgeRepository
 from repositories.PolicyRepository import PolicyRepository
+from repositories.PolicyDefinitionRepository import PolicyDefinitionRepository
 
 class DataMap:
     def __init__(self):
@@ -95,6 +96,7 @@ class DataMap:
         self.data_access_repository = DataAccessRepository(self.database_manager.connection)
         self.knowledge_repository = KnowledgeRepository(self.database_manager.connection)
         self.policy_repository = PolicyRepository(self.database_manager.connection)
+        self.policy_definition_repository = PolicyDefinitionRepository(self.database_manager.connection)
         self.asset_policy_inference = AssetPolicyInference(
             self.catalog_repository,
             self.regulatory_metadata_repository,
@@ -470,6 +472,10 @@ class DataMap:
             if st.button("🔑 Data Access Request Journey", key="user_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'User Journey Overview'
                 
+            # Policy Management Journey menu item
+            if st.button("🛡️ Policy Management Journey", key="policy_management_btn", use_container_width=True):
+                st.session_state['current_section'] = 'Policy Management Journey'
+            
             # Policy Definition Journey menu item
             if st.button("📝 Policy Definition Journey", key="policy_definition_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Definition Journey'
@@ -609,6 +615,7 @@ class DataMap:
             'Consent Management': self.consent_management_page,
             'Data Access Request': self.data_access_request_page,
             'User Journey Overview': self.user_journey_overview,
+            'Policy Management Journey': self.policy_management_journey,
             'Policy Definition Journey': self.policy_definition_journey,
             'Policy Authoring Journey': self.policy_authoring_journey,
             'GenAI Governance Journey': self.genai_governance_journey,
@@ -639,6 +646,15 @@ class DataMap:
             self.data_access_repository,
             self.catalog_repository,
             self.asset_policy_inference
+        ).render()
+        
+    def policy_management_journey(self):
+        """Display the Policy Management Journey page."""
+        from UX.policy_management_journey import PolicyManagementJourney
+        PolicyManagementJourney(
+            self.policy_definition_repository,
+            self.glossary_repository,
+            self.regulatory_metadata_repository
         ).render()
         
     def policy_authoring_journey(self):
