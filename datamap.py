@@ -475,11 +475,7 @@ class DataMap:
             # Policy Management Journey menu item
             if st.button("🛡️ Policy Management Journey", key="policy_management_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Management Journey'
-            
-            # Policy Definition Journey menu item
-            if st.button("📝 Policy Definition Journey", key="policy_definition_journey_btn", use_container_width=True):
-                st.session_state['current_section'] = 'Policy Definition Journey'
-                
+
             # Policy Authoring Journey menu item
             if st.button("📝 Policy Authoring Journey", key="policy_journey_btn", use_container_width=True):
                 st.session_state['current_section'] = 'Policy Authoring Journey'
