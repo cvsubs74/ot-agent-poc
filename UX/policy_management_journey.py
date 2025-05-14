@@ -2541,17 +2541,261 @@ class PolicyManagementJourney:
                                 policy_type = p.get("policy_type_name", "Unknown")
                                 target_system = p.get("target_system", "")
                                 
-                                # Create a card for each policy in the group
-                                card_html = f"""
-                                <div class="policy-group-card">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <span class="group-tag">{policy_type}</span>
-                                            <strong>{target_name}</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                                """
+                                # Create a card for each policy in the group with more details
+                                # Extract policy configuration if available
+                                policy_config = {}
+                                if p.get("policy_config"):
+                                    try:
+                                        if isinstance(p["policy_config"], str):
+                                            full_config = json.loads(p["policy_config"])
+                                        else:
+                                            full_config = p["policy_config"]
+                                            
+                                        # Print for debugging
+                                        print(f"Full policy config for {target_name}: {full_config}")
+                                        print(f"Policy config type: {type(full_config)}")
+                                        
+                                        # Check if we have a target_security section with data element specific configs
+                                        if isinstance(full_config, dict) and "target_security" in full_config and p.get("data_element_id"):
+                                            data_element_id = str(p["data_element_id"])
+                                            print(f"Looking for data element ID: {data_element_id} in target_security")
+                                            
+                                            # Extract only the config for this specific data element
+                                            if data_element_id in full_config["target_security"]:
+                                                policy_config = full_config["target_security"][data_element_id]
+                                                print(f"Found specific config for data element {data_element_id}: {policy_config}")
+                                            else:
+                                                # Fallback to root config if data element specific one not found
+                                                policy_config = {k: v for k, v in full_config.items() if k != "target_security"}
+                                                print(f"Using root config (no specific config for element {data_element_id}): {policy_config}")
+                                        else:
+                                            # No target_security section, use the whole config
+                                            policy_config = full_config
+                                            print(f"Using full config (no target_security section): {policy_config}")
+                                    except Exception as e:
+                                        print(f"Error parsing policy config: {e}")
+                                        policy_config = {}
+                                
+                                # Format effective dates if available
+                                effective_from = p.get("effective_from")
+                                effective_to = p.get("effective_to")
+                                
+                                if effective_from and isinstance(effective_from, str):
+                                    try:
+                                        effective_from = datetime.strptime(effective_from, "%Y-%m-%d").date()
+                                    except:
+                                        pass
+                                elif effective_from and isinstance(effective_from, datetime):
+                                    effective_from = effective_from.date()
+                                
+                                if effective_to and isinstance(effective_to, str):
+                                    try:
+                                        effective_to = datetime.strptime(effective_to, "%Y-%m-%d").date()
+                                    except:
+                                        pass
+                                elif effective_to and isinstance(effective_to, datetime):
+                                    effective_to = effective_to.date()
+                                
+                                # Instead of building HTML with multi-line strings, create a simpler approach
+                                # Start with an empty list to build the HTML parts
+                                html_parts = []
+                                
+                                # Add the card header - without ID
+                                html_parts.append(f'<div class="policy-group-card">')
+                                html_parts.append(f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">')
+                                html_parts.append(f'<div><span class="group-tag">{policy_type}</span> <strong style="font-size: 16px;">{target_name}</strong></div>')
+                                html_parts.append(f'</div>')
+                                
+                                # Add the details section container
+                                html_parts.append(f'<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0f0f0;">')
+                                html_parts.append(f'<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 5px;">')
+                                
+                                # Build policy details directly into HTML parts list
+                                if policy_config:
+                                    # For Access Control policies
+                                    if policy_type == "Access Control":
+                                        # Check for read/write/share permissions
+                                        read_permission = policy_config.get("read", False)
+                                        write_permission = policy_config.get("write", False)
+                                        share_permission = policy_config.get("share", False)
+                                        
+                                        # Also check for actions array for backward compatibility
+                                        actions = policy_config.get("actions", [])
+                                        if "read" in actions:
+                                            read_permission = True
+                                        if "write" in actions:
+                                            write_permission = True
+                                        if "share" in actions:
+                                            share_permission = True
+                                        
+                                        # Create permissions display with check/cross icons
+                                        html_parts.append(f'<div style="flex: 1;">')
+                                        html_parts.append(f'<span style="font-size: 12px; color: #616161;">Permissions:</span>')
+                                        html_parts.append(f'<div style="margin-top: 8px;">')
+                                        
+                                        # Read permission
+                                        html_parts.append(f'<div style="display: flex; align-items: center; margin-bottom: 5px;">')
+                                        if read_permission:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                        html_parts.append(f'<span style="font-size: 13px;">Read</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        # Write permission
+                                        html_parts.append(f'<div style="display: flex; align-items: center; margin-bottom: 5px;">')
+                                        if write_permission:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                        html_parts.append(f'<span style="font-size: 13px;">Write</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        # Share permission
+                                        html_parts.append(f'<div style="display: flex; align-items: center;">')
+                                        if share_permission:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                        html_parts.append(f'<span style="font-size: 13px;">Share</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        html_parts.append(f'</div></div>')
+                                    
+                                    # For Security policies
+                                    elif policy_type == "Security":
+                                        # Initialize security policy attributes with defaults
+                                        encryption_required = False
+                                        encryption_algorithm = "Not specified"
+                                        masking_required = False
+                                        masking_format = "Not specified"
+                                        access_logging = False
+                                        
+                                        # First check for properties at the root level
+                                        if isinstance(policy_config, dict):
+                                            # Encryption settings
+                                            if "encryption_required" in policy_config:
+                                                encryption_required = bool(policy_config["encryption_required"])
+                                            if "encryption_algorithm" in policy_config:
+                                                encryption_algorithm = policy_config["encryption_algorithm"]
+                                                
+                                            # Masking settings
+                                            if "masking_required" in policy_config:
+                                                masking_required = bool(policy_config["masking_required"])
+                                            if "masking_format" in policy_config:
+                                                masking_format = policy_config["masking_format"]
+                                                # If format is specified, masking is implicitly required
+                                                if masking_format and masking_format != "Not specified":
+                                                    masking_required = True
+                                                    
+                                            # Access logging
+                                            if "access_logging" in policy_config:
+                                                access_logging = bool(policy_config["access_logging"])
+                                        
+                                        # Then check in settings if properties weren't found at root level
+                                        if isinstance(policy_config, dict) and "settings" in policy_config and isinstance(policy_config["settings"], dict):
+                                            settings = policy_config["settings"]
+                                            
+                                            # Encryption settings in nested settings object
+                                            if not encryption_required and "encryption_required" in settings:
+                                                encryption_required = bool(settings["encryption_required"])
+                                            if encryption_algorithm == "Not specified" and "encryption_algorithm" in settings:
+                                                encryption_algorithm = settings["encryption_algorithm"]
+                                                
+                                            # Masking settings in nested settings object
+                                            if not masking_required and "masking_required" in settings:
+                                                masking_required = bool(settings["masking_required"])
+                                            if masking_format == "Not specified" and "masking_format" in settings:
+                                                masking_format = settings["masking_format"]
+                                                # If format is specified, masking is implicitly required
+                                                if masking_format and masking_format != "Not specified":
+                                                    masking_required = True
+                                                    
+                                            # Access logging in nested settings object
+                                            if not access_logging and "access_logging" in settings:
+                                                access_logging = bool(settings["access_logging"])
+                                        # Print for debugging
+                                        print(f"Final security settings for {target_name}:")
+                                        print(f"  encryption_required: {encryption_required}")
+                                        print(f"  encryption_algorithm: {encryption_algorithm}")
+                                        print(f"  masking_required: {masking_required}")
+                                        print(f"  masking_format: {masking_format}")
+                                        print(f"  access_logging: {access_logging}")
+                                        
+                                        # Create security requirements display with compact format using check/cross icons
+                                        html_parts.append(f'<div style="flex: 1;">')
+                                        html_parts.append(f'<div style="margin-top: 8px;">')
+                                        
+                                        # Encryption with inline algorithm - only show algorithm if encryption is required
+                                        html_parts.append(f'<div style="display: flex; align-items: center; margin-bottom: 8px;">')
+                                        if encryption_required:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                            # Only show algorithm if encryption is required
+                                            if encryption_algorithm and encryption_algorithm != "Not specified":
+                                                html_parts.append(f'<span style="font-size: 13px;">Encryption: <span style="color: #1565C0;">{encryption_algorithm}</span></span>')
+                                            else:
+                                                html_parts.append(f'<span style="font-size: 13px;">Encryption</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                            html_parts.append(f'<span style="font-size: 13px;">Encryption</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        # Masking with inline format
+                                        # If we have a masking format, always show masking as required
+                                        if masking_format and masking_format != "Not specified":
+                                            masking_required = True
+                                        
+                                        html_parts.append(f'<div style="display: flex; align-items: center; margin-bottom: 8px;">')
+                                        if masking_required:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                            # Only show format if masking is required
+                                            if masking_format and masking_format != "Not specified":
+                                                html_parts.append(f'<span style="font-size: 13px;">Masking: <span style="color: #1565C0;">{masking_format}</span></span>')
+                                            else:
+                                                html_parts.append(f'<span style="font-size: 13px;">Masking</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                            html_parts.append(f'<span style="font-size: 13px;">Masking</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        # Access logging
+                                        html_parts.append(f'<div style="display: flex; align-items: center;">')
+                                        if access_logging:
+                                            html_parts.append(f'<span style="color: #4CAF50; margin-right: 8px;">✓</span>')
+                                        else:
+                                            html_parts.append(f'<span style="color: #F44336; margin-right: 8px;">✗</span>')
+                                        html_parts.append(f'<span style="font-size: 13px;">Access Logging</span>')
+                                        html_parts.append(f'</div>')
+                                        
+                                        html_parts.append(f'</div></div>')
+                                    
+                                    # For Retention policies
+                                    elif policy_type == "Retention":
+                                        retention_period = policy_config.get("retention_period", "Not specified")
+                                        html_parts.append(f'<div style="flex: 1;">')
+                                        html_parts.append(f'<span style="font-size: 12px; color: #616161;">Retention Period:</span>')
+                                        html_parts.append(f'<div style="margin-top: 3px; font-size: 13px;">{retention_period}</div>')
+                                        html_parts.append(f'</div>')
+                                
+                                # Add target system if available
+                                if target_system:
+                                    html_parts.append(f'<div style="flex: 1;">')
+                                    html_parts.append(f'<span style="font-size: 12px; color: #616161;">Target System:</span>')
+                                    html_parts.append(f'<div style="margin-top: 3px; font-size: 13px;">{target_system}</div>')
+                                    html_parts.append(f'</div>')
+                                
+                                # Add effective dates
+                                effective_period = f"{effective_from if effective_from else 'Always'} - {effective_to if effective_to else 'Indefinite'}"
+                                html_parts.append(f'<div style="flex: 1;">')
+                                html_parts.append(f'<span style="font-size: 12px; color: #616161;">Effective Period:</span>')
+                                html_parts.append(f'<div style="margin-top: 3px; font-size: 13px;">{effective_period}</div>')
+                                html_parts.append(f'</div>')
+                                
+                                # Close the HTML structure
+                                html_parts.append(f'</div></div></div>')
+                                
+                                # Join all HTML parts and render the complete card
+                                card_html = ''.join(html_parts)
                                 st.markdown(card_html, unsafe_allow_html=True)
             
         # Overrides tab
