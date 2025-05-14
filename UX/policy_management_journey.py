@@ -20,7 +20,7 @@ class PolicyManagementJourney:
         st.markdown("This journey demonstrates how to manage policies based on purposes, ensuring data is protected according to its sensitivity and intended use.")
         
         # Create tabs for different sections of the journey using standard Streamlit tabs
-        tabs = st.tabs(["Overview", "Policy Types", "Define Policies", "Policy Groups & Overrides"])
+        tabs = st.tabs(["Overview", "Policy Types", "Define Policies", "Policy Groups & Overrides", "FAQ"])
         
         # Render content based on selected tab
         with tabs[0]:  # Overview
@@ -31,6 +31,8 @@ class PolicyManagementJourney:
             self._render_define_policies()
         with tabs[3]:  # Policy Groups & Overrides
             self._render_policy_groups()
+        with tabs[4]:  # FAQ
+            self._render_faq()
     
     def _render_overview(self):
         """Render the overview of policy management."""
@@ -1088,6 +1090,491 @@ class PolicyManagementJourney:
                 with st.expander(f"{policy_json['name']} ({target_name})", expanded=i==0):
                     st.json(policy_json)
     
+    def _render_faq(self):
+        """Render the FAQ section with common scenarios and solutions."""
+        # Header with custom styling
+        st.markdown("""
+        <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #1565C0;">
+            <h2 style="color: #1565C0; text-align: center; margin: 0;">Frequently Asked Questions</h2>
+            <p style="color: #1565C0; text-align: center; margin-top: 10px;">Common scenarios and how to implement them</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Introduction
+        st.markdown("""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 5px solid #1565C0; margin-bottom: 20px;">
+            <p style="margin: 0;">This FAQ provides step-by-step guidance for common policy management scenarios. Each scenario includes a visual walkthrough of the necessary steps to accomplish specific tasks.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Define scenarios
+        scenarios = [
+            {
+                "title": "Overriding Policies for Specific Data Elements",
+                "question": "I have a default policy group assigned to a purpose. How do I override policies for a few specific data elements?",
+                "description": """
+                <p>This scenario demonstrates how to create exceptions to your default policies for specific data elements while maintaining the default policies for everything else.</p>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <p style="margin-top: 0; font-weight: bold; color: #2E7D32;">Use Case Example:</p>
+                    <p>You have a default security policy group for the "Marketing" purpose that applies standard masking to all PII. However, you need stricter masking for email addresses and phone numbers when used for this purpose.</p>
+                </div>
+                """,
+                "steps": [
+                    {
+                        "title": "Create Specific Policies for the Data Elements",
+                        "content": """
+                        <ol>
+                            <li>Navigate to the <span style="color: #1565C0; font-weight: bold;">Define Policies</span> tab</li>
+                            <li>Select the appropriate policy type (e.g., <span style="color: #1565C0; font-weight: bold;">Security</span>)</li>
+                            <li>Choose <span style="color: #1565C0; font-weight: bold;">Data Element</span> as the target type</li>
+                            <li>Select the specific data elements you want to override (e.g., <span style="color: #1565C0; font-weight: bold;">Email Address</span> and <span style="color: #1565C0; font-weight: bold;">Phone Number</span>)</li>
+                            <li>Configure stricter masking settings for these elements</li>
+                            <li>Name these policies descriptively (e.g., <span style="color: #1565C0; font-weight: bold;">Marketing - Strict Email Masking</span>)</li>
+                            <li>Save the new policies</li>
+                        </ol>
+                        """,
+                        "icon": "✏️"
+                    },
+                    {
+                        "title": "Create a New Policy Group for the Overrides",
+                        "content": """
+                        <ol>
+                            <li>Go to the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Create New Policy Group</span></li>
+                            <li>Name it something like <span style="color: #1565C0; font-weight: bold;">Marketing - PII Overrides</span></li>
+                            <li>Add a description explaining these are overrides for specific data elements</li>
+                            <li>Set the version and mark it as active</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Group</span></li>
+                        </ol>
+                        """,
+                        "icon": "📋"
+                    },
+                    {
+                        "title": "Add Your Override Policies to the New Group",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Manage Policy Groups</span> section, find your newly created override group</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Add Policies to this Group</span></li>
+                            <li>Use the multi-select to choose your data element-specific policies</li>
+                            <li>Optionally specify a target system if needed</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Add Policies</span></li>
+                        </ol>
+                        """,
+                        "icon": "➕"
+                    },
+                    {
+                        "title": "Create a Context Override for the Specific Purpose",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab, find the <span style="color: #1565C0; font-weight: bold;">Create New Override</span> expander</li>
+                            <li>Select your override policy group from the dropdown</li>
+                            <li>Select the <span style="color: #1565C0; font-weight: bold;">Marketing</span> purpose</li>
+                            <li>Leave the role and region fields empty (unless you want to further restrict the override)</li>
+                            <li>Set a <span style="color: #1565C0; font-weight: bold;">higher priority number</span> than your default policy group (higher numbers take precedence)</li>
+                            <li>Set effective dates if the override should be temporary</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Override</span></li>
+                        </ol>
+                        """,
+                        "icon": "🔄"
+                    }
+                ],
+                "result": """
+                <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #FF8F00;">
+                    <p style="margin-top: 0; font-weight: bold; color: #FF8F00;">How It Works:</p>
+                    <p>When the system evaluates which policies to apply:</p>
+                    <ol>
+                        <li>It identifies all context policy groups that match the current purpose (Marketing)</li>
+                        <li>It selects the one with the highest priority (your override group)</li>
+                        <li>For Email Address and Phone Number, it applies the stricter masking policies</li>
+                        <li>For all other data elements, it falls back to the policies in your default Marketing policy group</li>
+                    </ol>
+                    <p>This approach allows you to maintain default policies while creating exceptions for specific data elements that need different treatment.</p>
+                </div>
+                """,
+                "color": "#E3F2FD"
+            },
+            {
+                "title": "Creating Role-Based Policy Variations",
+                "question": "How do I apply different policies based on user roles?",
+                "description": """
+                <p>This scenario shows how to create role-specific policy variations that override your default policies when accessed by specific user roles.</p>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <p style="margin-top: 0; font-weight: bold; color: #2E7D32;">Use Case Example:</p>
+                    <p>You have standard access control policies for customer data, but you want to provide expanded access for Customer Support representatives while maintaining stricter controls for everyone else.</p>
+                </div>
+                """,
+                "steps": [
+                    {
+                        "title": "Create Role-Specific Policies",
+                        "content": """
+                        <ol>
+                            <li>Navigate to the <span style="color: #1565C0; font-weight: bold;">Define Policies</span> tab</li>
+                            <li>Select <span style="color: #1565C0; font-weight: bold;">Access Control</span> as the policy type</li>
+                            <li>Create policies with expanded access permissions for customer data</li>
+                            <li>Name these policies descriptively (e.g., <span style="color: #1565C0; font-weight: bold;">Customer Support - Enhanced Access</span>)</li>
+                            <li>Save the new policies</li>
+                        </ol>
+                        """,
+                        "icon": "✏️"
+                    },
+                    {
+                        "title": "Create a Policy Group for Support Staff",
+                        "content": """
+                        <ol>
+                            <li>Go to the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Create New Policy Group</span></li>
+                            <li>Name it <span style="color: #1565C0; font-weight: bold;">Customer Support Access</span></li>
+                            <li>Add a description explaining this is for support staff</li>
+                            <li>Set the version and mark it as active</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Group</span></li>
+                        </ol>
+                        """,
+                        "icon": "📋"
+                    },
+                    {
+                        "title": "Add Policies to the Support Group",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Manage Policy Groups</span> section, find your Customer Support group</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Add Policies to this Group</span></li>
+                            <li>Select all the enhanced access policies you created</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Add Policies</span></li>
+                        </ol>
+                        """,
+                        "icon": "➕"
+                    },
+                    {
+                        "title": "Create a Role-Based Context Override",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab, find the <span style="color: #1565C0; font-weight: bold;">Create New Override</span> expander</li>
+                            <li>Select your Customer Support policy group</li>
+                            <li>Select the appropriate purpose (e.g., <span style="color: #1565C0; font-weight: bold;">Customer Service</span>)</li>
+                            <li>Select <span style="color: #1565C0; font-weight: bold;">Customer Support</span> from the role dropdown</li>
+                            <li>Set a high priority to ensure it overrides default policies</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Override</span></li>
+                        </ol>
+                        """,
+                        "icon": "🔄"
+                    }
+                ],
+                "result": """
+                <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #FF8F00;">
+                    <p style="margin-top: 0; font-weight: bold; color: #FF8F00;">How It Works:</p>
+                    <p>When a user accesses the system:</p>
+                    <ol>
+                        <li>The system identifies their role (Customer Support)</li>
+                        <li>It finds context policy groups that match both the purpose and role</li>
+                        <li>It applies the enhanced access policies for Customer Support staff</li>
+                        <li>Other users with different roles will still get the default, more restrictive policies</li>
+                    </ol>
+                    <p>This role-based approach ensures that users only get the access they need to perform their specific job functions.</p>
+                </div>
+                """,
+                "color": "#F3E5F5"
+            },
+            {
+                "title": "Applying Region-Specific Policies",
+                "question": "How do I implement different policies for different geographic regions?",
+                "description": """
+                <p>This scenario shows how to create region-specific policy variations to comply with different regulatory requirements across geographic regions.</p>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <p style="margin-top: 0; font-weight: bold; color: #2E7D32;">Use Case Example:</p>
+                    <p>You need to apply stricter data retention policies for users in the European Union to comply with GDPR, while maintaining different retention periods for users in other regions.</p>
+                </div>
+                """,
+                "steps": [
+                    {
+                        "title": "Create Region-Specific Policies",
+                        "content": """
+                        <ol>
+                            <li>Navigate to the <span style="color: #1565C0; font-weight: bold;">Define Policies</span> tab</li>
+                            <li>Select <span style="color: #1565C0; font-weight: bold;">Retention</span> as the policy type</li>
+                            <li>Create policies with the specific retention periods required for EU data</li>
+                            <li>Name these policies descriptively (e.g., <span style="color: #1565C0; font-weight: bold;">GDPR Compliant Retention</span>)</li>
+                            <li>Save the new policies</li>
+                        </ol>
+                        """,
+                        "icon": "✏️"
+                    },
+                    {
+                        "title": "Create a Policy Group for EU Compliance",
+                        "content": """
+                        <ol>
+                            <li>Go to the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Create New Policy Group</span></li>
+                            <li>Name it <span style="color: #1565C0; font-weight: bold;">EU GDPR Compliance</span></li>
+                            <li>Add a description explaining the regional requirements</li>
+                            <li>Set the version and mark it as active</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Group</span></li>
+                        </ol>
+                        """,
+                        "icon": "📋"
+                    },
+                    {
+                        "title": "Add Policies to the EU Group",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Manage Policy Groups</span> section, find your EU GDPR group</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Add Policies to this Group</span></li>
+                            <li>Select all the GDPR-compliant policies you created</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Add Policies</span></li>
+                        </ol>
+                        """,
+                        "icon": "➕"
+                    },
+                    {
+                        "title": "Create a Region-Based Context Override",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab, find the <span style="color: #1565C0; font-weight: bold;">Create New Override</span> expander</li>
+                            <li>Select your EU GDPR policy group</li>
+                            <li>Select the appropriate purposes (or leave empty to apply to all purposes)</li>
+                            <li>Select <span style="color: #1565C0; font-weight: bold;">European Union</span> from the region dropdown</li>
+                            <li>Set a high priority to ensure it overrides default policies</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Override</span></li>
+                        </ol>
+                        """,
+                        "icon": "🔄"
+                    }
+                ],
+                "result": """
+                <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #FF8F00;">
+                    <p style="margin-top: 0; font-weight: bold; color: #FF8F00;">How It Works:</p>
+                    <p>When data is processed:</p>
+                    <ol>
+                        <li>The system identifies the geographic region of the data subject</li>
+                        <li>For EU data subjects, it applies the stricter GDPR-compliant retention policies</li>
+                        <li>For data subjects in other regions, it applies the standard retention policies</li>
+                        <li>This ensures compliance with regional regulations without over-restricting data in regions with different requirements</li>
+                    </ol>
+                    <p>This region-based approach allows you to maintain regulatory compliance across different jurisdictions while optimizing data usage where permitted.</p>
+                </div>
+                """,
+                "color": "#E0F7FA"
+            },
+            {
+                "title": "Implementing Time-Based Policy Changes",
+                "question": "How do I schedule policy changes to take effect at a specific time?",
+                "description": """
+                <p>This scenario demonstrates how to schedule policy changes to automatically take effect at a specific date and time, such as for a new regulatory requirement or seasonal business change.</p>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <p style="margin-top: 0; font-weight: bold; color: #2E7D32;">Use Case Example:</p>
+                    <p>A new data protection regulation will come into effect on January 1, 2026, requiring stricter retention policies. You want to prepare these policies in advance and have them automatically activate on the effective date.</p>
+                </div>
+                """,
+                "steps": [
+                    {
+                        "title": "Create the New Compliant Policies",
+                        "content": """
+                        <ol>
+                            <li>Navigate to the <span style="color: #1565C0; font-weight: bold;">Define Policies</span> tab</li>
+                            <li>Select <span style="color: #1565C0; font-weight: bold;">Retention</span> as the policy type</li>
+                            <li>Create policies that comply with the new regulation</li>
+                            <li>Name these policies to indicate they're for the new regulation</li>
+                            <li>Save the new policies</li>
+                        </ol>
+                        """,
+                        "icon": "✏️"
+                    },
+                    {
+                        "title": "Create a Policy Group for the New Regulation",
+                        "content": """
+                        <ol>
+                            <li>Go to the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Create New Policy Group</span></li>
+                            <li>Name it after the new regulation</li>
+                            <li>Add a description explaining the regulatory requirement</li>
+                            <li>Set the version and mark it as active</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Group</span></li>
+                        </ol>
+                        """,
+                        "icon": "📋"
+                    },
+                    {
+                        "title": "Add the New Policies to the Group",
+                        "content": """
+                        <ol>
+                            <li>Find your newly created regulation policy group</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Add Policies to this Group</span></li>
+                            <li>Select all the new compliant policies</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Add Policies</span></li>
+                        </ol>
+                        """,
+                        "icon": "➕"
+                    },
+                    {
+                        "title": "Create a Time-Based Context Override",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Create New Override</span> expander, select your new regulation policy group</li>
+                            <li>Select the appropriate purposes (or leave empty to apply to all purposes)</li>
+                            <li>Set a high priority to ensure it overrides existing policies</li>
+                            <li>Set the <span style="color: #1565C0; font-weight: bold;">Effective From</span> date to January 1, 2026</li>
+                            <li>Leave the <span style="color: #1565C0; font-weight: bold;">Effective To</span> date empty for indefinite application</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Override</span></li>
+                        </ol>
+                        """,
+                        "icon": "🔄"
+                    }
+                ],
+                "result": """
+                <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #FF8F00;">
+                    <p style="margin-top: 0; font-weight: bold; color: #FF8F00;">How It Works:</p>
+                    <p>The system will automatically manage the policy transition:</p>
+                    <ol>
+                        <li>Before January 1, 2026, the current policies remain in effect</li>
+                        <li>Starting January 1, 2026, the system will automatically begin applying the new regulation policies</li>
+                        <li>The transition happens without any manual intervention on the effective date</li>
+                        <li>You can prepare and test the policies well in advance of the regulatory deadline</li>
+                    </ol>
+                    <p>This approach allows you to prepare for regulatory changes proactively while ensuring compliance exactly when required.</p>
+                </div>
+                """,
+                "color": "#FFEBEE"
+            },
+            {
+                "title": "Combining Multiple Policy Types",
+                "question": "How do I create a comprehensive data governance strategy using different policy types together?",
+                "description": """
+                <p>This scenario demonstrates how to combine different policy types (Access Control, Security, and Retention) to create a comprehensive data governance strategy for sensitive data.</p>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <p style="margin-top: 0; font-weight: bold; color: #2E7D32;">Use Case Example:</p>
+                    <p>You need to implement a complete governance strategy for financial data that controls who can access it, ensures proper masking of sensitive fields, and enforces appropriate retention periods - all aligned with purpose-based access control.</p>
+                </div>
+                """,
+                "steps": [
+                    {
+                        "title": "Create Policies of Each Type",
+                        "content": """
+                        <ol>
+                            <li>Navigate to the <span style="color: #1565C0; font-weight: bold;">Define Policies</span> tab</li>
+                            <li>Create <span style="color: #1565C0; font-weight: bold;">Access Control</span> policies that define who can access financial data and under what conditions</li>
+                            <li>Create <span style="color: #1565C0; font-weight: bold;">Security</span> policies that specify appropriate masking for sensitive financial fields</li>
+                            <li>Create <span style="color: #1565C0; font-weight: bold;">Retention</span> policies that define how long financial data should be kept</li>
+                            <li>Name each policy descriptively to indicate its purpose and target</li>
+                        </ol>
+                        """,
+                        "icon": "✏️"
+                    },
+                    {
+                        "title": "Create a Comprehensive Policy Group",
+                        "content": """
+                        <ol>
+                            <li>Go to the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Create New Policy Group</span></li>
+                            <li>Name it <span style="color: #1565C0; font-weight: bold;">Financial Data Governance</span></li>
+                            <li>Add a detailed description explaining the comprehensive approach</li>
+                            <li>Set the version and mark it as active</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Group</span></li>
+                        </ol>
+                        """,
+                        "icon": "📋"
+                    },
+                    {
+                        "title": "Add All Policy Types to the Group",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Manage Policy Groups</span> section, find your Financial Data Governance group</li>
+                            <li>Click on <span style="color: #1565C0; font-weight: bold;">Add Policies to this Group</span></li>
+                            <li>Use the multi-select to choose policies of all three types (Access Control, Security, and Retention)</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Add Policies</span></li>
+                        </ol>
+                        """,
+                        "icon": "➕"
+                    },
+                    {
+                        "title": "Create Purpose-Based Context Overrides",
+                        "content": """
+                        <ol>
+                            <li>In the <span style="color: #1565C0; font-weight: bold;">Policy Groups & Overrides</span> tab, find the <span style="color: #1565C0; font-weight: bold;">Create New Override</span> expander</li>
+                            <li>Select your Financial Data Governance policy group</li>
+                            <li>Select the appropriate business purpose (e.g., <span style="color: #1565C0; font-weight: bold;">Financial Reporting</span>)</li>
+                            <li>Set appropriate priority levels</li>
+                            <li>Click <span style="color: #1565C0; font-weight: bold;">Create Override</span></li>
+                            <li>Repeat for other relevant business purposes with appropriate variations</li>
+                        </ol>
+                        """,
+                        "icon": "🔄"
+                    }
+                ],
+                "result": """
+                <div style="background-color: #FFF8E1; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #FF8F00;">
+                    <p style="margin-top: 0; font-weight: bold; color: #FF8F00;">How It Works:</p>
+                    <p>When financial data is accessed:</p>
+                    <ol>
+                        <li>The system first checks the <span style="font-weight: bold;">purpose</span> of the access request</li>
+                        <li>It applies the <span style="font-weight: bold;">Access Control</span> policies to determine if access is permitted</li>
+                        <li>If access is granted, it applies the <span style="font-weight: bold;">Security</span> policies to mask sensitive fields as appropriate</li>
+                        <li>In parallel, it enforces the <span style="font-weight: bold;">Retention</span> policies to ensure data isn't kept longer than necessary</li>
+                        <li>All of this is done based on the legitimate business purpose, ensuring purpose-based access control</li>
+                    </ol>
+                    <p>This layered approach provides comprehensive protection while ensuring data remains available for legitimate business purposes.</p>
+                </div>
+                """,
+                "color": "#EDE7F6"
+            }
+        ]
+        
+        # Display scenarios in expandable sections with colored headers
+        for i, scenario in enumerate(scenarios):
+            # Add colored header above each expander
+            st.markdown(f"""
+            <div style="background-color: {scenario['color']}; padding: 10px; border-radius: 10px 10px 0 0; border-left: 5px solid #1565C0; margin-bottom: 0;">
+                <h3 style="margin: 0; color: #1565C0;">{i+1}. {scenario['title']}</h3>
+                <p style="margin: 5px 0 0 0; font-style: italic;">{scenario['question']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("View Solution", expanded=i==0):
+                # Scenario description
+                st.markdown(scenario['description'], unsafe_allow_html=True)
+                
+                # Steps with visual timeline
+                st.markdown(f"""
+                <div style="margin: 20px 0; text-align: center;">
+                    <h4 style="color: #1565C0;">Step-by-Step Implementation</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display steps in a visually appealing way
+                for j, step in enumerate(scenario['steps']):
+                    col1, col2 = st.columns([1, 5])
+                    
+                    with col1:
+                        st.markdown(f"""
+                        <div style="background-color: #1565C0; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-size: 20px;">{step['icon']}</span>
+                        </div>
+                        <div style="text-align: center; margin-top: 5px;">
+                            <span style="font-weight: bold;">Step {j+1}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown(f"""
+                        <div style="background-color: {scenario['color']}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #1565C0;">
+                            <h4 style="margin-top: 0; color: #1565C0;">{step['title']}</h4>
+                            {step['content']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Result explanation
+                st.markdown(scenario['result'], unsafe_allow_html=True)
+        
+        # Additional help section
+        st.markdown("""
+        <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center; border: 1px solid #1565C0;">
+            <h4 style="color: #1565C0; margin: 0;">Need More Help?</h4>
+            <p style="margin: 10px 0 0 0;">If you have questions about other scenarios or need assistance implementing a specific policy management approach, please contact the Data Governance team.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
     def _render_policy_groups(self):
         """Render the policy groups and overrides section."""
         st.markdown("""
