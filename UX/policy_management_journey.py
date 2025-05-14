@@ -409,57 +409,205 @@ class PolicyManagementJourney:
     
     def _render_define_policies(self):
         """Render the policy definition section."""
+        # Add minimal custom CSS for better styling
         st.markdown("""
-        <h3 style="color: #1565C0;">Define Policies</h3>
-        <p>Create and manage policies of different types to protect your data assets.</p>
+        <style>
+        .policy-header {
+            color: #1565C0;
+            margin-bottom: 10px;
+        }
+        .policy-step {
+            background-color: #F5F5F5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .step-number {
+            background-color: #1565C0;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .step-title {
+            font-weight: 600;
+            color: #1565C0;
+            display: inline;
+            vertical-align: middle;
+        }
+        </style>
         """, unsafe_allow_html=True)
         
-        # Policy creation form
-        with st.container():
+        # Improved header with description
+        st.markdown("""
+        <h3 class="policy-header">Define Policies</h3>
+        <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0;">Create and manage policies to protect your data assets. Policies define how data should be accessed, secured, and retained.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create tabs for policy creation, viewing, and management
+        policy_tabs = st.tabs(["Create New Policy", "View Policies", "Manage Policies"])
+        
+        # Create New Policy tab
+        with policy_tabs[0]:
+            # Step 1: Basic Information
+            st.markdown("""
+            <div class="policy-step">
+                <span class="step-number">1</span>
+                <span class="step-title">Basic Information</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                policy_name = st.text_input("Policy Name")
+                policy_name = st.text_input("Policy Name", placeholder="Enter a descriptive name")
                 effective_from = st.date_input("Effective From", value=datetime.now().date())
             
             with col2:
-                policy_description = st.text_area("Description (Optional)")
+                policy_description = st.text_area("Description", placeholder="Describe the purpose of this policy")
                 effective_to = st.date_input("Effective To (Optional)", value=None)
             
-            # Get policy types for dropdown
+            # Step 2: Policy Type Selection
+            st.markdown("""
+            <div class="policy-step">
+                <span class="step-number">2</span>
+                <span class="step-title">Select Policy Type</span>
+                <p style="margin: 10px 0 0 38px; color: #616161;">Choose the type of policy you want to create. Each type serves a different purpose in protecting your data.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get policy types
             policy_types = self.policy_definition_repository.get_all_policy_types() if self.policy_definition_repository else []
             
             if not policy_types:
                 st.warning("No policy types available. Please define policy types first.")
                 return
-                
+            
+            # Create policy type options with descriptions and icons
+            policy_type_info = {
+                "Access Control": {
+                    "icon": "🔒",
+                    "description": "Define who can access data and what operations they can perform (read, write, share)."
+                },
+                "Security": {
+                    "icon": "🛡️",
+                    "description": "Specify encryption and masking requirements to protect sensitive data."
+                },
+                "Retention": {
+                    "icon": "⏱️",
+                    "description": "Set how long data should be kept before archival or deletion."
+                }
+            }
+            
+            # Create a dictionary mapping policy type IDs to names
             policy_type_options = {pt["id"]: pt["name"] for pt in policy_types}
             
-            # Policy type selection
-            selected_policy_type_id = st.selectbox(
+            # Add CSS for policy type cards
+            st.markdown("""
+            <style>
+            .policy-type-card {
+                background-color: white;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 10px 0;
+                border: 1px solid #E0E0E0;
+                transition: all 0.2s ease;
+            }
+            .policy-type-card:hover {
+                border-color: #1565C0;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .policy-type-card.selected {
+                border-color: #1565C0;
+                border-width: 2px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .policy-type-icon {
+                font-size: 24px;
+                margin-right: 10px;
+                color: #1565C0;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Use radio buttons for a more visual selection
+            selected_policy_type_id = st.radio(
                 "Select Policy Type",
                 options=list(policy_type_options.keys()),
-                format_func=lambda x: policy_type_options.get(x, "Unknown")
+                format_func=lambda x: policy_type_options.get(x, "Unknown"),
+                horizontal=True,
+                label_visibility="collapsed"
             )
             
             policy_type_name = policy_type_options.get(selected_policy_type_id)
             
-            # Update policy name based on policy type
+            # Display information about the selected policy type
+            if policy_type_name in policy_type_info:
+                info = policy_type_info[policy_type_name]
+                st.markdown(f"""
+                <div style="background-color: #F5F5F5; border-radius: 8px; padding: 15px; margin: 10px 0;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 24px; margin-right: 10px;">{info['icon']}</span>
+                        <span style="font-weight: 600; font-size: 18px;">{policy_type_name}</span>
+                    </div>
+                    <p style="margin: 10px 0 0 0;">{info['description']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Update policy name based on policy type if not already set
             if not policy_name and policy_type_name:
                 policy_name = f"{policy_type_name} Policy"
             
-            # Target selection tabs
-            target_tab = st.radio(
-                "Target Type",
-                ["Data Element", "Data Category", "Sensitivity Level"],
-                horizontal=True
-            )
+            # Step 3: Target Selection
+            st.markdown("""
+            <div class="policy-step">
+                <span class="step-number">3</span>
+                <span class="step-title">Select Policy Targets</span>
+                <p style="margin: 10px 0 0 38px; color: #616161;">Choose what data elements, categories, or sensitivity levels this policy will apply to.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add CSS for target badges
+            st.markdown("""
+            <style>
+            .target-badge {
+                display: inline-block;
+                background-color: #E3F2FD;
+                color: #1565C0;
+                padding: 5px 10px;
+                border-radius: 16px;
+                margin: 5px;
+                font-size: 12px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Create a more visual target type selector
+            target_options = ["Data Element", "Data Category", "Sensitivity Level"]
+            target_descriptions = {
+                "Data Element": "Individual data fields like 'Email Address' or 'Credit Card Number'",
+                "Data Category": "Groups of related data elements like 'Personal Information' or 'Financial Data'",
+                "Sensitivity Level": "Classification levels like 'Public', 'Internal', 'Confidential', or 'Restricted'"
+            }
+            
+            # Use tabs for target selection
+            target_tabs = st.tabs(target_options)
             
             # Target selection based on tab
             selected_targets = []
             selected_target_names = []
             
-            if target_tab == "Data Element":
+            # Data Element tab
+            with target_tabs[0]:
+                st.markdown(f"<p style='color: #616161;'>{target_descriptions['Data Element']}</p>", unsafe_allow_html=True)
+                
                 data_elements = self.glossary_repository.get_data_elements() if self.glossary_repository else []
                 
                 if not data_elements:
@@ -467,12 +615,32 @@ class PolicyManagementJourney:
                 else:
                     data_element_options = {de["id"]: de["name"] for de in data_elements}
                     
-                    # Multi-select for data elements
+                    # Add search box for data elements
+                    search_term = st.text_input("Search Data Elements", placeholder="Type to filter data elements", key="search_data_elements")
+                    
+                    # Filter data elements based on search term
+                    filtered_elements = {k: v for k, v in data_element_options.items() 
+                                        if not search_term or search_term.lower() in v.lower()}
+                    
+                    # Show count of filtered elements
+                    st.markdown(f"<p style='color: #616161;'>{len(filtered_elements)} data elements found</p>", unsafe_allow_html=True)
+                    
+                    # Multi-select for data elements with improved styling
                     selected_target_ids = st.multiselect(
                         "Select Data Elements",
-                        options=list(data_element_options.keys()),
-                        format_func=lambda x: data_element_options.get(x, "Unknown")
+                        options=list(filtered_elements.keys()),
+                        format_func=lambda x: filtered_elements.get(x, "Unknown"),
+                        key="data_element_multiselect"
                     )
+                    
+                    # Display selected targets as badges
+                    if selected_target_ids:
+                        st.markdown("<p style='margin-top: 15px;'>Selected Data Elements:</p>", unsafe_allow_html=True)
+                        badges_html = ""
+                        for target_id in selected_target_ids:
+                            target_name = filtered_elements.get(target_id, "Unknown")
+                            badges_html += f"<span class='target-badge'>{target_name}</span>"
+                        st.markdown(f"<div style='margin-top: 5px;'>{badges_html}</div>", unsafe_allow_html=True)
                     
                     # Store selected targets
                     for target_id in selected_target_ids:
@@ -483,7 +651,10 @@ class PolicyManagementJourney:
                         })
                         selected_target_names.append(data_element_options.get(target_id))
             
-            elif target_tab == "Data Category":
+            # Data Category tab
+            with target_tabs[1]:
+                st.markdown(f"<p style='color: #616161;'>{target_descriptions['Data Category']}</p>", unsafe_allow_html=True)
+                
                 data_categories = self.glossary_repository.get_data_categories() if self.glossary_repository else []
                 
                 if not data_categories:
@@ -491,12 +662,32 @@ class PolicyManagementJourney:
                 else:
                     data_category_options = {dc["id"]: dc["name"] for dc in data_categories}
                     
-                    # Multi-select for data categories
+                    # Add search box for data categories
+                    search_term = st.text_input("Search Data Categories", placeholder="Type to filter categories", key="search_data_categories")
+                    
+                    # Filter data categories based on search term
+                    filtered_categories = {k: v for k, v in data_category_options.items() 
+                                        if not search_term or search_term.lower() in v.lower()}
+                    
+                    # Show count of filtered categories
+                    st.markdown(f"<p style='color: #616161;'>{len(filtered_categories)} data categories found</p>", unsafe_allow_html=True)
+                    
+                    # Multi-select for data categories with improved styling
                     selected_target_ids = st.multiselect(
                         "Select Data Categories",
-                        options=list(data_category_options.keys()),
-                        format_func=lambda x: data_category_options.get(x, "Unknown")
+                        options=list(filtered_categories.keys()),
+                        format_func=lambda x: filtered_categories.get(x, "Unknown"),
+                        key="data_category_multiselect"
                     )
+                    
+                    # Display selected targets as badges
+                    if selected_target_ids:
+                        st.markdown("<p style='margin-top: 15px;'>Selected Data Categories:</p>", unsafe_allow_html=True)
+                        badges_html = ""
+                        for target_id in selected_target_ids:
+                            target_name = filtered_categories.get(target_id, "Unknown")
+                            badges_html += f"<span class='target-badge'>{target_name}</span>"
+                        st.markdown(f"<div style='margin-top: 5px;'>{badges_html}</div>", unsafe_allow_html=True)
                     
                     # Store selected targets
                     for target_id in selected_target_ids:
@@ -507,7 +698,10 @@ class PolicyManagementJourney:
                         })
                         selected_target_names.append(data_category_options.get(target_id))
             
-            elif target_tab == "Sensitivity Level":
+            # Sensitivity Level tab
+            with target_tabs[2]:
+                st.markdown(f"<p style='color: #616161;'>{target_descriptions['Sensitivity Level']}</p>", unsafe_allow_html=True)
+                
                 sensitivity_levels = self.glossary_repository.get_sensitivities() if self.glossary_repository else []
                 
                 if not sensitivity_levels:
@@ -515,12 +709,22 @@ class PolicyManagementJourney:
                 else:
                     sensitivity_options = {sl["id"]: sl["name"] for sl in sensitivity_levels}
                     
-                    # Multi-select for sensitivity levels
+                    # Multi-select for sensitivity levels with improved styling
                     selected_target_ids = st.multiselect(
                         "Select Sensitivity Levels",
                         options=list(sensitivity_options.keys()),
-                        format_func=lambda x: sensitivity_options.get(x, "Unknown")
+                        format_func=lambda x: sensitivity_options.get(x, "Unknown"),
+                        key="sensitivity_multiselect"
                     )
+                    
+                    # Display selected targets as badges
+                    if selected_target_ids:
+                        st.markdown("<p style='margin-top: 15px;'>Selected Sensitivity Levels:</p>", unsafe_allow_html=True)
+                        badges_html = ""
+                        for target_id in selected_target_ids:
+                            target_name = sensitivity_options.get(target_id, "Unknown")
+                            badges_html += f"<span class='target-badge'>{target_name}</span>"
+                        st.markdown(f"<div style='margin-top: 5px;'>{badges_html}</div>", unsafe_allow_html=True)
                     
                     # Store selected targets
                     for target_id in selected_target_ids:
@@ -536,8 +740,29 @@ class PolicyManagementJourney:
                 if len(selected_target_names) == 1:
                     policy_name = f"{policy_type_name} Policy for {selected_target_names[0]}"
                 else:
-                    target_type = target_tab.replace(" Level", "")
-                    policy_name = f"{policy_type_name} Policy for {len(selected_target_names)} {target_type}s"
+                    policy_name = f"{policy_type_name} Policy for {len(selected_target_names)} targets"
+            
+            # Step 4: Preview and Submit
+            st.markdown("""
+            <div class="policy-step">
+                <span class="step-number">4</span>
+                <span class="step-title">Preview and Submit</span>
+                <p style="margin: 10px 0 0 38px; color: #616161;">Review your policy before creating it.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add CSS for policy preview
+            st.markdown("""
+            <style>
+            .policy-preview {
+                background-color: #F9FAFC;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 20px;
+                border: 1px solid #E0E0E0;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             
             # Dynamic policy configuration based on selected policy type
             policy_config = {}
@@ -726,109 +951,121 @@ class PolicyManagementJourney:
             
             # Preview policy before submission
             if selected_targets:
-                with st.expander("Preview Policy", expanded=True):
+                with st.container():
+                    st.markdown("<div class='policy-preview'>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='margin-top: 0; color: #1565C0;'>{policy_name}</h4>", unsafe_allow_html=True)
                     
-                    # Optimized JSON preview
-                    st.subheader("Policy Preview")
+                    # Policy metadata
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"<p><strong>Type:</strong> {policy_type_name}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p><strong>Target Type:</strong> {selected_targets[0]['type'].replace('_', ' ').title()}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p><strong>Targets:</strong> {len(selected_targets)} selected</p>", unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"<p><strong>Effective From:</strong> {effective_from}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p><strong>Effective To:</strong> {effective_to if effective_to else 'Indefinite'}</p>", unsafe_allow_html=True)
+                        if policy_description:
+                            st.markdown(f"<p><strong>Description:</strong> {policy_description}</p>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                
+                # Create a more concise policy representation for JSON preview
+                if policy_type_name == "Access Control":
+                    # Determine the target type (all targets should be of the same type)
+                    if selected_targets:
+                        target_type = selected_targets[0]['type']
+                    else:
+                        target_type = "unknown"
                     
-                    # Create a more concise policy representation
-                    if policy_type_name == "Access Control":
-                        # Determine the target type (all targets should be of the same type)
-                        if selected_targets:
-                            target_type = selected_targets[0]['type']
-                        else:
-                            target_type = "unknown"
-                            
-                        # For Access Control, show a simplified version with target permissions
-                        optimized_json = {
-                            "name": policy_name,
-                            "type": policy_type_name,
-                            "target_type": target_type,  # Specify target type once
-                            "effective_dates": {
-                                "from": str(effective_from),
-                                "to": str(effective_to) if effective_to else "indefinite"
-                            }
+                    # For Access Control, show a simplified version with target permissions
+                    optimized_json = {
+                        "name": policy_name,
+                        "type": policy_type_name,
+                        "target_type": target_type,  # Specify target type once
+                        "effective_dates": {
+                            "from": str(effective_from),
+                            "to": str(effective_to) if effective_to else "indefinite"
                         }
-                        
-                        # Add description only if provided
-                        if policy_description and policy_description.strip():
-                            optimized_json["description"] = policy_description
-                        
-                        # Add target permissions in a more readable format
-                        target_permissions = {}
+                    }
+                    
+                    # Add description only if provided
+                    if policy_description and policy_description.strip():
+                        optimized_json["description"] = policy_description
+                    
+                    # Add target permissions in a more readable format
+                    target_permissions = {}
+                    for target in selected_targets:
+                        perms = policy_config.get("target_permissions", {}).get(target['id'], {})
+                        # Only include ID and permissions, not type (since it's specified at the top level)
+                        target_permissions[target['name']] = {
+                            "id": target['id'],
+                            "read": perms.get("read", False),
+                            "write": perms.get("write", False),
+                            "share": perms.get("share", False)
+                        }
+                    
+                    optimized_json["permissions"] = target_permissions
+                elif policy_type_name == "Security" or policy_type_name == "Retention":
+                    # Determine the target type (all targets should be of the same type)
+                    if selected_targets:
+                        target_type = selected_targets[0]['type']
+                    else:
+                        target_type = "unknown"
+                    
+                    # For Security/Retention policies, show a simplified version with target-specific settings
+                    optimized_json = {
+                        "name": policy_name,
+                        "type": policy_type_name,
+                        "target_type": target_type,  # Specify target type once
+                        "effective_dates": {
+                            "from": str(effective_from),
+                            "to": str(effective_to) if effective_to else "indefinite"
+                        }
+                    }
+                    
+                    # Add description only if provided
+                    if policy_description and policy_description.strip():
+                        optimized_json["description"] = policy_description
+                    
+                    if policy_type_name == "Security":
+                        # Add security settings in a more readable format
+                        security_settings = {}
                         for target in selected_targets:
-                            perms = policy_config.get("target_permissions", {}).get(target['id'], {})
-                            # Only include ID and permissions, not type (since it's specified at the top level)
-                            target_permissions[target['name']] = {
+                            target_security = policy_config.get("target_security", {}).get(target['id'], {})
+                            
+                            # Create attribute-based security settings
+                            target_settings = {
                                 "id": target['id'],
-                                "read": perms.get("read", False),
-                                "write": perms.get("write", False),
-                                "share": perms.get("share", False)
-                            }
-                        
-                        optimized_json["permissions"] = target_permissions
-                    elif policy_type_name == "Security" or policy_type_name == "Retention":
-                        # Determine the target type (all targets should be of the same type)
-                        if selected_targets:
-                            target_type = selected_targets[0]['type']
-                        else:
-                            target_type = "unknown"
-                            
-                        # For Security/Retention policies, show a simplified version with target-specific settings
-                        optimized_json = {
-                            "name": policy_name,
-                            "type": policy_type_name,
-                            "target_type": target_type,  # Specify target type once
-                            "effective_dates": {
-                                "from": str(effective_from),
-                                "to": str(effective_to) if effective_to else "indefinite"
-                            }
-                        }
-                        
-                        # Add description only if provided
-                        if policy_description and policy_description.strip():
-                            optimized_json["description"] = policy_description
-                        
-                        if policy_type_name == "Security":
-                            # Add security settings in a more readable format
-                            security_settings = {}
-                            for target in selected_targets:
-                                target_security = policy_config.get("target_security", {}).get(target['id'], {})
-                                
-                                # Create attribute-based security settings
-                                target_settings = {
-                                    "id": target['id'],
-                                    "encryption": {
-                                        "required": target_security.get("encryption_required", False),
-                                        "algorithm": target_security.get("encryption_algorithm") if target_security.get("encryption_required", False) else None
-                                    },
-                                    "masking": {
-                                        "required": target_security.get("masking_required", False),
-                                        "format": target_security.get("masking_format") if target_security.get("masking_required", False) else None
-                                    }
+                                "encryption": {
+                                    "required": target_security.get("encryption_required", False),
+                                    "algorithm": target_security.get("encryption_algorithm") if target_security.get("encryption_required", False) else None
+                                },
+                                "masking": {
+                                    "required": target_security.get("masking_required", False),
+                                    "format": target_security.get("masking_format") if target_security.get("masking_required", False) else None
                                 }
-                                
-                                security_settings[target['name']] = target_settings
+                            }
                             
-                            optimized_json["security_settings"] = security_settings
-                        elif policy_type_name == "Retention":
-                            # Add retention settings in a more readable format
-                            retention_settings = {}
-                            for target in selected_targets:
-                                target_retention = policy_config.get("target_retention", {}).get(target['id'], {})
-                                
-                                # Create attribute-based retention settings
-                                target_settings = {
-                                    "id": target['id'],
-                                    "period": target_retention.get("retention_period", policy_config.get("retention_period")),
-                                    "basis": target_retention.get("retention_basis", policy_config.get("retention_basis")),
-                                    "trigger": target_retention.get("retention_trigger", policy_config.get("retention_trigger")),
-                                    "exceptions": target_retention.get("exceptions", policy_config.get("exceptions"))
-                                }
-                                
-                                retention_settings[target['name']] = target_settings
+                            security_settings[target['name']] = target_settings
+                        
+                        optimized_json["security_settings"] = security_settings
+                    elif policy_type_name == "Retention":
+                        # Add retention settings in a more readable format
+                        retention_settings = {}
+                        for target in selected_targets:
+                            target_retention = policy_config.get("target_retention", {}).get(target['id'], {})
                             
-                            optimized_json["retention_settings"] = retention_settings
+                            # Create attribute-based retention settings
+                            target_settings = {
+                                "id": target['id'],
+                                "period": target_retention.get("retention_period", policy_config.get("retention_period")),
+                                "basis": target_retention.get("retention_basis", policy_config.get("retention_basis")),
+                                "trigger": target_retention.get("retention_trigger", policy_config.get("retention_trigger")),
+                                "exceptions": target_retention.get("exceptions", policy_config.get("exceptions"))
+                            }
+                            
+                            retention_settings[target['name']] = target_settings
+                        
+                        optimized_json["retention_settings"] = retention_settings
                     else:
                         # Determine the target type (all targets should be of the same type)
                         if selected_targets:
@@ -864,8 +1101,21 @@ class PolicyManagementJourney:
             else:
                 st.warning("Please select at least one target to create a policy.")
             
-            # Submit button
-            if st.button("Create Policy", type="primary"):
+            # Step 5: Submit
+            st.markdown("""
+            <div class="policy-step">
+                <span class="step-number">5</span>
+                <span class="step-title">Submit Policy</span>
+                <p style="margin: 10px 0 0 38px; color: #616161;">Create your policy to enforce data governance rules.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Submit button with enhanced styling
+            submit_col1, submit_col2 = st.columns([3, 1])
+            with submit_col2:
+                submit_button = st.button("Create Policy", type="primary", use_container_width=True)
+            
+            if submit_button:
                 # Validate inputs
                 validation_errors = []
                 
@@ -876,11 +1126,16 @@ class PolicyManagementJourney:
                     validation_errors.append("At least one data element, category, or sensitivity level must be selected.")
                 
                 if validation_errors:
+                    st.markdown("<div style='background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;'>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='color: #C62828; margin-top: 0;'>Please fix the following issues:</h4>", unsafe_allow_html=True)
                     for error in validation_errors:
-                        st.error(error)
+                        st.markdown(f"<p style='margin: 5px 0; color: #C62828;'>• {error}</p>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    created_policies = []
-                    failed_policies = []
+                    # Show a spinner while creating the policy
+                    with st.spinner("Creating policy..."):
+                        created_policies = []
+                        failed_policies = []
                     
                     # Create a policy for each target
                     for target in selected_targets:
@@ -971,124 +1226,633 @@ class PolicyManagementJourney:
                                 'error': str(e)
                             })
                     
-                    # Show results
+                    # Show results with enhanced visual feedback
                     if created_policies:
-                        st.success(f"Successfully created {len(created_policies)} policies!")
+                        st.markdown("""
+                        <div style="background-color: #E8F5E9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                            <h4 style="color: #2E7D32; margin-top: 0;">Success!</h4>
+                            <p style="margin: 5px 0;">The following policies were successfully created:</p>
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        # Show created policies in a table
-                        created_df = pd.DataFrame(
-                            [[p['id'], p['target_name'], p['target_type']] for p in created_policies],
-                            columns=["Policy ID", "Target Name", "Target Type"]
-                        )
-                        st.dataframe(created_df, use_container_width=True)
+                        # Show details of created policies in a more visual way
+                        for policy in created_policies:
+                            target_type = policy['target_type'].replace('_', ' ').title()
+                            st.markdown(f"""
+                            <div style="background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 3px solid #2E7D32;">
+                                <p style="margin: 0;"><strong>{policy['target_name']}</strong> <span style="color: #757575; font-size: 12px;">({target_type})</span></p>
+                                <p style="margin: 5px 0 0 0; color: #757575; font-size: 12px;">Policy ID: {policy['id']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Add a button to view all policies
+                        st.button("View All Policies", on_click=lambda: st.session_state.update({"active_tab": "Manage Existing Policies"}))
                     
                     if failed_policies:
-                        st.error(f"Failed to create {len(failed_policies)} policies.")
-                        for failed in failed_policies:
-                            st.write(f"- {failed['target_name']} ({failed['target_type']}): {failed.get('error', 'Unknown error')}")
+                        st.markdown("""
+                        <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                            <h4 style="color: #C62828; margin-top: 0;">Some policies could not be created</h4>
+                            <p style="margin: 5px 0;">The following policies failed to create:</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Show details of failed policies with better formatting
+                        for policy in failed_policies:
+                            target_type = policy['target_type'].replace('_', ' ').title()
+                            error_msg = policy.get('error', 'Unknown error')
+                            st.markdown(f"""
+                            <div style="background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 3px solid #C62828;">
+                                <p style="margin: 0;"><strong>{policy['target_name']}</strong> <span style="color: #757575; font-size: 12px;">({target_type})</span></p>
+                                <p style="margin: 5px 0 0 0; color: #C62828; font-size: 12px;">Error: {error_msg}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     # Refresh the policy list
                     st.rerun()
         
-        # Existing policies section
-        st.markdown("---")
-        st.subheader("Existing Policies")
+        # View Policies tab
+        with policy_tabs[1]:
+            st.markdown("""
+            <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #1565C0; margin-top: 0;">View Policies</h4>
+                <p style="margin: 0;">Browse and explore all defined policies in the system.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add CSS for policy cards
+            st.markdown("""
+            <style>
+            .policy-list-card {
+                background-color: white;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 10px;
+                border-left: 3px solid #1565C0;
+                transition: all 0.2s ease;
+            }
+            .policy-list-card:hover {
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .policy-status {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .status-active {
+                background-color: #E8F5E9;
+                color: #2E7D32;
+            }
+            .status-inactive {
+                background-color: #FFEBEE;
+                color: #C62828;
+            }
+            .policy-tag {
+                display: inline-block;
+                background-color: #EDE7F6;
+                color: #5E35B1;
+                padding: 3px 8px;
+                border-radius: 12px;
+                margin-right: 5px;
+                font-size: 12px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Get policies
+            policies = self.policy_definition_repository.get_all_policies() if self.policy_definition_repository else []
+            
+            if not policies:
+                st.info("No policies defined yet.")
+            else:
+                # Create a dropdown to select a policy to view
+                policy_options = {}
+                for policy in policies:
+                    policy_id = policy.get("id")
+                    policy_name = policy.get("name", "Unnamed Policy")
+                    policy_type = policy.get("policy_type_name", "Unknown")
+                    target_name = policy.get("data_element_name") or policy.get("data_category_name") or policy.get("sensitivity_name") or "Global"
+                    
+                    # Create a descriptive label for the dropdown
+                    label = f"{policy_name} - {policy_type} - {target_name} (ID: {policy_id})"
+                    policy_options[policy_id] = label
+                
+                # Policy selection dropdown
+                selected_policy_id = st.selectbox(
+                    "Select a policy to view",
+                    options=list(policy_options.keys()),
+                    format_func=lambda x: policy_options.get(x, "Unknown")
+                )
+                
+                if selected_policy_id:
+                    # Get the selected policy
+                    selected_policy = None
+                    for policy in policies:
+                        if policy.get("id") == selected_policy_id:
+                            selected_policy = policy
+                            break
+                    
+                    if selected_policy:
+                        # Get policy details
+                        policy_name = selected_policy.get("name", "Unnamed Policy")
+                        policy_id = selected_policy.get("id")
+                        policy_type = selected_policy.get("policy_type_name", "Unknown")
+                        
+                        # Determine target name and type
+                        target_name = selected_policy.get("data_element_name") or selected_policy.get("data_category_name") or selected_policy.get("sensitivity_name") or "Global"
+                        target_type = "Data Element" if selected_policy.get("data_element_name") else \
+                                    "Data Category" if selected_policy.get("data_category_name") else \
+                                    "Sensitivity Level" if selected_policy.get("sensitivity_name") else "Global"
+                        
+                        # Format dates
+                        effective_from = selected_policy.get("effective_from")
+                        effective_to = selected_policy.get("effective_to")
+                        
+                        if effective_from and isinstance(effective_from, str):
+                            try:
+                                effective_from = datetime.strptime(effective_from, "%Y-%m-%d").date()
+                            except:
+                                pass
+                        elif effective_from and isinstance(effective_from, datetime):
+                            effective_from = effective_from.date()
+                        
+                        if effective_to and isinstance(effective_to, str):
+                            try:
+                                effective_to = datetime.strptime(effective_to, "%Y-%m-%d").date()
+                            except:
+                                pass
+                        elif effective_to and isinstance(effective_to, datetime):
+                            effective_to = effective_to.date()
+                        
+                        # Check if policy is active
+                        is_active = True
+                        current_date = datetime.now().date()
+                        
+                        # Ensure effective_from is a date object
+                        if effective_from:
+                            if isinstance(effective_from, datetime):
+                                effective_from = effective_from.date()
+                            if effective_from > current_date:
+                                is_active = False
+                        
+                        # Ensure effective_to is a date object
+                        if effective_to:
+                            if isinstance(effective_to, datetime):
+                                effective_to = effective_to.date()
+                            if effective_to < current_date:
+                                is_active = False
+                        
+                        # Display policy details in a card
+                        st.markdown(f"""
+                        <div style="background-color: white; border-radius: 8px; padding: 20px; margin-top: 20px; border-left: 5px solid #1565C0; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3 style="margin: 0;">{policy_name}</h3>
+                                <span class="policy-status {'status-active' if is_active else 'status-inactive'}">
+                                    {'Active' if is_active else 'Inactive'}
+                                </span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.write("")                        
+                        # Policy metadata
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"<p><strong>ID:</strong> {policy_id}</p>", unsafe_allow_html=True)
+                            st.markdown(f"<p><strong>Type:</strong> <span class='policy-tag'>{policy_type}</span></p>", unsafe_allow_html=True)
+                            st.markdown(f"<p><strong>Target:</strong> {target_name} <span style='color: #757575; font-size: 12px;'>({target_type})</span></p>", unsafe_allow_html=True)
+                        with col2:
+                            st.markdown(f"<p><strong>Effective From:</strong> {effective_from}</p>", unsafe_allow_html=True)
+                            st.markdown(f"<p><strong>Effective To:</strong> {effective_to if effective_to else 'Indefinite'}</p>", unsafe_allow_html=True)
+                            created_at = selected_policy.get("created_at")
+                            if created_at:
+                                st.markdown(f"<p><strong>Created:</strong> {created_at}</p>", unsafe_allow_html=True)
+                            updated_at = selected_policy.get("updated_at")
+                            if updated_at:
+                                st.markdown(f"<p><strong>Last Updated:</strong> {updated_at}</p>", unsafe_allow_html=True)
+                        
+                        # Parse and display policy config
+                        policy_config = selected_policy.get("policy_config")
+                        if policy_config:
+                            if isinstance(policy_config, str):
+                                try:
+                                    policy_config = json.loads(policy_config)
+                                except:
+                                    pass
+                            
+                            st.markdown("<h4 style='margin-top: 20px;'>Policy Configuration</h4>", unsafe_allow_html=True)
+                            
+                            # Display configuration based on policy type
+                            if policy_type == "Access Control":
+                                # Extract permissions for the specific target
+                                target_id = selected_policy.get("data_element_id") or selected_policy.get("data_category_id") or selected_policy.get("sensitivity_id")
+                                if target_id and isinstance(policy_config, dict) and policy_config.get("target_permissions"):
+                                    target_permissions = policy_config.get("target_permissions", {})
+                                    target_perms = target_permissions.get(str(target_id), {})
+                                    
+                                    # Display permissions in a more user-friendly format
+                                    st.markdown("<p><strong>Permissions:</strong></p>", unsafe_allow_html=True)
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.markdown(f"<p>Read: <span style='color: {'green' if target_perms.get('read', False) else 'red'};'>{'✓' if target_perms.get('read', False) else '✗'}</span></p>", unsafe_allow_html=True)
+                                    with col2:
+                                        st.markdown(f"<p>Write: <span style='color: {'green' if target_perms.get('write', False) else 'red'};'>{'✓' if target_perms.get('write', False) else '✗'}</span></p>", unsafe_allow_html=True)
+                                    with col3:
+                                        st.markdown(f"<p>Share: <span style='color: {'green' if target_perms.get('share', False) else 'red'};'>{'✓' if target_perms.get('share', False) else '✗'}</span></p>", unsafe_allow_html=True)
+                                else:
+                                    # Display the full config if target permissions not found
+                                    st.json(policy_config)
+                            elif policy_type == "Security":
+                                # Extract security settings for the specific target
+                                target_id = selected_policy.get("data_element_id") or selected_policy.get("data_category_id") or selected_policy.get("sensitivity_id")
+                                if target_id and isinstance(policy_config, dict) and policy_config.get("target_security"):
+                                    target_security = policy_config.get("target_security", {})
+                                    target_sec = target_security.get(str(target_id), {})
+                                    
+                                    # Display security settings in a more user-friendly format
+                                    st.markdown("<p><strong>Security Settings:</strong></p>", unsafe_allow_html=True)
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.markdown(f"<p>Encryption: <span style='color: {'green' if target_sec.get('encryption_required', False) else 'red'};'>{'Required' if target_sec.get('encryption_required', False) else 'Not Required'}</span></p>", unsafe_allow_html=True)
+                                        if target_sec.get("encryption_required", False):
+                                            st.markdown(f"<p>Algorithm: {target_sec.get('encryption_algorithm', 'Not Specified')}</p>", unsafe_allow_html=True)
+                                    with col2:
+                                        st.markdown(f"<p>Masking: <span style='color: {'green' if target_sec.get('masking_required', False) else 'red'};'>{'Required' if target_sec.get('masking_required', False) else 'Not Required'}</span></p>", unsafe_allow_html=True)
+                                        if target_sec.get("masking_required", False):
+                                            st.markdown(f"<p>Format: {target_sec.get('masking_format', 'Not Specified')}</p>", unsafe_allow_html=True)
+                                else:
+                                    # Display the full config if target security not found
+                                    st.json(policy_config)
+                            elif policy_type == "Retention":
+                                # Extract retention settings for the specific target
+                                target_id = selected_policy.get("data_element_id") or selected_policy.get("data_category_id") or selected_policy.get("sensitivity_id")
+                                if target_id and isinstance(policy_config, dict) and policy_config.get("target_retention"):
+                                    target_retention = policy_config.get("target_retention", {})
+                                    target_ret = target_retention.get(str(target_id), {})
+                                    
+                                    # Display retention settings in a more user-friendly format
+                                    st.markdown("<p><strong>Retention Settings:</strong></p>", unsafe_allow_html=True)
+                                    st.markdown(f"<p>Period: {target_ret.get('retention_period', policy_config.get('retention_period', 'Not Specified'))}</p>", unsafe_allow_html=True)
+                                    st.markdown(f"<p>Basis: {target_ret.get('retention_basis', policy_config.get('retention_basis', 'Not Specified'))}</p>", unsafe_allow_html=True)
+                                    st.markdown(f"<p>Trigger: {target_ret.get('retention_trigger', policy_config.get('retention_trigger', 'Not Specified'))}</p>", unsafe_allow_html=True)
+                                    
+                                    exceptions = target_ret.get("exceptions", policy_config.get("exceptions", ""))
+                                    if exceptions:
+                                        st.markdown(f"<p>Exceptions: {exceptions}</p>", unsafe_allow_html=True)
+                                else:
+                                    # Display the full config if target retention not found
+                                    st.json(policy_config)
+                            else:
+                                # For other policy types, display the full config
+                                st.json(policy_config)
         
-        # Get policies
-        policies = self.policy_definition_repository.get_all_policies() if self.policy_definition_repository else []
-        
-        if not policies:
-            st.info("No policies defined yet.")
-        else:
-            # Display policies as expandable JSON objects
-            for i, policy in enumerate(policies):
-                # Get policy name (use the dedicated name field if available)
-                policy_name = policy.get("name")
-                
-                # Determine target name and type
-                target_name = policy.get("data_element_name") or policy.get("data_category_name") or policy.get("sensitivity_name") or "Global"
-                target_type = "data_element" if policy.get("data_element_name") else \
-                             "data_category" if policy.get("data_category_name") else \
-                             "sensitivity_level" if policy.get("sensitivity_name") else "global"
-                
-                # Parse policy config to extract read/write/share settings
-                policy_config = {}
-                if policy.get("policy_config"):
-                    try:
-                        if isinstance(policy.get("policy_config"), str):
-                            policy_config = json.loads(policy.get("policy_config"))
-                        else:
-                            policy_config = policy.get("policy_config")
-                    except:
-                        policy_config = {}
-                
-                # Create a clean policy representation
-                policy_json = {
-                    "id": policy.get("id"),
-                    "name": policy.get("name", "Unknown"),
-                    "type": policy.get("policy_type_name", "Unknown"),
-                    "target_type": target_type,
-                    "target": {
-                        "id": policy.get("data_element_id") or policy.get("data_category_id") or policy.get("sensitivity_id"),
-                        "name": target_name
-                    },
-                    "effective_dates": {
-                        "from": str(policy.get("effective_from", "Immediately")),
-                        "to": str(policy.get("effective_to", "Indefinite"))
-                    }
-                }
-                
-                # Add permissions for Access Control policies
-                if policy.get("policy_type_name") == "Access Control":
-                    # Extract permissions from policy config
-                    permissions = {
-                        "read": policy_config.get("read", False),
-                        "write": policy_config.get("write", False),
-                        "share": policy_config.get("share", False)
-                    }
+        # Manage Policies tab
+        with policy_tabs[2]:
+            st.markdown("""
+            <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #1565C0; margin-top: 0;">Manage Policies</h4>
+                <p style="margin: 0;">Update or modify existing policies in the system.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get all policies
+            policies = self.policy_definition_repository.get_all_policies() if self.policy_definition_repository else []
+            
+            if not policies:
+                st.info("No policies available to manage. Create a policy first.")
+            else:
+                # Create a dropdown to select a policy to update
+                policy_options = {}
+                for policy in policies:
+                    policy_id = policy.get("id")
+                    policy_name = policy.get("name", "Unnamed Policy")
+                    policy_type = policy.get("policy_type_name", "Unknown")
+                    target_name = policy.get("data_element_name") or policy.get("data_category_name") or policy.get("sensitivity_name") or "Global"
                     
-                    # If using target_permissions structure
-                    target_id = policy.get("data_element_id") or policy.get("data_category_id") or policy.get("sensitivity_id")
-                    if policy_config.get("target_permissions") and policy_config["target_permissions"].get(target_id):
-                        target_perms = policy_config["target_permissions"].get(target_id)
-                        permissions = {
-                            "read": target_perms.get("read", False),
-                            "write": target_perms.get("write", False),
-                            "share": target_perms.get("share", False)
-                        }
-                    
-                    policy_json["permissions"] = permissions
-                # Add security settings for Security policies
-                elif policy.get("policy_type_name") == "Security":
-                    # Extract global security settings
-                    security_settings = {
-                        "encryption_required": policy_config.get("encryption_required", False),
-                        "encryption_algorithm": policy_config.get("encryption_algorithm"),
-                        "masking_required": policy_config.get("masking_required", False),
-                        "masking_format": policy_config.get("masking_format"),
-                        "access_logging": policy_config.get("access_logging", False)
-                    }
-                    
-                    # If using target_security structure
-                    target_id = policy.get("data_element_id") or policy.get("data_category_id") or policy.get("sensitivity_id")
-                    if policy_config.get("target_security") and policy_config["target_security"].get(target_id):
-                        target_security = policy_config["target_security"].get(target_id)
-                        security_settings = {
-                            "encryption_required": target_security.get("encryption_required", False),
-                            "encryption_algorithm": target_security.get("encryption_algorithm"),
-                            "masking_required": target_security.get("masking_required", False),
-                            "masking_format": target_security.get("masking_format"),
-                            "access_logging": policy_config.get("access_logging", False)  # Global setting
-                        }
-                    
-                    policy_json["security_settings"] = security_settings
-                else:
-                    # For other policy types, include the full config
-                    policy_json["config"] = policy_config
+                    # Create a descriptive label for the dropdown
+                    label = f"{policy_name} - {policy_type} - {target_name} (ID: {policy_id})"
+                    policy_options[policy_id] = label
                 
-                # Display the policy with an expander
-                with st.expander(f"{policy_json['name']} ({target_name})", expanded=i==0):
-                    st.json(policy_json)
+                # Policy selection dropdown
+                selected_policy_id = st.selectbox(
+                    "Select a policy to manage",
+                    options=list(policy_options.keys()),
+                    format_func=lambda x: policy_options.get(x, "Unknown")
+                )
+                
+                if selected_policy_id:
+                    # Get the selected policy
+                    selected_policy = None
+                    for policy in policies:
+                        if policy.get("id") == selected_policy_id:
+                            selected_policy = policy
+                            break
+                    
+                    if selected_policy:
+                        st.markdown("<h4 style='margin-top: 20px;'>Update Policy</h4>", unsafe_allow_html=True)
+                        
+                        # Display current policy details
+                        with st.expander("Current Policy Details", expanded=True):
+                            # Policy metadata
+                            policy_name = selected_policy.get("name", "Unnamed Policy")
+                            policy_type = selected_policy.get("policy_type_name", "Unknown")
+                            policy_type_id = selected_policy.get("policy_type_id")
+                            
+                            # Determine target details
+                            data_element_id = selected_policy.get("data_element_id")
+                            data_element_name = selected_policy.get("data_element_name")
+                            data_category_id = selected_policy.get("data_category_id")
+                            data_category_name = selected_policy.get("data_category_name")
+                            sensitivity_id = selected_policy.get("sensitivity_id")
+                            sensitivity_name = selected_policy.get("sensitivity_name")
+                            
+                            # Format dates
+                            effective_from = selected_policy.get("effective_from")
+                            effective_to = selected_policy.get("effective_to")
+                            
+                            if effective_from and isinstance(effective_from, str):
+                                try:
+                                    effective_from = datetime.strptime(effective_from, "%Y-%m-%d").date()
+                                except:
+                                    pass
+                            elif effective_from and isinstance(effective_from, datetime):
+                                effective_from = effective_from.date()
+                            
+                            if effective_to and isinstance(effective_to, str):
+                                try:
+                                    effective_to = datetime.strptime(effective_to, "%Y-%m-%d").date()
+                                except:
+                                    pass
+                            elif effective_to and isinstance(effective_to, datetime):
+                                effective_to = effective_to.date()
+                            
+                            # Parse policy config
+                            policy_config = selected_policy.get("policy_config")
+                            if policy_config and isinstance(policy_config, str):
+                                try:
+                                    policy_config = json.loads(policy_config)
+                                except:
+                                    pass
+                            
+                            # Display current values
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"<p><strong>ID:</strong> {selected_policy_id}</p>", unsafe_allow_html=True)
+                                st.markdown(f"<p><strong>Name:</strong> {policy_name}</p>", unsafe_allow_html=True)
+                                st.markdown(f"<p><strong>Type:</strong> {policy_type}</p>", unsafe_allow_html=True)
+                                
+                                if data_element_name:
+                                    st.markdown(f"<p><strong>Data Element:</strong> {data_element_name}</p>", unsafe_allow_html=True)
+                                if data_category_name:
+                                    st.markdown(f"<p><strong>Data Category:</strong> {data_category_name}</p>", unsafe_allow_html=True)
+                                if sensitivity_name:
+                                    st.markdown(f"<p><strong>Sensitivity Level:</strong> {sensitivity_name}</p>", unsafe_allow_html=True)
+                            
+                            with col2:
+                                st.markdown(f"<p><strong>Effective From:</strong> {effective_from}</p>", unsafe_allow_html=True)
+                                st.markdown(f"<p><strong>Effective To:</strong> {effective_to if effective_to else 'Indefinite'}</p>", unsafe_allow_html=True)
+                                created_at = selected_policy.get("created_at")
+                                if created_at:
+                                    st.markdown(f"<p><strong>Created:</strong> {created_at}</p>", unsafe_allow_html=True)
+                                updated_at = selected_policy.get("updated_at")
+                                if updated_at:
+                                    st.markdown(f"<p><strong>Last Updated:</strong> {updated_at}</p>", unsafe_allow_html=True)
+                        
+                        # Update form
+                        with st.form("update_policy_form"):
+                            st.markdown("<h5>Update Policy Details</h5>", unsafe_allow_html=True)
+                            
+                            # Policy name
+                            updated_name = st.text_input("Policy Name", value=policy_name)
+                            
+                            # Effective dates
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                updated_effective_from = st.date_input("Effective From", value=effective_from if effective_from else datetime.now().date())
+                            with col2:
+                                updated_effective_to = st.date_input("Effective To (Optional)", value=effective_to if effective_to else None)
+                            
+                            # Policy configuration
+                            st.markdown("<h5>Policy Configuration</h5>", unsafe_allow_html=True)
+                            
+                            # Different configuration options based on policy type
+                            if policy_type == "Access Control" and policy_config:
+                                # Get target permissions
+                                target_permissions = policy_config.get("target_permissions", {})
+                                target_id = data_element_id or data_category_id or sensitivity_id
+                                target_perms = target_permissions.get(str(target_id), {})
+                                
+                                # Create toggles for permissions
+                                st.markdown(f"<p>Set permissions for target:</p>", unsafe_allow_html=True)
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    updated_read = st.toggle("Read", value=target_perms.get("read", False))
+                                with col2:
+                                    updated_write = st.toggle("Write", value=target_perms.get("write", False))
+                                with col3:
+                                    updated_share = st.toggle("Share", value=target_perms.get("share", False))
+                                
+                                # Update policy config
+                                if target_id:
+                                    if not target_permissions:
+                                        target_permissions = {}
+                                    target_permissions[str(target_id)] = {
+                                        "read": updated_read,
+                                        "write": updated_write,
+                                        "share": updated_share
+                                    }
+                                    updated_policy_config = {
+                                        "type": "Access Control",
+                                        "target_permissions": target_permissions
+                                    }
+                            elif policy_type == "Security" and policy_config:
+                                # Security settings
+                                target_security = policy_config.get("target_security", {})
+                                target_id = data_element_id or data_category_id or sensitivity_id
+                                target_sec = target_security.get(str(target_id), {})
+                                
+                                # Create form fields for security settings
+                                st.markdown(f"<p>Security settings for target:</p>", unsafe_allow_html=True)
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    updated_encryption = st.toggle("Encryption Required", value=target_sec.get("encryption_required", False))
+                                    if updated_encryption:
+                                        updated_encryption_algo = st.selectbox(
+                                            "Encryption Algorithm",
+                                            options=["AES-256", "RSA-2048", "ChaCha20-Poly1305", "Blowfish"],
+                                            index=0 if target_sec.get("encryption_algorithm") == "AES-256" else \
+                                                  1 if target_sec.get("encryption_algorithm") == "RSA-2048" else \
+                                                  2 if target_sec.get("encryption_algorithm") == "ChaCha20-Poly1305" else \
+                                                  3 if target_sec.get("encryption_algorithm") == "Blowfish" else 0
+                                        )
+                                    else:
+                                        updated_encryption_algo = None
+                                
+                                with col2:
+                                    updated_masking = st.toggle("Masking Required", value=target_sec.get("masking_required", False))
+                                    if updated_masking:
+                                        updated_masking_format = st.text_input(
+                                            "Masking Format",
+                                            value=target_sec.get("masking_format", "XXXX-XXXX-XXXX-####")
+                                        )
+                                    else:
+                                        updated_masking_format = None
+                                
+                                # Update policy config
+                                if target_id:
+                                    if not target_security:
+                                        target_security = {}
+                                    target_security[str(target_id)] = {
+                                        "encryption_required": updated_encryption,
+                                        "encryption_algorithm": updated_encryption_algo,
+                                        "masking_required": updated_masking,
+                                        "masking_format": updated_masking_format
+                                    }
+                                    updated_policy_config = {
+                                        "encryption_required": updated_encryption,
+                                        "masking_required": updated_masking,
+                                        "target_security": target_security
+                                    }
+                            elif policy_type == "Retention" and policy_config:
+                                # Retention settings
+                                target_retention = policy_config.get("target_retention", {})
+                                target_id = data_element_id or data_category_id or sensitivity_id
+                                target_ret = target_retention.get(str(target_id), {})
+                                
+                                # Create form fields for retention settings
+                                st.markdown(f"<p>Retention settings for target:</p>", unsafe_allow_html=True)
+                                
+                                # Retention period
+                                retention_period_options = ["30 days", "90 days", "1 year", "3 years", "5 years", "7 years", "10 years", "Indefinite", "Custom"]
+                                current_period = target_ret.get("retention_period", policy_config.get("retention_period", "7 years"))
+                                period_index = next((i for i, p in enumerate(retention_period_options) if p == current_period), 5)  # Default to 7 years
+                                
+                                updated_retention_period = st.selectbox(
+                                    "Retention Period",
+                                    options=retention_period_options,
+                                    index=period_index
+                                )
+                                
+                                if updated_retention_period == "Custom":
+                                    updated_retention_period = st.text_input("Custom Retention Period", value=current_period)
+                                
+                                # Retention basis
+                                basis_options = ["Legal Requirement", "Regulatory Compliance", "Business Need", "Industry Standard", "Custom"]
+                                current_basis = target_ret.get("retention_basis", policy_config.get("retention_basis", "Legal Requirement"))
+                                basis_index = next((i for i, b in enumerate(basis_options) if b == current_basis), 0)  # Default to Legal Requirement
+                                
+                                updated_retention_basis = st.selectbox(
+                                    "Retention Basis",
+                                    options=basis_options,
+                                    index=basis_index
+                                )
+                                
+                                if updated_retention_basis == "Custom":
+                                    updated_retention_basis = st.text_input("Custom Retention Basis", value=current_basis)
+                                
+                                # Retention trigger
+                                trigger_options = ["creation_date", "last_modified", "last_accessed", "custom_event"]
+                                current_trigger = target_ret.get("retention_trigger", policy_config.get("retention_trigger", "creation_date"))
+                                trigger_index = next((i for i, t in enumerate(trigger_options) if t == current_trigger), 0)  # Default to creation_date
+                                
+                                updated_retention_trigger = st.selectbox(
+                                    "Retention Trigger",
+                                    options=trigger_options,
+                                    index=trigger_index
+                                )
+                                
+                                # Exceptions
+                                current_exceptions = target_ret.get("exceptions", policy_config.get("exceptions", ""))
+                                updated_exceptions = st.text_area("Exceptions (Optional)", value=current_exceptions)
+                                
+                                # Update policy config
+                                if target_id:
+                                    if not target_retention:
+                                        target_retention = {}
+                                    target_retention[str(target_id)] = {
+                                        "retention_period": updated_retention_period,
+                                        "retention_basis": updated_retention_basis,
+                                        "retention_trigger": updated_retention_trigger,
+                                        "exceptions": updated_exceptions
+                                    }
+                                    updated_policy_config = {
+                                        "retention_period": updated_retention_period,
+                                        "retention_basis": updated_retention_basis,
+                                        "retention_trigger": updated_retention_trigger,
+                                        "exceptions": updated_exceptions,
+                                        "target_retention": target_retention
+                                    }
+                            else:
+                                # For other policy types or if no config, provide a JSON editor
+                                policy_config_str = json.dumps(policy_config, indent=2) if policy_config else "{}"
+                                updated_policy_config_str = st.text_area("Policy Configuration (JSON)", value=policy_config_str, height=300)
+                                try:
+                                    updated_policy_config = json.loads(updated_policy_config_str)
+                                except json.JSONDecodeError:
+                                    st.error("Invalid JSON configuration. Please check the format.")
+                                    updated_policy_config = policy_config
+                            
+                            # Submit button with prominent styling
+                            st.markdown("""
+                            <style>
+                            div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
+                                background-color: #1565C0;
+                                color: white;
+                                border-radius: 4px;
+                                padding: 8px 16px;
+                                font-weight: bold;
+                                border: none;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                transition: all 0.2s ease;
+                            }
+                            div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
+                                background-color: #0D47A1;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            submit_button = st.form_submit_button("Update Policy", type="primary")
+                        
+                        if submit_button:
+                            # Convert dates to string format
+                            effective_from_str = updated_effective_from.strftime('%Y-%m-%d') if updated_effective_from else None
+                            effective_to_str = updated_effective_to.strftime('%Y-%m-%d') if updated_effective_to else None
+                            
+                            # Update the policy
+                            success = self.policy_definition_repository.update_policy(
+                                policy_id=selected_policy_id,
+                                policy_type_id=policy_type_id,  # Keep the same policy type
+                                data_element_id=data_element_id,  # Keep the same target
+                                data_category_id=data_category_id,
+                                sensitivity_id=sensitivity_id,
+                                policy_config=updated_policy_config,
+                                effective_from=effective_from_str,
+                                effective_to=effective_to_str
+                            )
+                            
+                            if success:
+                                st.markdown("""
+                                <div style="background-color: #E8F5E9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                    <h4 style="color: #2E7D32; margin-top: 0;">Success!</h4>
+                                    <p style="margin: 5px 0;">The policy has been updated successfully.</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Add a button to view the updated policy
+                                st.button("View Updated Policy", on_click=lambda: st.session_state.update({"active_tab": "View Policies"}))
+                                
+                                # Refresh the page
+                                st.rerun()
+                            else:
+                                st.markdown("""
+                                <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                    <h4 style="color: #C62828; margin-top: 0;">Error</h4>
+                                    <p style="margin: 5px 0;">Failed to update the policy. Please try again.</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.markdown("<h5 style='margin-top: 15px;'>Configuration</h5>", unsafe_allow_html=True)
+                                st.json(policy_config)
     
     def _render_faq(self):
         """Render the FAQ section with common scenarios and solutions."""

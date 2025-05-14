@@ -702,7 +702,7 @@ class PolicyDefinitionRepository:
         try:
             cursor.execute("""
                 SELECT cpg.id, cpg.purpose_id, p.name as purpose_name, 
-                       cpg.external_role_id, er.name as role_name,
+                       cpg.external_role_id, er.name as external_role_name,
                        cpg.region_id, r.name as region_name,
                        cpg.policy_group_id, pg.name as policy_group_name, pg.version as policy_group_version,
                        cpg.granularity_rank, cpg.manual_priority, cpg.context_tags,
@@ -721,13 +721,39 @@ class PolicyDefinitionRepository:
         finally:
             cursor.close()
 
+    def get_context_policy_groups_by_policy_group(self, policy_group_id):
+        """Get all context policy groups for a specific policy group."""
+        cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("""
+                SELECT cpg.id, cpg.purpose_id, p.name as purpose_name, 
+                       cpg.external_role_id, er.name as external_role_name,
+                       cpg.region_id, r.name as region_name,
+                       cpg.policy_group_id, pg.name as policy_group_name, pg.version as policy_group_version,
+                       cpg.granularity_rank, cpg.manual_priority, cpg.context_tags,
+                       cpg.effective_from, cpg.effective_to, cpg.created_at, cpg.updated_at
+                FROM context_policy_groups cpg
+                LEFT JOIN purpose p ON cpg.purpose_id = p.id
+                LEFT JOIN external_roles er ON cpg.external_role_id = er.id
+                LEFT JOIN regions r ON cpg.region_id = r.id
+                JOIN policy_groups pg ON cpg.policy_group_id = pg.id
+                WHERE cpg.policy_group_id = %s
+                ORDER BY cpg.manual_priority DESC, cpg.granularity_rank DESC
+            """, (policy_group_id,))
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error getting context policy groups for policy group {policy_group_id}: {e}")
+            return []
+        finally:
+            cursor.close()
+    
     def get_context_policy_group_by_id(self, context_id):
         """Get a context policy group by ID."""
         cursor = self.connection.cursor(pymysql.cursors.DictCursor)
         try:
             cursor.execute("""
                 SELECT cpg.id, cpg.purpose_id, p.name as purpose_name, 
-                       cpg.external_role_id, er.name as role_name,
+                       cpg.external_role_id, er.name as external_role_name,
                        cpg.region_id, r.name as region_name,
                        cpg.policy_group_id, pg.name as policy_group_name, pg.version as policy_group_version,
                        cpg.granularity_rank, cpg.manual_priority, cpg.context_tags,
