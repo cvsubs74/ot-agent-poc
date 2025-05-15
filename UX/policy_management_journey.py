@@ -2414,7 +2414,7 @@ class PolicyManagementJourney:
         """, unsafe_allow_html=True)
         
         # Create tabs for Policy Groups and Overrides
-        group_tabs = st.tabs(["Define Policy Groups", "View Policy Groups", "Overrides"])
+        group_tabs = st.tabs(["Define Policy Groups", "View Policy Groups", "Create Policy Overrides", "View Policy Overrides"])
         
         # Define Policy Groups tab
         with group_tabs[0]:
@@ -2798,415 +2798,410 @@ class PolicyManagementJourney:
                                 card_html = ''.join(html_parts)
                                 st.markdown(card_html, unsafe_allow_html=True)
             
-        # Overrides tab
+        # Create Policy Overrides tab
         with group_tabs[2]:
             st.markdown("""
             <div style="background-color: #EDE7F6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #5E35B1; margin-top: 0;">Policy Overrides</h4>
+                <h4 style="color: #5E35B1; margin-top: 0;">Create Policy Overrides</h4>
                 <p style="margin: 0;">Create context-specific overrides to customize policy behavior based on purpose, role, region, or other criteria.</p>
             </div>
             """, unsafe_allow_html=True)
+            # Get policy groups
+            policy_groups = self.policy_definition_repository.get_all_policy_groups() if self.policy_definition_repository else []
             
-            # Create tabs for Create Override and View Overrides
-            override_tabs = st.tabs(["Create Override", "View Overrides"])
-            
-            # Create Override tab
-            with override_tabs[0]:
-                # Get policy groups
-                policy_groups = self.policy_definition_repository.get_all_policy_groups() if self.policy_definition_repository else []
+            if not policy_groups:
+                st.markdown("""
+                <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h4 style="color: #E65100; margin-top: 0;">Warning</h4>
+                    <p style="margin: 5px 0;">No policy groups available. Please create a policy group first.</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("<h5 style='margin-bottom: 15px;'>Create New Policy Override</h5>", unsafe_allow_html=True)
+                    
+                # Policy Group selector with enhanced styling
+                policy_group_options = {pg["id"]: pg["name"] for pg in policy_groups}
                 
-                if not policy_groups:
-                    st.markdown("""
-                    <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <h4 style="color: #E65100; margin-top: 0;">Warning</h4>
-                        <p style="margin: 5px 0;">No policy groups available. Please create a policy group first.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<h5 style='margin-bottom: 15px;'>Create New Policy Override</h5>", unsafe_allow_html=True)
+                selected_policy_group_id = st.selectbox(
+                    "Select Policy Group",
+                    options=list(policy_group_options.keys()),
+                    format_func=lambda x: policy_group_options.get(x, "Unknown"),
+                    key="override_group_select"
+                )
+                
+                # Context criteria section with modern styling
+                st.markdown("""
+                <div style="background-color: #F5F5F5; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h5 style="margin-top: 0; color: #5E35B1;">Context Criteria</h5>
+                    <p style="margin: 0; font-size: 14px; color: #616161;">Define when this override should apply based on context.</p>
+                </div>
+                """, unsafe_allow_html=True)
                     
-                    # Policy Group selector with enhanced styling
-                    policy_group_options = {pg["id"]: pg["name"] for pg in policy_groups}
-                    
-                    selected_policy_group_id = st.selectbox(
-                        "Select Policy Group",
-                        options=list(policy_group_options.keys()),
-                        format_func=lambda x: policy_group_options.get(x, "Unknown"),
-                        key="override_group_select"
-                    )
-                    
-                    # Context criteria section with modern styling
-                    st.markdown("""
-                    <div style="background-color: #F5F5F5; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <h5 style="margin-top: 0; color: #5E35B1;">Context Criteria</h5>
-                        <p style="margin: 0; font-size: 14px; color: #616161;">Define when this override should apply based on context.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Purpose selector
-                    purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if purposes:
-                            purpose_options = {p["id"]: p["name"] for p in purposes}
-                            selected_purpose_id = st.selectbox(
-                                "Purpose",
-                                options=[None] + list(purpose_options.keys()),
-                                format_func=lambda x: purpose_options.get(x, "Any") if x else "Any",
-                                key="override_purpose_select"
-                            )
-                        else:
-                            st.info("No purposes available.")
-                            selected_purpose_id = None
+                # Purpose selector
+                purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if purposes:
+                        purpose_options = {p["id"]: p["name"] for p in purposes}
+                        selected_purpose_id = st.selectbox(
+                            "Purpose",
+                            options=[None] + list(purpose_options.keys()),
+                            format_func=lambda x: purpose_options.get(x, "Any") if x else "Any",
+                            key="override_purpose_select"
+                        )
+                    else:
+                        st.info("No purposes available.")
+                        selected_purpose_id = None
                         
-                        # Region selector
-                        regions = self.policy_definition_repository.get_all_regions() if self.policy_definition_repository else []
+                    # Region selector
+                    regions = self.policy_definition_repository.get_all_regions() if self.policy_definition_repository else []
+                    
+                    if regions:
+                        region_options = {r["id"]: r["name"] for r in regions}
+                        selected_region_id = st.selectbox(
+                            "Region",
+                            options=[None] + list(region_options.keys()),
+                            format_func=lambda x: region_options.get(x, "Any") if x else "Any",
+                            key="override_region_select"
+                        )
+                    else:
+                        st.info("No regions available.")
+                        selected_region_id = None
+                    
+                with col2:
+                    # Role selector
+                    roles = self.glossary_repository.get_external_roles() if self.glossary_repository else []
+                    
+                    if roles:
+                        # Handle roles as tuples (id, name, description, source_system, source_role_name, asset_id)
+                        role_options = {r[0]: r[1] for r in roles}  # Use index 0 for id, index 1 for name
+                        selected_role_id = st.selectbox(
+                            "Role",
+                            options=[None] + list(role_options.keys()),
+                            format_func=lambda x: role_options.get(x, "Any") if x else "Any",
+                            key="override_role_select"
+                        )
+                    else:
+                        st.info("No roles available.")
+                        selected_role_id = None
+                    
+                    # Priority input
+                    manual_priority = st.number_input("Priority", min_value=0, max_value=100, value=10, key="priority_input", 
+                                                   help="Higher priority overrides take precedence when multiple overrides match")
+                    
+                # Context tags with improved styling
+                st.markdown("<p><strong>Context Tags</strong> <span style='color: #757575; font-size: 12px;'>(JSON format)</span></p>", unsafe_allow_html=True)
+                context_tags = st.text_area("Context Tags", key="context_tags_textarea", height=100, label_visibility="collapsed", 
+                                          placeholder='{"department": "finance", "environment": "production"}')
+                
+                # Effective dates section
+                st.markdown("<h5 style='margin-top: 20px;'>Effective Period</h5>", unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    effective_from = st.date_input("Effective From", value=datetime.now().date(), key="override_from_date")
+                    is_active = st.checkbox("Active", value=True, key="override_active_checkbox")
+                with col2:
+                    effective_to = st.date_input("Effective To (Optional)", value=None, key="override_to_date")
+                    
+                # Add CSS for the create override button with specific key selector
+                st.markdown("""
+                <style>
+                /* Target only the specific button by its key */
+                [data-testid="baseButton-secondary"][kind="secondary"][data-testid*="create_override_btn"] {
+                    background-color: #5E35B1 !important;
+                    color: white !important;
+                    border-radius: 4px !important;
+                    padding: 8px 16px !important;
+                    font-weight: bold !important;
+                    border: none !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                    margin-top: 15px !important;
+                }
+                [data-testid="baseButton-secondary"][kind="secondary"][data-testid*="create_override_btn"]:hover {
+                    background-color: #4527A0 !important;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                    
+                # Using regular st.button without the custom HTML
+                create_btn_clicked = st.button("Create Override", key="create_override_btn")
+                
+                if create_btn_clicked:
+                    if not selected_policy_group_id:
+                        st.markdown("""
+                        <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                            <h4 style="color: #C62828; margin-top: 0;">Error</h4>
+                            <p style="margin: 5px 0;">Please select a policy group.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # Format dates properly for database
+                        from_date = effective_from.strftime('%Y-%m-%d') if effective_from else None
+                        to_date = effective_to.strftime('%Y-%m-%d') if effective_to else None
                         
-                        if regions:
-                            region_options = {r["id"]: r["name"] for r in regions}
-                            selected_region_id = st.selectbox(
-                                "Region",
-                                options=[None] + list(region_options.keys()),
-                                format_func=lambda x: region_options.get(x, "Any") if x else "Any",
-                                key="override_region_select"
-                            )
-                        else:
-                            st.info("No regions available.")
-                            selected_region_id = None
-                    
-                    with col2:
-                        # Role selector
-                        roles = self.glossary_repository.get_external_roles() if self.glossary_repository else []
-                        
-                        if roles:
-                            # Handle roles as tuples (id, name, description, source_system, source_role_name, asset_id)
-                            role_options = {r[0]: r[1] for r in roles}  # Use index 0 for id, index 1 for name
-                            selected_role_id = st.selectbox(
-                                "Role",
-                                options=[None] + list(role_options.keys()),
-                                format_func=lambda x: role_options.get(x, "Any") if x else "Any",
-                                key="override_role_select"
-                            )
-                        else:
-                            st.info("No roles available.")
-                            selected_role_id = None
-                        
-                        # Priority input
-                        manual_priority = st.number_input("Priority", min_value=0, max_value=100, value=10, key="priority_input", 
-                                                       help="Higher priority overrides take precedence when multiple overrides match")
-                    
-                    # Context tags with improved styling
-                    st.markdown("<p><strong>Context Tags</strong> <span style='color: #757575; font-size: 12px;'>(JSON format)</span></p>", unsafe_allow_html=True)
-                    context_tags = st.text_area("Context Tags", key="context_tags_textarea", height=100, label_visibility="collapsed", 
-                                              placeholder='{"department": "finance", "environment": "production"}')
-                    
-                    # Effective dates section
-                    st.markdown("<h5 style='margin-top: 20px;'>Effective Period</h5>", unsafe_allow_html=True)
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        effective_from = st.date_input("Effective From", value=datetime.now().date(), key="override_from_date")
-                        is_active = st.checkbox("Active", value=True, key="override_active_checkbox")
-                    with col2:
-                        effective_to = st.date_input("Effective To (Optional)", value=None, key="override_to_date")
-                    
-                    # Add CSS for the create override button with specific key selector
-                    st.markdown("""
-                    <style>
-                    /* Target only the specific button by its key */
-                    [data-testid="baseButton-secondary"][kind="secondary"][data-testid*="create_override_btn"] {
-                        background-color: #5E35B1 !important;
-                        color: white !important;
-                        border-radius: 4px !important;
-                        padding: 8px 16px !important;
-                        font-weight: bold !important;
-                        border: none !important;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-                        margin-top: 15px !important;
-                    }
-                    [data-testid="baseButton-secondary"][kind="secondary"][data-testid*="create_override_btn"]:hover {
-                        background-color: #4527A0 !important;
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Using regular st.button without the custom HTML
-                    create_btn_clicked = st.button("Create Override", key="create_override_btn")
-                    
-                    if create_btn_clicked:
-                        if not selected_policy_group_id:
-                            st.markdown("""
-                            <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                                <h4 style="color: #C62828; margin-top: 0;">Error</h4>
-                                <p style="margin: 5px 0;">Please select a policy group.</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            # Format dates properly for database
-                            from_date = effective_from.strftime('%Y-%m-%d') if effective_from else None
-                            to_date = effective_to.strftime('%Y-%m-%d') if effective_to else None
-                            
-                            # Validate and parse context tags if provided
-                            tags_json = None
-                            if context_tags:
-                                try:
-                                    tags_json = json.dumps(json.loads(context_tags))
-                                except json.JSONDecodeError:
-                                    st.markdown("""
-                                    <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                                        <h4 style="color: #C62828; margin-top: 0;">Error</h4>
-                                        <p style="margin: 5px 0;">Context tags must be valid JSON. Please check the format.</p>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    return
+                        # Validate and parse context tags if provided
+                        tags_json = None
+                        if context_tags:
+                            try:
+                                tags_json = json.dumps(json.loads(context_tags))
+                            except json.JSONDecodeError:
+                                st.markdown("""
+                                <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                    <h4 style="color: #C62828; margin-top: 0;">Error</h4>
+                                    <p style="margin: 5px 0;">Context tags must be valid JSON. Please check the format.</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                return
                             
                             # Create the context policy group
-                            if self.policy_definition_repository:
-                                result = self.policy_definition_repository.create_context_policy_group(
-                                    purpose_id=selected_purpose_id,
-                                    external_role_id=selected_role_id,
-                                    region_id=selected_region_id,
+                        if self.policy_definition_repository:
+                            try:
+                                # Create context policy group
+                                context_policy_group_id = self.policy_definition_repository.create_context_policy_group(
                                     policy_group_id=selected_policy_group_id,
-                                    manual_priority=manual_priority,
+                                    purpose_id=selected_purpose_id,
+                                    role_id=selected_role_id,
+                                    region_id=selected_region_id,
                                     context_tags=tags_json,
+                                    priority=manual_priority,
+                                    is_active=is_active,
                                     effective_from=from_date,
                                     effective_to=to_date
                                 )
                                 
-                                if result:
+                                if context_policy_group_id:
                                     st.markdown("""
                                     <div style="background-color: #E8F5E9; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                                        <h4 style="color: #2E7D32; margin-top: 0;">Success!</h4>
-                                        <p style="margin: 5px 0;">Context override created successfully.</p>
+                                        <h4 style="color: #2E7D32; margin-top: 0;">Success</h4>
+                                        <p style="margin: 5px 0;">Policy override created successfully!</p>
                                     </div>
                                     """, unsafe_allow_html=True)
-                                    # Rerun the app to refresh the UI
-                                    st.rerun()
                                 else:
                                     st.markdown("""
                                     <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
                                         <h4 style="color: #C62828; margin-top: 0;">Error</h4>
-                                        <p style="margin: 5px 0;">Failed to create context override. Please check the logs for details.</p>
+                                        <p style="margin: 5px 0;">Failed to create policy override. Please try again.</p>
                                     </div>
                                     """, unsafe_allow_html=True)
-                            else:
-                                st.markdown("""
+                            except Exception as e:
+                                st.markdown(f"""
                                 <div style="background-color: #FFEBEE; padding: 15px; border-radius: 8px; margin: 15px 0;">
                                     <h4 style="color: #C62828; margin-top: 0;">Error</h4>
-                                    <p style="margin: 5px 0;">Repository not available. Cannot create context override.</p>
+                                    <p style="margin: 5px 0;">An error occurred: {str(e)}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
             
-            # View Overrides tab
-            with override_tabs[1]:
-                # Add explanatory section at the top
+        # View Policy Overrides tab
+        with group_tabs[3]:
+            # Add explanatory section at the top
+            st.markdown("""
+            <div style="background-color: #F3E5F5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #6A1B9A; margin-top: 0;">View Policy Overrides</h4>
+                <p style="margin-bottom: 10px;">Policy overrides allow you to customize how policies are applied in specific contexts:</p>
+                <ul style="margin-bottom: 0;">
+                    <li><strong>Purpose-based:</strong> Apply different policies based on business purpose (e.g., Customer Support vs Marketing)</li>
+                    <li><strong>Role-based:</strong> Customize policies for specific user roles (e.g., Data Analyst vs Administrator)</li>
+                    <li><strong>Region-based:</strong> Adapt policies to meet regional regulatory requirements</li>
+                    <li><strong>Priority:</strong> Higher priority overrides take precedence when multiple contexts match</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get existing context overrides
+            context_overrides = self.policy_definition_repository.get_all_context_policy_groups() if self.policy_definition_repository else []
+            
+            # Add filter options
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                filter_status = st.selectbox("Filter by Status", ["All", "Active", "Inactive"], key="override_status_filter")
+            with col2:
+                # Get all purposes for filtering
+                purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
+                purpose_options = {p["id"]: p["name"] for p in purposes} if purposes else {}
+                purpose_options[0] = "All Purposes"
+                filter_purpose = st.selectbox("Filter by Purpose", 
+                                           options=list(purpose_options.keys()),
+                                           format_func=lambda x: purpose_options.get(x, "All"),
+                                           key="override_purpose_filter")
+            with col3:
+                sort_by = st.selectbox("Sort by", ["Priority (High to Low)", "Priority (Low to High)", "Newest First", "Oldest First"], key="override_sort")
+                
+            # Apply filters and sorting
+            filtered_overrides = []
+            for override in context_overrides:
+                # Check status filter
+                is_active = override.get("is_active", False)
+                current_date = datetime.now().date()
+                
+                if override.get("effective_from") and isinstance(override["effective_from"], str):
+                    try:
+                        effective_from = datetime.strptime(override["effective_from"], "%Y-%m-%d").date()
+                        if effective_from > current_date:
+                            is_active = False
+                    except:
+                        pass
+                
+                if override.get("effective_to") and isinstance(override["effective_to"], str):
+                    try:
+                        effective_to = datetime.strptime(override["effective_to"], "%Y-%m-%d").date()
+                        if effective_to < current_date:
+                            is_active = False
+                    except:
+                        pass
+                
+                if filter_status == "Active" and not is_active:
+                    continue
+                if filter_status == "Inactive" and is_active:
+                    continue
+                
+                # Check purpose filter
+                if filter_purpose != 0 and override.get("purpose_id") != filter_purpose:
+                    continue
+                
+                filtered_overrides.append(override)
+                
+            # Apply sorting
+            if sort_by == "Priority (High to Low)":
+                filtered_overrides.sort(key=lambda x: x.get("manual_priority", 0), reverse=True)
+            elif sort_by == "Priority (Low to High)":
+                filtered_overrides.sort(key=lambda x: x.get("manual_priority", 0))
+            elif sort_by == "Newest First":
+                filtered_overrides.sort(key=lambda x: x.get("created_at", "2000-01-01"), reverse=True)
+            elif sort_by == "Oldest First":
+                filtered_overrides.sort(key=lambda x: x.get("created_at", "2000-01-01"))
+            
+            if not filtered_overrides:
                 st.markdown("""
-                <div style="background-color: #F3E5F5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="color: #6A1B9A; margin-top: 0;">Understanding Policy Overrides</h4>
-                    <p style="margin-bottom: 10px;">Policy overrides allow you to customize how policies are applied in specific contexts:</p>
-                    <ul style="margin-bottom: 0;">
-                        <li><strong>Purpose-based:</strong> Apply different policies based on business purpose (e.g., Customer Support vs Marketing)</li>
-                        <li><strong>Role-based:</strong> Customize policies for specific user roles (e.g., Data Analyst vs Administrator)</li>
-                        <li><strong>Region-based:</strong> Adapt policies to meet regional regulatory requirements</li>
-                        <li><strong>Priority:</strong> Higher priority overrides take precedence when multiple contexts match</li>
-                    </ul>
+                <div style="background-color: #F5F5F5; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <p style="margin: 0; color: #616161;"><i>No policy overrides match your filter criteria.</i></p>
                 </div>
                 """, unsafe_allow_html=True)
+            else:
+                # Display count of overrides
+                st.markdown(f"<h5 style='margin-bottom: 15px;'>Showing {len(filtered_overrides)} Policy Override{'' if len(filtered_overrides) == 1 else 's'}</h5>", unsafe_allow_html=True)
                 
-                # Get existing context overrides
-                context_overrides = self.policy_definition_repository.get_all_context_policy_groups() if self.policy_definition_repository else []
-                
-                # Add filter options
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    filter_status = st.selectbox("Filter by Status", ["All", "Active", "Inactive"], key="override_status_filter")
-                with col2:
-                    # Get all purposes for filtering
-                    purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
-                    purpose_options = {p["id"]: p["name"] for p in purposes} if purposes else {}
-                    purpose_options[0] = "All Purposes"
-                    filter_purpose = st.selectbox("Filter by Purpose", 
-                                               options=list(purpose_options.keys()),
-                                               format_func=lambda x: purpose_options.get(x, "All"),
-                                               key="override_purpose_filter")
-                with col3:
-                    sort_by = st.selectbox("Sort by", ["Priority (High to Low)", "Priority (Low to High)", "Newest First", "Oldest First"], key="override_sort")
-                
-                # Apply filters and sorting
-                filtered_overrides = []
-                for override in context_overrides:
-                    # Check status filter
+                # Add legend for status indicators
+                st.markdown("""
+                <div style="display: flex; gap: 15px; margin-bottom: 15px; font-size: 12px;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #4CAF50; margin-right: 5px;"></span>
+                        <span>Active</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #F44336; margin-right: 5px;"></span>
+                        <span>Inactive</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                    
+                for override in filtered_overrides:
+                    # Get policy group details
+                    policy_group_name = "Unknown Group"
+                    policy_groups = self.policy_definition_repository.get_all_policy_groups() if self.policy_definition_repository else []
+                    for group in policy_groups:
+                        if group["id"] == override.get("policy_group_id"):
+                            policy_group_name = group["name"]
+                            break
+                        
+                    # Format context criteria
+                    context_criteria = []
+                    
+                    # Purpose
+                    if override.get("purpose_id"):
+                        purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
+                        for purpose in purposes:
+                            if purpose["id"] == override.get("purpose_id"):
+                                context_criteria.append(f"Purpose: {purpose['name']}")
+                                break
+                        
+                    # Role
+                    if override.get("external_role_id"):
+                        roles = self.glossary_repository.get_external_roles() if self.glossary_repository else []
+                        for role in roles:
+                            if role[0] == override.get("external_role_id"):  # role[0] is the ID
+                                context_criteria.append(f"Role: {role[1]}")  # role[1] is the name
+                                break
+                    
+                    # Region
+                    if override.get("region_id"):
+                        regions = self.policy_definition_repository.get_all_regions() if self.policy_definition_repository else []
+                        for region in regions:
+                            if region["id"] == override.get("region_id"):
+                                context_criteria.append(f"Region: {region['name']}")
+                                break
+                        
+                    # Format dates
+                    effective_from = override.get("effective_from")
+                    effective_to = override.get("effective_to")
+                    
+                    if effective_from and isinstance(effective_from, str):
+                        try:
+                            effective_from = datetime.strptime(effective_from, "%Y-%m-%d").date()
+                        except:
+                            pass
+                    elif effective_from and isinstance(effective_from, datetime):
+                        effective_from = effective_from.date()
+                    
+                    if effective_to and isinstance(effective_to, str):
+                        try:
+                            effective_to = datetime.strptime(effective_to, "%Y-%m-%d").date()
+                        except:
+                            pass
+                    elif effective_to and isinstance(effective_to, datetime):
+                        effective_to = effective_to.date()
+                        
+                    # Check if override is active
                     is_active = override.get("is_active", False)
                     current_date = datetime.now().date()
                     
-                    if override.get("effective_from") and isinstance(override["effective_from"], str):
-                        try:
-                            effective_from = datetime.strptime(override["effective_from"], "%Y-%m-%d").date()
-                            if effective_from > current_date:
-                                is_active = False
-                        except:
-                            pass
-                    
-                    if override.get("effective_to") and isinstance(override["effective_to"], str):
-                        try:
-                            effective_to = datetime.strptime(override["effective_to"], "%Y-%m-%d").date()
-                            if effective_to < current_date:
-                                is_active = False
-                        except:
-                            pass
-                    
-                    if filter_status == "Active" and not is_active:
-                        continue
-                    if filter_status == "Inactive" and is_active:
-                        continue
-                    
-                    # Check purpose filter
-                    if filter_purpose != 0 and override.get("purpose_id") != filter_purpose:
-                        continue
-                    
-                    filtered_overrides.append(override)
-                
-                # Apply sorting
-                if sort_by == "Priority (High to Low)":
-                    filtered_overrides.sort(key=lambda x: x.get("manual_priority", 0), reverse=True)
-                elif sort_by == "Priority (Low to High)":
-                    filtered_overrides.sort(key=lambda x: x.get("manual_priority", 0))
-                elif sort_by == "Newest First":
-                    filtered_overrides.sort(key=lambda x: x.get("created_at", "2000-01-01"), reverse=True)
-                elif sort_by == "Oldest First":
-                    filtered_overrides.sort(key=lambda x: x.get("created_at", "2000-01-01"))
-                
-                if not filtered_overrides:
-                    st.markdown("""
-                    <div style="background-color: #F5F5F5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <p style="margin: 0; color: #616161;"><i>No policy overrides match your filter criteria.</i></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    # Display count of overrides
-                    st.markdown(f"<h5 style='margin-bottom: 15px;'>Showing {len(filtered_overrides)} Policy Override{'' if len(filtered_overrides) == 1 else 's'}</h5>", unsafe_allow_html=True)
-                    
-                    # Add legend for status indicators
-                    st.markdown("""
-                    <div style="display: flex; gap: 15px; margin-bottom: 15px; font-size: 12px;">
-                        <div style="display: flex; align-items: center;">
-                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #4CAF50; margin-right: 5px;"></span>
-                            <span>Active</span>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #F44336; margin-right: 5px;"></span>
-                            <span>Inactive</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    for override in filtered_overrides:
-                        # Get policy group details
-                        policy_group_name = "Unknown Group"
-                        policy_groups = self.policy_definition_repository.get_all_policy_groups() if self.policy_definition_repository else []
-                        for group in policy_groups:
-                            if group["id"] == override.get("policy_group_id"):
-                                policy_group_name = group["name"]
-                                break
-                        
-                        # Format context criteria
-                        context_criteria = []
-                        
-                        # Purpose
-                        if override.get("purpose_id"):
-                            purposes = self.glossary_repository.get_purposes() if self.glossary_repository else []
-                            for purpose in purposes:
-                                if purpose["id"] == override.get("purpose_id"):
-                                    context_criteria.append(f"Purpose: {purpose['name']}")
-                                    break
-                        
-                        # Role
-                        if override.get("external_role_id"):
-                            roles = self.glossary_repository.get_external_roles() if self.glossary_repository else []
-                            for role in roles:
-                                if role[0] == override.get("external_role_id"):  # role[0] is the ID
-                                    context_criteria.append(f"Role: {role[1]}")  # role[1] is the name
-                                    break
-                        
-                        # Region
-                        if override.get("region_id"):
-                            regions = self.policy_definition_repository.get_all_regions() if self.policy_definition_repository else []
-                            for region in regions:
-                                if region["id"] == override.get("region_id"):
-                                    context_criteria.append(f"Region: {region['name']}")
-                                    break
-                        
-                        # Format dates
-                        effective_from = override.get("effective_from")
-                        effective_to = override.get("effective_to")
-                        
-                        if effective_from and isinstance(effective_from, str):
-                            try:
-                                effective_from = datetime.strptime(effective_from, "%Y-%m-%d").date()
-                            except:
-                                pass
-                        elif effective_from and isinstance(effective_from, datetime):
-                            effective_from = effective_from.date()
-                        
-                        if effective_to and isinstance(effective_to, str):
-                            try:
-                                effective_to = datetime.strptime(effective_to, "%Y-%m-%d").date()
-                            except:
-                                pass
-                        elif effective_to and isinstance(effective_to, datetime):
-                            effective_to = effective_to.date()
-                        
-                        # Check if override is active
-                        is_active = override.get("is_active", False)
-                        current_date = datetime.now().date()
-                        
-                        if effective_from and effective_from > current_date:
-                            is_active = False
-                        if effective_to and effective_to < current_date:
-                            is_active = False
-                                               # Create a container for each override
-                        with st.container():
-                            # Use columns for layout
-                            col1, col2 = st.columns([3, 1])
+                    if effective_from and effective_from > current_date:
+                        is_active = False
+                    if effective_to and effective_to < current_date:
+                        is_active = False
+                    # Create a container for each override
+                    with st.container():
+                        # Use columns for layout
+                        col1, col2 = st.columns([3, 1])
                             
-                            with col1:
-                                # Display override header
-                                st.markdown(f"""
-                                <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                    <h4 style="margin: 0;">{policy_group_name} Override</h4>
-                                    <span style="margin-left: 10px;" class="group-status {'status-active' if is_active else 'status-inactive'}">
-                                        {'Active' if is_active else 'Inactive'}
-                                    </span>
-                                    <span style="margin-left: 10px; background-color: #E8EAF6; color: #3949AB; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
-                                        Priority: {override.get('manual_priority', 0)}
-                                    </span>
+                        with col1:
+                            # Display override header
+                            st.markdown(f"""
+                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0;">{policy_group_name} Override</h4>
+                                <span style="margin-left: 10px;" class="group-status {'status-active' if is_active else 'status-inactive'}">
+                                    {'Active' if is_active else 'Inactive'}
+                                </span>
+                                <span style="margin-left: 10px; background-color: #E8EAF6; color: #3949AB; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
+                                    Priority: {override.get('manual_priority', 0)}
+                                </span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Display context criteria
+                            criteria_html = ''
+                            if context_criteria:
+                                criteria_html = ''.join([f'<span class="group-tag">{criteria}</span>' for criteria in context_criteria])
+                            if override.get('context_tags'):
+                                criteria_html += f'<span class="group-tag">Custom Tags</span>'
+                            
+                            st.markdown(f"""
+                            <div style="margin-bottom: 15px;">
+                                <p style="margin-bottom: 5px;"><strong>Context Criteria:</strong></p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                    {criteria_html}
                                 </div>
-                                """, unsafe_allow_html=True)
-                                
-                                # Display context criteria
-                                criteria_html = ''
-                                if context_criteria:
-                                    criteria_html = ''.join([f'<span class="group-tag">{criteria}</span>' for criteria in context_criteria])
-                                if override.get('context_tags'):
-                                    criteria_html += f'<span class="group-tag">Custom Tags</span>'
-                                
-                                st.markdown(f"""
-                                <div style="margin-bottom: 15px;">
-                                    <p style="margin-bottom: 5px;"><strong>Context Criteria:</strong></p>
-                                    <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                                        {criteria_html}
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                # Display effective dates
-                                st.markdown(f"""
-                                <div>
-                                    <p style="margin: 0; font-size: 14px;"><strong>Effective From:</strong> {effective_from}</p>
-                                    <p style="margin: 0; font-size: 14px;"><strong>Effective To:</strong> {effective_to if effective_to else 'Indefinite'}</p>
-                                </div>
-                                """, unsafe_allow_html=True)
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Display effective dates
+                            st.markdown(f"""
+                            <div>
+                                <p style="margin: 0; font-size: 14px;"><strong>Effective From:</strong> {effective_from}</p>
+                                <p style="margin: 0; font-size: 14px;"><strong>Effective To:</strong> {effective_to if effective_to else 'Indefinite'}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
                             # Add delete button in the second column
                             with col2:
@@ -3227,7 +3222,7 @@ class PolicyManagementJourney:
                                         # Set confirmation state and show confirmation message
                                         st.session_state[f"confirm_{delete_button_key}"] = True
                                         st.warning("Click 'Delete' again to confirm deletion. This action cannot be undone.")
-                            
+                        
                             # Add a separator between overrides
                             st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
             
