@@ -2414,7 +2414,7 @@ class PolicyManagementJourney:
         """, unsafe_allow_html=True)
         
         # Create tabs for Policy Groups and Overrides
-        group_tabs = st.tabs(["Define Policy Groups", "View Policy Groups", "Create Policy Overrides", "View Policy Overrides"])
+        group_tabs = st.tabs(["Define Policy Groups", "View Policy Groups", "Assign Policies to Groups", "Create Policy Overrides", "View Policy Overrides"])
         
         # Define Policy Groups tab
         with group_tabs[0]:
@@ -2798,8 +2798,119 @@ class PolicyManagementJourney:
                                 card_html = ''.join(html_parts)
                                 st.markdown(card_html, unsafe_allow_html=True)
             
-        # Create Policy Overrides tab
+        # Assign Policies to Groups tab
         with group_tabs[2]:
+            st.markdown("""
+            <div style="background-color: #E1F5FE; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #0277BD; margin-top: 0;">Assign Policies to Groups</h4>
+                <p style="margin: 0;">Add or remove policies from policy groups to build comprehensive policy sets.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get policy groups
+            policy_groups = self.policy_definition_repository.get_all_policy_groups() if self.policy_definition_repository else []
+            
+            if not policy_groups:
+                st.markdown("""
+                <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h4 style="color: #E65100; margin-top: 0;">Warning</h4>
+                    <p style="margin: 5px 0;">No policy groups available. Please create a policy group first.</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Policy Group selector with enhanced styling
+                st.markdown("<h5 style='margin-bottom: 15px;'>Select Policy Group</h5>", unsafe_allow_html=True)
+                policy_group_options = {pg["id"]: pg["name"] for pg in policy_groups}
+                
+                selected_policy_group_id = st.selectbox(
+                    "Policy Group",
+                    options=list(policy_group_options.keys()),
+                    format_func=lambda x: policy_group_options.get(x, "Unknown"),
+                    key="assign_group_select"
+                )
+                
+                if selected_policy_group_id:
+                    # Get policies already in the group
+                    policies_in_group = self.policy_definition_repository.get_policies_in_group(selected_policy_group_id) if self.policy_definition_repository else []
+                    policies_in_group_ids = [p["policy_id"] for p in policies_in_group]
+                    
+                    # Get all available policies
+                    all_policies = self.policy_definition_repository.get_all_policies() if self.policy_definition_repository else []
+                    
+                    # Create two columns for assigned and available policies
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("<h5>Policies in Group</h5>", unsafe_allow_html=True)
+                        if not policies_in_group:
+                            st.info("No policies assigned to this group yet.")
+                        else:
+                            for policy in policies_in_group:
+                                # Create a container for each policy with remove button
+                                with st.container():
+                                    policy_name = policy.get("data_element_name", "Unknown")
+                                    policy_type = policy.get("policy_type_name", "Unknown")
+                                    
+                                    # Display policy info
+                                    st.markdown(f"""
+                                    <div style="background-color: #F5F5F5; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                        <div><strong>{policy_name}</strong></div>
+                                        <div style="font-size: 12px; color: #616161;">Type: {policy_type}</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Remove button
+                                    remove_key = f"remove_policy_{policy['policy_id']}"
+                                    if st.button("Remove", key=remove_key):
+                                        if self.policy_definition_repository.remove_policy_from_group(selected_policy_group_id, policy['policy_id']):
+                                            st.success(f"Removed {policy_name} from the group.")
+                                            st.rerun()
+                                        else:
+                                            st.error(f"Failed to remove {policy_name} from the group.")
+                    
+                    with col2:
+                        st.markdown("<h5>Available Policies</h5>", unsafe_allow_html=True)
+                        # Filter out policies already in the group
+                        available_policies = [p for p in all_policies if p["id"] not in policies_in_group_ids]
+                        
+                        if not available_policies:
+                            st.info("All policies are already assigned to this group.")
+                        else:
+                            # Add a search box for filtering policies
+                            search_term = st.text_input("Search policies", key="policy_search")
+                            
+                            # Filter policies based on search term
+                            if search_term:
+                                filtered_policies = [p for p in available_policies if search_term.lower() in p.get("data_element_name", "").lower() or 
+                                                    search_term.lower() in p.get("policy_type_name", "").lower()]
+                            else:
+                                filtered_policies = available_policies
+                            
+                            for policy in filtered_policies:
+                                # Create a container for each policy with add button
+                                with st.container():
+                                    policy_name = policy.get("data_element_name", "Unknown")
+                                    policy_type = policy.get("policy_type_name", "Unknown")
+                                    
+                                    # Display policy info
+                                    st.markdown(f"""
+                                    <div style="background-color: #F5F5F5; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                        <div><strong>{policy_name}</strong></div>
+                                        <div style="font-size: 12px; color: #616161;">Type: {policy_type}</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Add button
+                                    add_key = f"add_policy_{policy['id']}"
+                                    if st.button("Add", key=add_key):
+                                        if self.policy_definition_repository.add_policy_to_group(selected_policy_group_id, policy['id']):
+                                            st.success(f"Added {policy_name} to the group.")
+                                            st.rerun()
+                                        else:
+                                            st.error(f"Failed to add {policy_name} to the group.")
+        
+        # Create Policy Overrides tab
+        with group_tabs[3]:
             st.markdown("""
             <div style="background-color: #EDE7F6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h4 style="color: #5E35B1; margin-top: 0;">Create Policy Overrides</h4>
@@ -2962,11 +3073,10 @@ class PolicyManagementJourney:
                                 context_policy_group_id = self.policy_definition_repository.create_context_policy_group(
                                     policy_group_id=selected_policy_group_id,
                                     purpose_id=selected_purpose_id,
-                                    role_id=selected_role_id,
+                                    external_role_id=selected_role_id,
                                     region_id=selected_region_id,
                                     context_tags=tags_json,
-                                    priority=manual_priority,
-                                    is_active=is_active,
+                                    manual_priority=manual_priority,
                                     effective_from=from_date,
                                     effective_to=to_date
                                 )
@@ -2994,7 +3104,7 @@ class PolicyManagementJourney:
                                 """, unsafe_allow_html=True)
             
         # View Policy Overrides tab
-        with group_tabs[3]:
+        with group_tabs[4]:
             # Add explanatory section at the top
             st.markdown("""
             <div style="background-color: #F3E5F5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
