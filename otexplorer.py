@@ -163,9 +163,6 @@ class OTExplorer:
         with tab6:
             self.evidence_validator()
             
-        with tab7:
-            self.control_finder()
-
 
 if __name__ == "__main__":
     app = OTExplorer()
